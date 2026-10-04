@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>gpuicn — shadcn/ui for gpui</title>
+  <meta name="description" content="Beautifully designed components for gpui that you copy into your app. Accessible, themeable from a single file, and yours to own.">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Apply the saved theme (or ?theme=dark|light) before first paint.
+    const requested = new URLSearchParams(location.search).get("theme");
+    if ((requested || localStorage.getItem("gpuicn-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark") {
+      document.documentElement.classList.add("dark");
+    }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="#"><span class="logo-mark">cn</span>gpuicn</a>
+      <nav class="nav">
+        <a href="#components">Components</a>
+        <a href="#start">Get started</a>
+        <a href="#theming">Theming</a>
+        <a href="#cli">CLI</a>
+      </nav>
+      <div class="header-actions">
+        <button class="btn ghost icon" id="theme-toggle" aria-label="Toggle theme"></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero container">
+      <span class="pill"><span class="dot"></span><span id="count-pill">Components</span> · gpui 0.2</span>
+      <h1>shadcn/ui, for gpui.</h1>
+      <p class="lead">Beautifully designed components that you copy into your Rust app. You own the code, so read it, tweak it or delete it. One file restyles all of it.</p>
+      <div class="hero-actions">
+        <a class="btn lg" href="#components">Browse components <span data-icon="arrow-right"></span></a>
+        <span class="cmd mono"><span class="prompt">$</span> gpuicn add button dialog<button class="btn ghost icon sm" data-copy="gpuicn add button dialog" aria-label="Copy"></button></span>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container features">
+        <div class="feature"><div class="ico" data-icon="code"></div><h3>Your code, not a dependency</h3><p>Each component is copied into <code>src/components/ui</code>. Nothing is hidden in a crate you can't change.</p></div>
+        <div class="feature"><div class="ico" data-icon="palette"></div><h3>Styled from one file</h3><p><code>theme.rs</code> holds every color, radius and font, written in oklch so you can paste shadcn themes in directly.</p></div>
+        <div class="feature"><div class="ico" data-icon="layers"></div><h3>As flexible as shadcn</h3><p>Builders that implement <code>Styled</code>, so any style you add overrides the defaults like <code>cn()</code> does. Each one works controlled or uncontrolled, and they compose.</p></div>
+        <div class="feature"><div class="ico" data-icon="zap"></div><h3>Native and fast</h3><p>Pure gpui: the GPU-accelerated UI framework behind Zed. No webview, no JavaScript.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="components">
+      <div class="container">
+        <div class="section-head">
+          <div><h2>Components</h2><p>Every shadcn/ui component, rebuilt for gpui. Click one to see its code. The previews are CSS replicas; run <code>cargo run -p gallery</code> to see the real gpui versions.</p></div>
+        </div>
+        <div class="toolbar">
+          <div class="search"><span data-icon="search"></span><input class="input" id="search" placeholder="Search components…  ( / )" autocomplete="off"></div>
+          <div class="chips" id="chips"></div>
+          <span class="count muted" id="count"></span>
+        </div>
+        <div class="grid" id="grid"></div>
+      </div>
+    </section>
+
+    <section class="section" id="start">
+      <div class="container">
+        <div class="section-head"><div><h2>Get started</h2><p>Three steps from <code>cargo new</code> to a finished UI.</p></div></div>
+        <div class="steps">
+          <div class="step"><span class="step-n">1</span><h3>Install the CLI and set up your crate</h3>
+<pre class="code" data-lang="sh">cargo install --path crates/gpuicn
+cd my-app
+gpuicn init</pre>
+            <p class="muted sm-text">This writes <code>gpuicn.toml</code>, installs <code>theme.rs</code> and <code>utils.rs</code>, and adds <code>mod components;</code> to your crate root.</p></div>
+          <div class="step"><span class="step-n">2</span><h3>Add the components you need</h3>
+<pre class="code" data-lang="sh">gpuicn add button card dialog
+gpuicn add --all
+gpuicn diff button   # what did I change?</pre>
+            <p class="muted sm-text">Dependencies come along automatically, and so do crate dependencies like <code>unicode-segmentation</code>.</p></div>
+          <div class="step"><span class="step-n">3</span><h3>Initialize and render</h3>
+<pre class="code" data-lang="rust">Application::new()
+    .with_assets(ui::icon::IconAssets)
+    .run(|cx| {
+        ui::init(cx);
+        // …open your window
+    });
+
+// Last child of your root view:
+.child(PortalHost::new())</pre></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="theming">
+      <div class="container">
+        <div class="section-head"><div><h2>One file to restyle everything</h2><p>Colors are oklch, exactly like shadcn's CSS variables, so themes from ui.shadcn.com/themes or tweakcn paste straight in. Try the controls below. They change the same tokens <code>theme.rs</code> defines.</p></div></div>
+        <div class="theming">
+          <div class="playground">
+            <div class="control-row"><label>Primary</label><div class="swatches" id="swatches"></div></div>
+            <div class="control-row"><label for="radius">Radius <span class="muted mono" id="radius-value">0.625rem</span></label><input type="range" id="radius" min="0" max="1.2" step="0.025" value="0.625" style="width:12rem;accent-color:var(--primary)"></div>
+            <div class="sep h"></div>
+            <div class="stage" style="border-radius:var(--radius);min-height:220px;background-color:var(--background)">
+              <div class="card" style="width:320px">
+                <div class="card-head"><div class="card-title">Create project</div><div class="card-desc">Deploy your new project in one click.</div></div>
+                <div class="vstack"><div class="field"><span class="label">Name</span><input class="input" placeholder="Name of your project"></div>
+                  <div class="hstack" style="justify-content:space-between"><span class="hstack"><span class="switch on" data-toggle></span><span class="label">Production</span></span><span class="badge">New</span></div></div>
+                <div class="hstack" style="justify-content:space-between"><button class="btn outline">Cancel</button><button class="btn">Deploy</button></div>
+              </div>
+            </div>
+            <div class="tokens" id="tokens"></div>
+          </div>
+<pre class="code" data-lang="rust" id="theme-code"></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="cli">
+      <div class="container">
+        <div class="section-head"><div><h2>The gpuicn CLI</h2><p>A small tool that copies source files into your crate. Your copies never change unless you run it again.</p></div></div>
+        <table class="cli-table">
+          <tr><td><code>gpuicn init</code></td><td class="muted">Create <code>gpuicn.toml</code>, install <code>theme</code> + <code>utils</code>, add gpui, wire <code>mod components;</code>. Use <code>--path</code> to pick the folder.</td></tr>
+          <tr><td><code>gpuicn add &lt;names…&gt;</code></td><td class="muted">Copy components plus everything they depend on. Takes <code>--all</code>, <code>--overwrite</code> and <code>--dry-run</code>.</td></tr>
+          <tr><td><code>gpuicn list</code></td><td class="muted">Show every component and whether it's installed.</td></tr>
+          <tr><td><code>gpuicn view &lt;name&gt;</code></td><td class="muted">Print a component's source without installing it.</td></tr>
+          <tr><td><code>gpuicn diff [name]</code></td><td class="muted">Show how your copies differ from the registry.</td></tr>
+          <tr><td><code>gpuicn remove &lt;names…&gt;</code></td><td class="muted">Delete components, refusing if others still depend on them.</td></tr>
+          <tr><td><code>--registry &lt;dir&gt;</code></td><td class="muted">Install from your own registry (<code>registry.toml</code> + <code>ui/*.rs</code>), for example your company's design system.</td></tr>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container hstack" style="justify-content:space-between;flex-wrap:wrap">
+      <span>Built with gpui. Design by <a href="https://ui.shadcn.com" style="text-decoration:underline">shadcn/ui</a>. Icons by <a href="https://lucide.dev" style="text-decoration:underline">Lucide</a>.</span>
+      <span>MIT licensed</span>
+    </div>
+  </footer>
+
+  <div class="overlay" id="overlay">
+    <div class="detail" role="dialog" aria-modal="true">
+      <div class="detail-head">
+        <div style="flex:1"><h3 id="d-title"></h3><p id="d-desc"></p></div>
+        <button class="btn ghost icon" id="d-close" aria-label="Close"></button>
+      </div>
+      <div class="detail-body">
+        <div class="stage" id="d-stage"></div>
+        <div class="detail-tabs">
+          <span class="cmd mono" id="d-cmd"></span>
+          <span class="muted xs-text" id="d-nav">← → to browse · Esc to close</span>
+        </div>
+        <pre class="code" data-lang="rust" id="d-code"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="components.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

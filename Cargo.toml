@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = ["crates/gpuicn", "crates/gallery"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+version = "0.1.0"
+
+[workspace.dependencies]
+gpui = "0.2.2"
+
+# gpui 0.2.2 depends (via zed-async-tar) on xattr 0.2.3, which references
+# `libc::ENOATTR` — removed for Linux in recent libc releases. This is a
+# minimal fork that maps it to `ENODATA` (identical on Linux).
+[patch.crates-io]
+xattr = { path = "patches/xattr" }

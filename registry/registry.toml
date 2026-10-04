@@ -1,0 +1,396 @@
+# The gpuicn component registry.
+#
+# Every component is a self-contained Rust module in `ui/`. `gpuicn add <name>`
+# copies its files (plus `registry_dependencies`, recursively) into your
+# project, adds crates from `dependencies` with `cargo add`, and regenerates the
+# `mod.rs` that declares them.
+#
+# `core = true` components are installed by `gpuicn init`.
+# `init = true` components expose `pub fn init(cx: &mut App)`, which the
+# generated `ui::init(cx)` calls.
+
+[[component]]
+name = "accordion"
+description = "A vertically stacked set of interactive headings that each reveal a section of content."
+files = ["accordion.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "alert"
+description = "Displays a callout for user attention."
+files = ["alert.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "alert-dialog"
+description = "A modal dialog that interrupts the user with important content and expects a response. Clicking the backdrop does not dismiss it."
+files = ["alert_dialog.rs"]
+registry_dependencies = ["button", "dialog", "theme", "utils"]
+
+[[component]]
+name = "aspect-ratio"
+description = "Displays content within a desired ratio."
+files = ["aspect_ratio.rs"]
+registry_dependencies = ["utils"]
+
+[[component]]
+name = "avatar"
+description = "An image element with a fallback for representing the user."
+files = ["avatar.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "badge"
+description = "Displays a badge or a component that looks like a badge."
+files = ["badge.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "breadcrumb"
+description = "Displays the path to the current resource using a hierarchy of links."
+files = ["breadcrumb.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "button"
+description = "Displays a button or a component that looks like a button."
+files = ["button.rs"]
+registry_dependencies = ["icon", "spinner", "theme", "utils"]
+
+[[component]]
+name = "button-group"
+description = "A container that groups related buttons together with consistent styling."
+files = ["button_group.rs"]
+registry_dependencies = ["button", "theme", "utils"]
+
+[[component]]
+name = "calendar"
+description = "A date field component that allows users to enter and edit date."
+files = ["calendar.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "card"
+description = "Displays a card with header, content, and footer."
+files = ["card.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "carousel"
+description = "A carousel of slides with previous/next buttons, several slides per view, vertical mode and optional looping."
+files = ["carousel.rs"]
+registry_dependencies = ["button", "icon", "utils"]
+
+[[component]]
+name = "chart"
+description = "Beautiful charts: bar, line, area and pie — drawn with gpui paths and colored by the theme's `chart_1..chart_5` tokens."
+files = ["chart.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "checkbox"
+description = "A control that allows the user to toggle between checked and not checked."
+files = ["checkbox.rs"]
+registry_dependencies = ["icon", "label", "theme", "utils"]
+
+[[component]]
+name = "collapsible"
+description = "An interactive component which expands/collapses a panel."
+files = ["collapsible.rs"]
+registry_dependencies = ["utils"]
+
+[[component]]
+name = "combobox"
+description = "Autocomplete input and command palette with a list of suggestions — shadcn's Popover + Command recipe."
+files = ["combobox.rs"]
+registry_dependencies = ["button", "command", "icon", "popover", "theme", "utils"]
+
+[[component]]
+name = "command"
+description = "Fast, composable, unstyled command menu (shadcn's `cmdk` wrapper)."
+files = ["command.rs"]
+registry_dependencies = ["dialog", "icon", "input", "theme", "utils"]
+
+[[component]]
+name = "context-menu"
+description = "Displays a menu to the user — such as a set of actions or functions — triggered by a right click."
+files = ["context_menu.rs"]
+registry_dependencies = ["dropdown-menu", "popover", "utils"]
+
+[[component]]
+name = "data-table"
+description = "Powerful table and datagrids: sorting, filtering, row selection, column visibility and pagination on top of `table`."
+files = ["data_table.rs"]
+registry_dependencies = ["button", "checkbox", "dropdown-menu", "icon", "input", "table", "theme", "utils"]
+
+[[component]]
+name = "date-picker"
+description = "A date picker component with range and presets — a Popover holding a Calendar."
+files = ["date_picker.rs"]
+registry_dependencies = ["button", "calendar", "icon", "popover", "theme", "utils"]
+
+[[component]]
+name = "dialog"
+description = "A window overlaid on either the primary window or another dialog window, rendering the content underneath inert."
+files = ["dialog.rs"]
+registry_dependencies = ["icon", "portal", "theme", "utils"]
+
+[[component]]
+name = "drawer"
+description = "A drawer component that slides up from the bottom of the screen (the `vaul` drawer in shadcn)."
+files = ["drawer.rs"]
+registry_dependencies = ["dialog", "theme", "utils"]
+
+[[component]]
+name = "dropdown-menu"
+description = "Displays a menu to the user — such as a set of actions or functions — triggered by a button."
+files = ["dropdown_menu.rs"]
+registry_dependencies = ["icon", "popover", "theme", "utils"]
+
+[[component]]
+name = "empty"
+description = "Use the Empty component to display an empty state."
+files = ["empty.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "field"
+description = "Combine labels, controls, and help text to compose accessible form fields."
+files = ["field.rs"]
+registry_dependencies = ["label", "separator", "theme", "utils"]
+
+[[component]]
+name = "form"
+description = "Building forms with validation — the gpui take on shadcn's react-hook-form wrapper: declare fields with validators, get the values on a valid submit."
+files = ["form.rs"]
+registry_dependencies = ["button", "field", "input", "utils"]
+
+[[component]]
+name = "hover-card"
+description = "For sighted users to preview content available behind a link."
+files = ["hover_card.rs"]
+registry_dependencies = ["popover", "utils"]
+
+[[component]]
+name = "icon"
+description = "Lucide icons (https://lucide.dev, ISC license), embedded as source so no asset folder is needed."
+files = ["icon.rs"]
+registry_dependencies = ["utils"]
+note = "Register the icon assets: `Application::new().with_assets(ui::icon::IconAssets)`."
+
+[[component]]
+name = "input"
+description = "Displays a form input field or a component that looks like an input field."
+files = ["input.rs"]
+registry_dependencies = ["theme", "utils"]
+dependencies = ["unicode-segmentation@1"]
+init = true
+
+[[component]]
+name = "input-group"
+description = "Display additional information or actions next to an input or textarea."
+files = ["input_group.rs"]
+registry_dependencies = ["button", "icon", "input", "theme", "utils"]
+
+[[component]]
+name = "input-otp"
+description = "Accessible one-time password component with copy paste functionality."
+files = ["input_otp.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "item"
+description = "A versatile component that you can use to display any content."
+files = ["item.rs"]
+registry_dependencies = ["icon", "separator", "theme", "utils"]
+
+[[component]]
+name = "kbd"
+description = "Used to display textual user input from keyboard."
+files = ["kbd.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "label"
+description = "Renders an accessible label associated with controls."
+files = ["label.rs"]
+registry_dependencies = ["utils"]
+
+[[component]]
+name = "menubar"
+description = "A visually persistent menu common in desktop applications that provides quick access to a consistent set of commands."
+files = ["menubar.rs"]
+registry_dependencies = ["dropdown-menu", "popover", "theme", "utils"]
+
+[[component]]
+name = "native-select"
+description = "A styled select with a flat list of options — shadcn's `NativeSelect`."
+files = ["native_select.rs"]
+registry_dependencies = ["select", "utils"]
+
+[[component]]
+name = "navigation-menu"
+description = "A collection of links for navigating websites — here, app sections."
+files = ["navigation_menu.rs"]
+registry_dependencies = ["icon", "popover", "theme", "utils"]
+
+[[component]]
+name = "pagination"
+description = "Pagination with page navigation, next and previous links."
+files = ["pagination.rs"]
+registry_dependencies = ["button", "icon", "utils"]
+
+[[component]]
+name = "popover"
+description = "Displays rich content in a portal, triggered by a button."
+files = ["popover.rs"]
+registry_dependencies = ["portal", "theme", "utils"]
+
+[[component]]
+name = "portal"
+description = "Draws floating UI (popovers, menus, dialogs, sheets, tooltips, toasts) on top of the rest of the window — the equivalent of a React portal."
+files = ["portal.rs"]
+registry_dependencies = []
+note = "Render `PortalHost::new()` as the last child of your root view so overlays can draw on top."
+
+[[component]]
+name = "progress"
+description = "Displays an indicator showing the completion progress of a task."
+files = ["progress.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "radio-group"
+description = "A set of checkable buttons where no more than one can be checked at a time."
+files = ["radio_group.rs"]
+registry_dependencies = ["label", "theme", "utils"]
+
+[[component]]
+name = "resizable"
+description = "Accessible resizable panel groups and layouts with keyboard support."
+files = ["resizable.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "scroll-area"
+description = "Augments native scroll functionality for custom, cross-browser styling: a scroll container with a thin, draggable overlay scrollbar."
+files = ["scroll_area.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "select"
+description = "Displays a list of options for the user to pick from — triggered by a button."
+files = ["select.rs"]
+registry_dependencies = ["icon", "popover", "theme", "utils"]
+
+[[component]]
+name = "separator"
+description = "Visually or semantically separates content."
+files = ["separator.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "sheet"
+description = "Extends the Dialog component to display content that complements the main content of the screen, sliding in from an edge."
+files = ["sheet.rs"]
+registry_dependencies = ["dialog", "theme", "utils"]
+
+[[component]]
+name = "sidebar"
+description = "A composable, themeable and customizable sidebar component."
+files = ["sidebar.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "skeleton"
+description = "Use to show a placeholder while content is loading."
+files = ["skeleton.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "slider"
+description = "An input where the user selects a value from within a given range."
+files = ["slider.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "sonner"
+description = "An opinionated toast component."
+files = ["sonner.rs"]
+registry_dependencies = ["icon", "portal", "spinner", "theme"]
+note = "Render `Toaster::new()` once in your root view, then call `toast(\"Saved\", cx)`."
+
+[[component]]
+name = "spinner"
+description = "An indicator that can be used to show a loading state."
+files = ["spinner.rs"]
+registry_dependencies = ["icon", "utils"]
+
+[[component]]
+name = "switch"
+description = "A control that allows the user to toggle between checked and not checked."
+files = ["switch.rs"]
+registry_dependencies = ["label", "theme", "utils"]
+
+[[component]]
+name = "table"
+description = "A responsive table component."
+files = ["table.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "tabs"
+description = "A set of layered sections of content — known as tab panels — that are displayed one at a time."
+files = ["tabs.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "textarea"
+description = "Displays a form textarea or a component that looks like a textarea."
+files = ["textarea.rs"]
+registry_dependencies = ["input", "utils"]
+
+[[component]]
+name = "theme"
+description = "The single file that styles every component: colors (oklch, light and dark), radius, fonts and shadows — the gpui equivalent of shadcn's `globals.css`."
+files = ["theme.rs"]
+registry_dependencies = []
+init = true
+core = true
+
+[[component]]
+name = "toast"
+description = "A succinct message that is displayed temporarily."
+files = ["toast.rs"]
+registry_dependencies = ["sonner"]
+
+[[component]]
+name = "toggle"
+description = "A two-state button that can be either on or off."
+files = ["toggle.rs"]
+registry_dependencies = ["icon", "theme", "utils"]
+
+[[component]]
+name = "toggle-group"
+description = "A set of two-state buttons that can be toggled on or off."
+files = ["toggle_group.rs"]
+registry_dependencies = ["icon", "theme", "toggle", "utils"]
+
+[[component]]
+name = "tooltip"
+description = "A popup that displays information related to an element when the element receives hover."
+files = ["tooltip.rs"]
+registry_dependencies = ["popover", "theme", "utils"]
+
+[[component]]
+name = "typography"
+description = "Styles for headings, paragraphs, lists… — shadcn's typography recipes."
+files = ["typography.rs"]
+registry_dependencies = ["theme", "utils"]
+
+[[component]]
+name = "utils"
+description = "Small helpers shared by every component — the gpui counterpart of shadcn's `lib/utils.ts`."
+files = ["utils.rs"]
+registry_dependencies = []
+core = true
