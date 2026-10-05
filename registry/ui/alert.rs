@@ -100,6 +100,7 @@ impl RenderOnce for Alert {
                     .flex()
                     .flex_col()
                     .flex_1()
+                    .min_w_0()
                     .gap_0p5()
                     .children(self.title.map(|title| {
                         div().font_weight(FontWeight::MEDIUM).line_clamp(1).child(title)

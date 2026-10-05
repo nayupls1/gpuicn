@@ -379,7 +379,7 @@ impl<T: 'static> RenderOnce for DataTable<T> {
                     .gap_2()
                     .py_4()
                     .child(
-                        div().flex_1().text_sm().text_color(muted).child(if self.selectable {
+                        div().flex_1().min_w_0().text_sm().text_color(muted).child(if self.selectable {
                             format!("{selected_count} of {total} row(s) selected.")
                         } else {
                             format!("Page {} of {pages}", page + 1)

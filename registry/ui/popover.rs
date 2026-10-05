@@ -18,7 +18,9 @@
 //! ```
 
 use gpui::{
-    AnyElement, App, Bounds, Context, Corner, ElementId, Entity, FocusHandle, IntoElement,
+    AnyElement, App, Bounds, Context, Corner, DispatchPhase, Element, ElementId, Entity,
+    FocusHandle, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId, IntoElement,
+    LayoutId, MouseButton, MouseDownEvent, MouseExitEvent, MouseMoveEvent, MouseUpEvent,
     ParentElement, Pixels, Point, RenderOnce, Size, StyleRefinement, Task, Window, anchored,
     canvas, div, point, prelude::*, px,
 };
@@ -27,7 +29,7 @@ use std::time::Duration;
 
 use super::portal::{full_window, portal};
 use super::theme::ActiveTheme;
-use super::utils::{Align, Side, StyledExt, on_mouse_leave_window};
+use super::utils::{Align, Side, StyledExt};
 
 /// How a popover opens.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -53,6 +55,8 @@ pub struct PopoverState {
     /// Clicked while hovering: stay closed until the pointer leaves.
     hover_suppressed: bool,
     hover_task: Option<Task<()>>,
+    /// Left button went down on the trigger (click mode).
+    trigger_pressed: bool,
     /// Bumped on every open so the content gets fresh hover tracking.
     generation: usize,
 }
@@ -69,6 +73,7 @@ impl PopoverState {
             hovered_content: false,
             hover_suppressed: false,
             hover_task: None,
+            trigger_pressed: false,
             generation: 0,
         }
     }
@@ -154,6 +159,7 @@ pub struct Popover {
     anchor_position: Option<Point<Pixels>>,
     appearance: bool,
     modal: bool,
+    dismiss_on_press: bool,
     style: StyleRefinement,
 }
 
@@ -174,6 +180,7 @@ impl Popover {
             anchor_position: None,
             appearance: true,
             modal: true,
+            dismiss_on_press: true,
             style: StyleRefinement::default(),
         }
     }
@@ -246,6 +253,13 @@ impl Popover {
         self
     }
 
+    /// Hover mode: whether pressing the trigger closes the popover until the
+    /// pointer leaves (default true, like tooltips; hover cards turn it off).
+    pub fn dismiss_on_press(mut self, dismiss: bool) -> Self {
+        self.dismiss_on_press = dismiss;
+        self
+    }
+
     /// Don't draw the default panel (background, border, padding, width).
     pub fn unstyled(mut self) -> Self {
         self.appearance = false;
@@ -295,6 +309,35 @@ pub fn floating_position(
     }
 }
 
+/// `side`, or the opposite side when the content doesn't fit there but fits
+/// better on the other side (like Radix's `avoidCollisions`).
+pub fn fit_side(
+    trigger: Bounds<Pixels>,
+    content: Size<Pixels>,
+    side: Side,
+    offset: Pixels,
+    viewport: Size<Pixels>,
+) -> Side {
+    let margin = px(8.);
+    let room = |side: Side| match side {
+        Side::Bottom => viewport.height - trigger.bottom() - offset - margin,
+        Side::Top => trigger.top() - offset - margin,
+        Side::Right => viewport.width - trigger.right() - offset - margin,
+        Side::Left => trigger.left() - offset - margin,
+    };
+    let needed = match side {
+        Side::Bottom | Side::Top => content.height,
+        Side::Left | Side::Right => content.width,
+    };
+    let opposite = match side {
+        Side::Bottom => Side::Top,
+        Side::Top => Side::Bottom,
+        Side::Left => Side::Right,
+        Side::Right => Side::Left,
+    };
+    if needed > room(side) && room(opposite) > room(side) { opposite } else { side }
+}
+
 fn schedule_hover(state: &Entity<PopoverState>, handle: PopoverHandle, delays: (u64, u64), window: &mut Window, cx: &mut App) {
     let (hovered, open) = {
         let s = state.read(cx);
@@ -342,61 +385,25 @@ impl RenderOnce for Popover {
 
         let mode = self.mode;
 
-        let trigger = div()
-            .id("popover-trigger")
-            .relative()
-            .flex()
-            .children(self.trigger)
-            .child({
-                let state = state.clone();
-                canvas(
-                    move |bounds, _, cx| state.update(cx, |s, _| s.trigger_bounds = bounds),
-                    |_, _, _, _| {},
-                )
-                .absolute()
-                .size_full()
-            })
-            .map(|this| match mode {
-                PopoverTrigger::Click => {
-                    let handle = handle.clone();
-                    this.on_click(move |_, window, cx| handle.toggle(window, cx))
-                }
-                PopoverTrigger::Hover { open_delay_ms, close_delay_ms } => {
-                    let delays = (open_delay_ms, close_delay_ms);
-                    let (hover_handle, hover_state) = (handle.clone(), state.clone());
-                    let (down_handle, down_state) = (handle.clone(), state.clone());
-                    let (leave_handle, leave_state) = (handle.clone(), state.clone());
-                    this.on_hover(move |hovered, window, cx| {
-                        hover_state.update(cx, |s, _| {
-                            s.hovered_trigger = *hovered;
-                            if !*hovered {
-                                s.hover_suppressed = false;
-                            }
-                        });
-                        schedule_hover(&hover_state, hover_handle.clone(), delays, window, cx);
-                    })
-                    // Like Radix tooltips: clicking the trigger dismisses.
-                    .on_mouse_down(gpui::MouseButton::Left, move |_, window, cx| {
-                        down_state.update(cx, |s, _| s.hover_suppressed = true);
-                        schedule_hover(&down_state, down_handle.clone(), delays, window, cx);
-                        down_handle.close(window, cx);
-                    })
-                    .child(on_mouse_leave_window(move |window, cx| {
-                        leave_state.update(cx, |s, _| {
-                            s.hovered_trigger = false;
-                            s.hovered_content = false;
-                            s.hover_task = None;
-                        });
-                        leave_handle.close(window, cx);
-                    }))
-                }
-                PopoverTrigger::Manual => this,
-            });
+        let trigger = TriggerArea {
+            id: self.id,
+            child: self.trigger.unwrap_or_else(|| gpui::Empty.into_any_element()),
+            handle: handle.clone(),
+            mode,
+            dismiss_on_press: self.dismiss_on_press,
+        };
 
         if open && let Some(content) = self.content.clone() {
             let (position, corner) = match self.anchor_position {
                 Some(position) => (position, Corner::TopLeft),
-                None => floating_position(trigger_bounds, content_size, self.side, self.align, self.side_offset),
+                None => {
+                    let side = if content_size.width > px(0.) {
+                        fit_side(trigger_bounds, content_size, self.side, self.side_offset, window.viewport_size())
+                    } else {
+                        self.side
+                    };
+                    floating_position(trigger_bounds, content_size, side, self.align, self.side_offset)
+                }
             };
             let layer = FloatingLayer {
                 content,
@@ -404,7 +411,8 @@ impl RenderOnce for Popover {
                 focus_handle,
                 position,
                 corner,
-                hide_until_measured: content_size.width <= px(0.) && self.align == Align::Center,
+                // Until measured we can't center it or tell whether it fits.
+                hide_until_measured: content_size.width <= px(0.) && self.anchor_position.is_none(),
                 mode,
                 appearance: self.appearance,
                 modal: self.modal,
@@ -419,7 +427,161 @@ impl RenderOnce for Popover {
             );
         }
 
-        div().id(self.id).flex().child(trigger)
+        trigger
+    }
+}
+
+/// The trigger, with the popover's mouse handling attached. It adds no layout
+/// box of its own (like CSS `display: contents`), so sizing styles on the
+/// trigger, such as `w_full()` or `flex_1()`, apply as if it weren't wrapped.
+struct TriggerArea {
+    id: ElementId,
+    child: AnyElement,
+    handle: PopoverHandle,
+    mode: PopoverTrigger,
+    dismiss_on_press: bool,
+}
+
+impl IntoElement for TriggerArea {
+    type Element = Self;
+
+    fn into_element(self) -> Self::Element {
+        self
+    }
+}
+
+impl Element for TriggerArea {
+    type RequestLayoutState = ();
+    type PrepaintState = Hitbox;
+
+    fn id(&self) -> Option<ElementId> {
+        Some(self.id.clone())
+    }
+
+    fn source_location(&self) -> Option<&'static core::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _id: Option<&GlobalElementId>,
+        _inspector_id: Option<&InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (LayoutId, ()) {
+        (self.child.request_layout(window, cx), ())
+    }
+
+    fn prepaint(
+        &mut self,
+        _id: Option<&GlobalElementId>,
+        _inspector_id: Option<&InspectorElementId>,
+        bounds: Bounds<Pixels>,
+        _: &mut (),
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Hitbox {
+        self.handle.state.update(cx, |s, cx| {
+            if s.trigger_bounds != bounds {
+                s.trigger_bounds = bounds;
+                // The trigger moved (scrolling, layout change): follow it.
+                if s.open {
+                    cx.notify();
+                }
+            }
+        });
+        let hitbox = window.insert_hitbox(bounds, HitboxBehavior::Normal);
+        self.child.prepaint(window, cx);
+        hitbox
+    }
+
+    fn paint(
+        &mut self,
+        _id: Option<&GlobalElementId>,
+        _inspector_id: Option<&InspectorElementId>,
+        _bounds: Bounds<Pixels>,
+        _: &mut (),
+        hitbox: &mut Hitbox,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        // Registered before the child's listeners, so the child sees events first.
+        let state = self.handle.state.clone();
+        match self.mode {
+            PopoverTrigger::Click => {
+                window.on_mouse_event({
+                    let (state, hitbox) = (state.clone(), hitbox.clone());
+                    move |event: &MouseDownEvent, phase, window, cx| {
+                        if phase == DispatchPhase::Bubble && event.button == MouseButton::Left && hitbox.is_hovered(window) {
+                            state.update(cx, |s, _| s.trigger_pressed = true);
+                        }
+                    }
+                });
+                let clicked = Rc::new(std::cell::Cell::new(false));
+                let (handle, hitbox) = (self.handle.clone(), hitbox.clone());
+                window.on_mouse_event(move |_: &MouseUpEvent, phase, window, cx| match phase {
+                    // Like gpui's `on_click`: settle the press in the capture
+                    // phase, so it's cleared even if someone stops propagation.
+                    DispatchPhase::Capture => {
+                        let pressed = state.update(cx, |s, _| std::mem::take(&mut s.trigger_pressed));
+                        clicked.set(pressed && hitbox.is_hovered(window));
+                    }
+                    DispatchPhase::Bubble => {
+                        if clicked.take() {
+                            handle.toggle(window, cx);
+                        }
+                    }
+                });
+            }
+            PopoverTrigger::Hover { open_delay_ms, close_delay_ms } => {
+                let delays = (open_delay_ms, close_delay_ms);
+                window.on_mouse_event({
+                    let (state, handle, hitbox) = (state.clone(), self.handle.clone(), hitbox.clone());
+                    move |_: &MouseMoveEvent, phase, window, cx| {
+                        if phase != DispatchPhase::Bubble {
+                            return;
+                        }
+                        let hovered = !cx.has_active_drag() && hitbox.is_hovered(window);
+                        if hovered == state.read(cx).hovered_trigger {
+                            return;
+                        }
+                        state.update(cx, |s, _| {
+                            s.hovered_trigger = hovered;
+                            if !hovered {
+                                s.hover_suppressed = false;
+                            }
+                        });
+                        schedule_hover(&state, handle.clone(), delays, window, cx);
+                    }
+                });
+                // Like Radix tooltips: pressing the trigger dismisses until the
+                // pointer leaves.
+                if self.dismiss_on_press {
+                    let (state, handle, hitbox) = (state.clone(), self.handle.clone(), hitbox.clone());
+                    window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
+                        if phase == DispatchPhase::Bubble && event.button == MouseButton::Left && hitbox.is_hovered(window) {
+                            state.update(cx, |s, _| s.hover_suppressed = true);
+                            schedule_hover(&state, handle.clone(), delays, window, cx);
+                            handle.close(window, cx);
+                        }
+                    });
+                }
+                // gpui keeps the last pointer position when it leaves the window.
+                let handle = self.handle.clone();
+                window.on_mouse_event(move |_: &MouseExitEvent, phase, window, cx| {
+                    if phase == DispatchPhase::Bubble {
+                        state.update(cx, |s, _| {
+                            s.hovered_trigger = false;
+                            s.hovered_content = false;
+                            s.hover_task = None;
+                        });
+                        handle.close(window, cx);
+                    }
+                });
+            }
+            PopoverTrigger::Manual => {}
+        }
+        self.child.paint(window, cx);
     }
 }
 
@@ -443,6 +605,7 @@ impl FloatingLayer {
         let handle = self.handle;
         let state = handle.state.clone();
         let content = (self.content)(&handle, window, cx);
+        let viewport = window.viewport_size();
         let theme = cx.theme();
 
         let panel = div()
@@ -460,6 +623,8 @@ impl FloatingLayer {
                     .text_color(theme.popover_foreground)
                     .when(theme.shadows, |this| this.shadow_md())
             })
+            // Never wider than the window (long content wraps instead).
+            .max_w(viewport.width - px(16.))
             .refine_style(&self.style)
             // Hidden for the single frame where we don't know our size yet.
             .when(self.hide_until_measured, |this| this.opacity(0.))

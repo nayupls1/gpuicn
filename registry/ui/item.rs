@@ -171,6 +171,7 @@ impl RenderOnce for Item {
                         .flex()
                         .flex_col()
                         .flex_1()
+                        .min_w_0()
                         .gap_1()
                         .children(self.title.map(|title| {
                             div()
@@ -179,7 +180,7 @@ impl RenderOnce for Item {
                                 .gap_2()
                                 .font_weight(FontWeight::MEDIUM)
                                 .line_height(gpui::relative(1.375))
-                                .child(title)
+                                .child(div().min_w_0().child(title))
                         }))
                         .children(self.description.map(|description| {
                             div()

@@ -34,12 +34,14 @@ impl RenderOnce for Label {
             .flex()
             .items_center()
             .gap_2()
+            .min_w_0()
             .text_sm()
             .line_height(relative(1.))
             .font_weight(FontWeight::MEDIUM)
             .when(self.disabled, |this| this.opacity(0.5))
             .refine_style(&self.style)
-            .child(self.text)
+            // Wrapped so long labels can shrink and wrap inside the flex row.
+            .child(div().min_w_0().child(self.text))
             .children(self.children)
     }
 }

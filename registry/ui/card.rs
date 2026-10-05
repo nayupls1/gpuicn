@@ -78,7 +78,7 @@ impl RenderOnce for CardHeader {
             .gap_2()
             .px_6()
             .refine_style(&self.style)
-            .child(div().flex().flex_col().flex_1().gap_1p5().children(self.children))
+            .child(div().flex().flex_col().flex_1().min_w_0().gap_1p5().children(self.children))
             .children(self.action.map(|action| div().flex_none().child(action)))
     }
 }

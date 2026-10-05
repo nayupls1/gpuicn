@@ -143,7 +143,7 @@ impl RenderOnce for Accordion {
                             .font_weight(FontWeight::MEDIUM)
                             .when(disabled, |this| this.opacity(0.5))
                             .when(!disabled, |this| this.cursor_pointer().hover(|s| s.underline()))
-                            .child(div().flex_1().child(item.title))
+                            .child(div().flex_1().min_w_0().child(item.title))
                             .child(
                                 Icon::new(if open { IconName::ChevronUp } else { IconName::ChevronDown })
                                     .text_color(muted_fg)

@@ -76,6 +76,8 @@ impl RenderOnce for HoverCard {
         let content = self.content;
         let mut popover = Popover::new(self.id)
             .mode(PopoverTrigger::Hover { open_delay_ms: self.open_delay_ms, close_delay_ms: self.close_delay_ms })
+            // Clicking the link behind a hover card shouldn't hide the card.
+            .dismiss_on_press(false)
             .side(self.side)
             .align(self.align)
             .w_64()

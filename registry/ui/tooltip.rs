@@ -12,7 +12,7 @@
 
 use gpui::{
     AnyElement, AnyView, App, Context, ElementId, IntoElement, Render, RenderOnce, SharedString,
-    StyleRefinement, Window, div, prelude::*,
+    StyleRefinement, Window, div, prelude::*, px,
 };
 
 use super::popover::{Popover, PopoverTrigger};
@@ -81,6 +81,8 @@ fn bubble(text: SharedString, style: &StyleRefinement, cx: &App) -> gpui::Div {
         .bg(theme.foreground)
         .text_color(theme.background)
         .text_xs()
+        // Long tooltips wrap instead of running off the window.
+        .max_w(px(320.))
         .refine_style(style)
         .child(text)
 }

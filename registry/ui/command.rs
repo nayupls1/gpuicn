@@ -277,7 +277,7 @@ impl RenderOnce for Command {
                         .when(item.disabled, |this| this.opacity(0.5))
                         .when(selected && !item.disabled, |this| this.bg(accent).text_color(accent_fg))
                         .children(item.icon.map(|icon| Icon::new(icon).text_color(muted_fg)))
-                        .child(div().flex_1().child(item.label.clone()))
+                        .child(div().flex_1().min_w_0().child(item.label.clone()))
                         .children(item.shortcut.clone().map(|s| div().ml_auto().text_xs().text_color(muted_fg).child(s)))
                         .children(item.checked.map(|checked| {
                             Icon::new(IconName::Check).ml_auto().opacity(if checked { 1. } else { 0. })

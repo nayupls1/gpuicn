@@ -19,6 +19,26 @@ fn settle(cx: &mut VisualTestContext) {
     cx.run_until_parked();
 }
 
+thread_local! {
+    static BOUNDS: std::cell::RefCell<std::collections::HashMap<&'static str, gpui::Bounds<gpui::Pixels>>> = Default::default();
+}
+
+/// Records the bounds of its (`relative()`) parent under `name` every frame.
+fn probe(name: &'static str) -> impl IntoElement {
+    gpui::canvas(move |bounds, _, _| BOUNDS.with(|b| b.borrow_mut().insert(name, bounds)), |_, _, _, _| {})
+        .absolute()
+        .size_full()
+}
+
+fn bounds(name: &str) -> gpui::Bounds<gpui::Pixels> {
+    BOUNDS.with(|b| b.borrow().get(name).copied()).unwrap_or_else(|| panic!("probe `{name}` was not drawn"))
+}
+
+fn assert_inside(inner: &str, outer: &str) {
+    let (i, o) = (bounds(inner), bounds(outer));
+    assert!(i.left() >= o.left() && i.right() <= o.right() + px(0.5), "`{inner}` {i:?} overflows `{outer}` {o:?}");
+}
+
 #[gpui::test]
 fn renders_every_demo(cx: &mut TestAppContext) {
     cx.update(ui::init);
@@ -205,6 +225,46 @@ mod hover {
     }
 
     #[gpui::test]
+    fn hover_card_survives_clicking_the_trigger(cx: &mut TestAppContext) {
+        let cx = setup(cx, || HoverCard::new("hc").trigger(trigger()).content(|_, _| marker()).into_any_element());
+        let t = cx.debug_bounds("trigger").unwrap();
+        mv(cx, t.center());
+        wait(cx, 800);
+        cx.simulate_click(t.center(), Modifiers::none());
+        wait(cx, 400);
+        assert!(shown(cx), "clicking the trigger (e.g. a link) keeps the card open");
+    }
+
+    /// The gallery's hover card: avatar next to a column of long text.
+    #[gpui::test]
+    fn hover_card_text_wraps_inside_the_card(cx: &mut TestAppContext) {
+        let cx = setup(cx, || {
+            HoverCard::new("hc")
+                .trigger(trigger())
+                .content(|_, _| {
+                    div().relative().flex().gap_4().child(probe("content")).child(div().size_8().flex_none()).child(
+                        div()
+                            .relative()
+                            .flex()
+                            .flex_col()
+                            .flex_1()
+                            .min_w_0()
+                            .child(probe("text"))
+                            .child("The React Framework – created and maintained by @vercel.")
+                            .child(marker()),
+                    )
+                })
+                .into_any_element()
+        });
+        let t = cx.debug_bounds("trigger").unwrap();
+        mv(cx, t.center());
+        wait(cx, 800);
+        assert!(shown(cx));
+        assert_inside("text", "content");
+        assert!(bounds("content").size.width <= px(256.), "card keeps its width: {:?}", bounds("content"));
+    }
+
+    #[gpui::test]
     fn hover_card_quick_pass_does_not_open(cx: &mut TestAppContext) {
         let cx = setup(cx, || HoverCard::new("hc").trigger(trigger()).content(|_, _| marker()).into_any_element());
         let t = cx.debug_bounds("trigger").unwrap();
@@ -349,5 +409,105 @@ mod hover {
         mv(cx, point(px(5.), px(5.)));
         wait(cx, 300);
         assert!(frame(cx).is_empty());
+    }
+}
+
+mod layout {
+    use super::*;
+    use gpui::AnyElement;
+    use ui::{alert::Alert, card::CardHeader, utils::Side};
+
+    fn render(cx: &mut TestAppContext, build: fn() -> AnyElement) -> &mut VisualTestContext {
+        struct View(fn() -> AnyElement);
+        impl Render for View {
+            fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+                div().size_full().child((self.0)()).child(PortalHost::new())
+            }
+        }
+        BOUNDS.with(|b| b.borrow_mut().clear());
+        cx.update(ui::init);
+        let (_view, cx) = cx.add_window_view(move |_, _| View(build));
+        settle(cx);
+        cx
+    }
+
+    const LONG: &str = "This is a rather long piece of text that has to wrap onto several lines instead of overflowing.";
+
+    fn long_text() -> impl IntoElement {
+        div().relative().child(LONG).child(probe("text"))
+    }
+
+    #[gpui::test]
+    fn alert_text_wraps(cx: &mut TestAppContext) {
+        render(cx, || {
+            div().relative().w(px(300.)).child(probe("outer")).child(Alert::new().title("Heads up!").child(long_text())).into_any_element()
+        });
+        assert_inside("text", "outer");
+    }
+
+    #[gpui::test]
+    fn card_header_text_wraps_next_to_its_action(cx: &mut TestAppContext) {
+        render(cx, || {
+            div()
+                .relative()
+                .w(px(300.))
+                .child(probe("outer"))
+                .child(CardHeader::new().child(long_text()).action(Button::new("a").label("Action")))
+                .into_any_element()
+        });
+        assert_inside("text", "outer");
+    }
+
+    #[gpui::test]
+    fn popover_trigger_keeps_its_sizing(cx: &mut TestAppContext) {
+        render(cx, || {
+            div()
+                .relative()
+                .flex()
+                .w(px(300.))
+                .child(probe("outer"))
+                .child(
+                    Popover::new("p")
+                        .trigger(div().relative().flex_1().h(px(30.)).child(probe("trigger")))
+                        .content(|_, _| div()),
+                )
+                .into_any_element()
+        });
+        assert_eq!(bounds("trigger").size.width, px(300.), "flex_1 on the trigger fills the row");
+    }
+
+    #[gpui::test]
+    fn popover_flips_up_when_there_is_no_room_below(cx: &mut TestAppContext) {
+        render(cx, || {
+            div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .justify_end()
+                .child(
+                    Popover::new("p")
+                        .open(true)
+                        .side(Side::Bottom)
+                        .trigger(div().relative().w(px(80.)).h(px(30.)).child(probe("trigger")))
+                        .content(|_, _| div().relative().h(px(200.)).child(probe("content"))),
+                )
+                .into_any_element()
+        });
+        let (t, c) = (bounds("trigger"), bounds("content"));
+        assert!(c.bottom() <= t.top(), "content {c:?} should sit above the trigger {t:?}");
+    }
+
+    #[gpui::test]
+    fn popover_is_never_wider_than_the_window(cx: &mut TestAppContext) {
+        let cx = render(cx, || {
+            Popover::new("p")
+                .open(true)
+                .w(px(5000.))
+                .trigger(div().w(px(80.)).h(px(30.)))
+                .content(|_, _| div().relative().size_full().h(px(20.)).child(probe("content")))
+                .into_any_element()
+        });
+        let viewport = cx.update(|window, _| window.viewport_size());
+        assert!(bounds("content").size.width < viewport.width, "{:?} vs {viewport:?}", bounds("content"));
     }
 }

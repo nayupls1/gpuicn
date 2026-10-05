@@ -156,7 +156,7 @@ impl RenderOnce for List {
                     .flex()
                     .gap_2()
                     .child(div().flex_none().min_w_3().child(marker))
-                    .child(div().flex_1().child(child))
+                    .child(div().flex_1().min_w_0().child(child))
             }))
     }
 }

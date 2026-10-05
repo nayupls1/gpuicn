@@ -17,7 +17,7 @@
 //! ```
 
 use gpui::{
-    AnyElement, App, Bounds, ElementId, FocusHandle, FontWeight, IntoElement, Pixels, Point, RenderOnce,
+    AnyElement, App, Bounds, Corner, ElementId, FocusHandle, FontWeight, IntoElement, Pixels, Point, RenderOnce,
     SharedString, StyleRefinement, Window, anchored, canvas, div, point, prelude::*, px,
 };
 use std::rc::Rc;
@@ -189,13 +189,16 @@ struct MenuState {
     /// "moving to another item".
     pointer: Option<Point<Pixels>>,
     item_bounds: Vec<Bounds<Pixels>>,
+    /// Width of the open submenu as of the last frame, and whether it had to
+    /// open to the left because there was no room on the right.
+    submenu_width: Pixels,
+    submenu_left: bool,
     focused_once: bool,
 }
 
 impl MenuState {
     /// Records the pointer and reports whether it is moving towards the open
-    /// submenu (which sits to the right). Crossing other items on the way
-    /// there shouldn't close it.
+    /// submenu. Crossing other items on the way there shouldn't close it.
     fn heading_into_submenu(&mut self, position: Point<Pixels>) -> bool {
         let previous = self.pointer.replace(position);
         let Some(previous) = previous else { return false };
@@ -203,6 +206,7 @@ impl MenuState {
             return false;
         }
         let (dx, dy) = (position.x - previous.x, position.y - previous.y);
+        let dx = if self.submenu_left { -dx } else { dx };
         dx > px(0.) && dy.abs() <= dx * 3.
     }
 }
@@ -265,11 +269,13 @@ impl RenderOnce for MenuList {
             open_submenu: None,
             pointer: None,
             item_bounds: Vec::new(),
+            submenu_width: px(0.),
+            submenu_left: false,
             focused_once: false,
         });
-        let (focus_handle, highlighted, open_submenu, item_bounds) = {
+        let (focus_handle, highlighted, open_submenu, item_bounds, submenu_width) = {
             let s = state.read(cx);
-            (s.focus_handle.clone(), s.highlighted, s.open_submenu, s.item_bounds.clone())
+            (s.focus_handle.clone(), s.highlighted, s.open_submenu, s.item_bounds.clone(), s.submenu_width)
         };
         if !state.read(cx).focused_once {
             window.focus(&focus_handle);
@@ -350,7 +356,7 @@ impl RenderOnce for MenuList {
                                 })
                         }))
                         .children(item.icon.map(|icon| Icon::new(icon).text_color(if item.destructive { destructive } else { muted_fg })))
-                        .child(div().flex_1().child(item.label.clone()))
+                        .child(div().flex_1().min_w_0().child(item.label.clone()))
                         .children(item.shortcut.clone().map(|shortcut| {
                             div().ml_auto().pl_4().text_xs().text_color(muted_fg).child(shortcut)
                         }))
@@ -390,7 +396,7 @@ impl RenderOnce for MenuList {
                         .text_sm()
                         .when(is_highlighted, |this| this.bg(accent).text_color(accent_fg))
                         .children(icon.map(|icon| Icon::new(icon).text_color(muted_fg)))
-                        .child(div().flex_1().child(label.clone()))
+                        .child(div().flex_1().min_w_0().child(label.clone()))
                         .child(Icon::new(IconName::ChevronRight).ml_auto())
                         .on_mouse_move(move |event, _, cx| {
                             state.update(cx, |s, cx| {
@@ -407,10 +413,13 @@ impl RenderOnce for MenuList {
             rows.push(div().relative().child(row).child(bounds_recorder).into_any_element());
         }
 
-        // An open submenu floats to the right of its trigger row.
+        // An open submenu floats to the right of its trigger row, or to the
+        // left when it doesn't fit on the right.
+        let viewport = window.viewport_size();
         let submenu = open_submenu.and_then(|ix| {
             let MenuEntry::Submenu { entries, .. } = &self.entries[ix] else { return None };
             let bounds = item_bounds.get(ix).copied()?;
+            let measure = state.clone();
             let state = state.clone();
             let back: Rc<dyn Fn(&mut Window, &mut App)> = Rc::new(move |window, cx| {
                 state.update(cx, |s, cx| {
@@ -419,13 +428,36 @@ impl RenderOnce for MenuList {
                     window.focus(&s.focus_handle);
                 })
             });
+            let width = submenu_width;
+            let left = width > px(0.)
+                && bounds.right() + px(8.) + width > viewport.width - px(8.)
+                && bounds.left() - px(8.) - width >= px(8.);
+            let (x, corner) = if left { (bounds.left() - px(8.), Corner::TopRight) } else { (bounds.right() + px(8.), Corner::TopLeft) };
             Some(
                 anchored()
-                    .position(point(bounds.right() + px(8.), bounds.top() - px(5.)))
+                    .position(point(x, bounds.top() - px(5.)))
+                    .anchor(corner)
                     .snap_to_window_with_margin(px(8.))
                     .child(
-                        MenuList::new(("sub", ix), entries.clone(), self.on_close.clone())
-                            .on_back(back),
+                        div()
+                            .relative()
+                            .child(MenuList::new(("sub", ix), entries.clone(), self.on_close.clone()).on_back(back))
+                            .child(
+                                canvas(
+                                    move |bounds, _, cx| {
+                                        measure.update(cx, |s, cx| {
+                                            s.submenu_left = left;
+                                            if s.submenu_width != bounds.size.width {
+                                                s.submenu_width = bounds.size.width;
+                                                cx.notify();
+                                            }
+                                        })
+                                    },
+                                    |_, _, _, _| {},
+                                )
+                                .absolute()
+                                .size_full(),
+                            ),
                     ),
             )
         });

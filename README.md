@@ -170,6 +170,13 @@ your root view.
 `Application::new().with_assets(ui::icon::IconAssets)`. If you already have an
 `AssetSource`, chain them with `IconAssets.with_fallback(yours)`.
 
+**Long text runs out of its container instead of wrapping**: gpui measures
+text's minimum width as the whole line unwrapped. So a text element that's a
+flex item won't shrink, even with `flex_1()`. Add `.min_w_0()` to the flex item
+that holds the text (`div().flex().child(icon).child(div().flex_1().min_w_0().child(text))`).
+In a column with `items_center()`/`items_start()`, give the text `.max_w_full()`.
+The components already do this.
+
 ## Known limitations
 
 - Buttons can't be focused with the keyboard yet. Menus, selects, the command palette and inputs can.

@@ -340,7 +340,7 @@ impl Cartesian {
                         .items_center()
                         .gap_2()
                         .child(div().size_2p5().rounded(px(2.)).bg(colors[s]))
-                        .child(div().flex_1().text_color(theme.muted_foreground).child(series.label.clone()))
+                        .child(div().flex_1().min_w_0().text_color(theme.muted_foreground).child(series.label.clone()))
                         .child(
                             div()
                                 .font_family(theme.mono_font_family.clone())

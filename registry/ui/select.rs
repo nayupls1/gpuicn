@@ -351,8 +351,8 @@ impl RenderOnce for Select {
             .when(!disabled, |this| this.cursor_pointer())
             .refine_style(&self.style)
             .child(match selected_label {
-                Some(label) => div().text_color(theme.foreground).child(label),
-                None => div().text_color(theme.muted_foreground).child(self.placeholder.clone()),
+                Some(label) => div().min_w_0().truncate().text_color(theme.foreground).child(label),
+                None => div().min_w_0().truncate().text_color(theme.muted_foreground).child(self.placeholder.clone()),
             })
             .child(Icon::new(IconName::ChevronDown).opacity(0.5));
 

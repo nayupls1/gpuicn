@@ -293,6 +293,7 @@ impl RenderOnce for ToastCard {
                     .flex()
                     .flex_col()
                     .flex_1()
+                    .min_w_0()
                     .gap_0p5()
                     .child(div().font_weight(FontWeight::MEDIUM).child(toast.title))
                     .children(toast.description.map(|d| div().text_color(theme.muted_foreground).child(d))),

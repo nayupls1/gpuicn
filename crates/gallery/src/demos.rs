@@ -729,6 +729,8 @@ fn hover_card(_: &mut Window, cx: &mut App) -> AnyElement {
                 .child(Avatar::new().fallback("VC"))
                 .child(
                     col()
+                        .flex_1()
+                        .min_w_0()
                         .gap_1()
                         .child(div().text_sm().font_weight(gpui::FontWeight::SEMIBOLD).child("@nextjs"))
                         .child(div().text_sm().child("The React Framework – created and maintained by @vercel."))
