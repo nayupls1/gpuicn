@@ -102,3 +102,25 @@ impl gpui::Render for InvisibleDrag {
         gpui::Empty
     }
 }
+
+/// Runs `handler` when the mouse leaves the window.
+///
+/// gpui keeps the last mouse position when the pointer leaves the window, so
+/// `on_hover(false)` never fires. Add this (it's invisible) next to anything
+/// that tracks hover itself. Note that gpui's built-in `.hover(..)` styles
+/// have the same limitation and stay applied until the mouse comes back.
+pub fn on_mouse_leave_window(handler: impl Fn(&mut gpui::Window, &mut gpui::App) + 'static) -> impl gpui::IntoElement {
+    use gpui::Styled as _;
+    gpui::canvas(
+        |_, _, _| {},
+        move |_, _, window, _| {
+            window.on_mouse_event(move |_: &gpui::MouseExitEvent, phase, window, cx| {
+                if phase == gpui::DispatchPhase::Bubble {
+                    handler(window, cx);
+                }
+            });
+        },
+    )
+    .absolute()
+    .size_0()
+}

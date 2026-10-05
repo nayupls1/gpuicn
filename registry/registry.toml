@@ -299,7 +299,7 @@ registry_dependencies = ["dialog", "theme", "utils"]
 name = "sidebar"
 description = "A composable, themeable and customizable sidebar component."
 files = ["sidebar.rs"]
-registry_dependencies = ["icon", "theme", "utils"]
+registry_dependencies = ["icon", "theme", "tooltip", "utils"]
 
 [[component]]
 name = "skeleton"

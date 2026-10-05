@@ -27,7 +27,7 @@ use std::time::Duration;
 
 use super::portal::{full_window, portal};
 use super::theme::ActiveTheme;
-use super::utils::{Align, Side, StyledExt};
+use super::utils::{Align, Side, StyledExt, on_mouse_leave_window};
 
 /// How a popover opens.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -50,7 +50,11 @@ pub struct PopoverState {
     needs_focus: bool,
     hovered_trigger: bool,
     hovered_content: bool,
+    /// Clicked while hovering: stay closed until the pointer leaves.
+    hover_suppressed: bool,
     hover_task: Option<Task<()>>,
+    /// Bumped on every open so the content gets fresh hover tracking.
+    generation: usize,
 }
 
 impl PopoverState {
@@ -63,7 +67,9 @@ impl PopoverState {
             needs_focus: false,
             hovered_trigger: false,
             hovered_content: false,
+            hover_suppressed: false,
             hover_task: None,
+            generation: 0,
         }
     }
 
@@ -85,8 +91,13 @@ impl PopoverHandle {
             let changed = state.open != open;
             state.open = open;
             state.needs_focus = open;
+            if open && changed {
+                state.generation += 1;
+            }
             if !open {
                 state.content_size = Size::default();
+                // The content is going away without telling us it was left.
+                state.hovered_content = false;
             }
             cx.notify();
             changed
@@ -142,6 +153,7 @@ pub struct Popover {
     side_offset: Pixels,
     anchor_position: Option<Point<Pixels>>,
     appearance: bool,
+    modal: bool,
     style: StyleRefinement,
 }
 
@@ -161,6 +173,7 @@ impl Popover {
             side_offset: px(4.),
             anchor_position: None,
             appearance: true,
+            modal: true,
             style: StyleRefinement::default(),
         }
     }
@@ -223,6 +236,16 @@ impl Popover {
         self
     }
 
+    /// By default (click and manual modes) the rest of the window is inert
+    /// while open: clicking outside only closes the popover and nothing
+    /// underneath reacts to hover. With `modal(false)` the outside stays
+    /// hoverable (clicks still just close), e.g. for menubars that switch
+    /// menus on hover.
+    pub fn modal(mut self, modal: bool) -> Self {
+        self.modal = modal;
+        self
+    }
+
     /// Don't draw the default panel (background, border, padding, width).
     pub fn unstyled(mut self) -> Self {
         self.appearance = false;
@@ -275,7 +298,7 @@ pub fn floating_position(
 fn schedule_hover(state: &Entity<PopoverState>, handle: PopoverHandle, delays: (u64, u64), window: &mut Window, cx: &mut App) {
     let (hovered, open) = {
         let s = state.read(cx);
-        (s.hovered_trigger || s.hovered_content, s.open)
+        (!s.hover_suppressed && (s.hovered_trigger || s.hovered_content), s.open)
     };
     if hovered == open {
         state.update(cx, |s, _| s.hover_task = None);
@@ -286,7 +309,7 @@ fn schedule_hover(state: &Entity<PopoverState>, handle: PopoverHandle, delays: (
         cx.background_executor().timer(Duration::from_millis(delay)).await;
         cx.update(|window, cx| {
             let s = handle.state.read(cx);
-            let hovered = s.hovered_trigger || s.hovered_content;
+            let hovered = !s.hover_suppressed && (s.hovered_trigger || s.hovered_content);
             handle.set_open(hovered, window, cx);
         })
         .ok();
@@ -308,9 +331,9 @@ impl RenderOnce for Popover {
             });
         }
 
-        let (open, trigger_bounds, content_size, focus_handle, needs_focus) = {
+        let (open, trigger_bounds, content_size, focus_handle, needs_focus, generation) = {
             let s = state.read(cx);
-            (s.open, s.trigger_bounds, s.content_size, s.focus_handle.clone(), s.needs_focus)
+            (s.open, s.trigger_bounds, s.content_size, s.focus_handle.clone(), s.needs_focus, s.generation)
         };
         if open && needs_focus && !matches!(self.mode, PopoverTrigger::Hover { .. }) {
             window.focus(&focus_handle);
@@ -339,12 +362,33 @@ impl RenderOnce for Popover {
                     this.on_click(move |_, window, cx| handle.toggle(window, cx))
                 }
                 PopoverTrigger::Hover { open_delay_ms, close_delay_ms } => {
-                    let handle = handle.clone();
-                    let state = state.clone();
+                    let delays = (open_delay_ms, close_delay_ms);
+                    let (hover_handle, hover_state) = (handle.clone(), state.clone());
+                    let (down_handle, down_state) = (handle.clone(), state.clone());
+                    let (leave_handle, leave_state) = (handle.clone(), state.clone());
                     this.on_hover(move |hovered, window, cx| {
-                        state.update(cx, |s, _| s.hovered_trigger = *hovered);
-                        schedule_hover(&state, handle.clone(), (open_delay_ms, close_delay_ms), window, cx);
+                        hover_state.update(cx, |s, _| {
+                            s.hovered_trigger = *hovered;
+                            if !*hovered {
+                                s.hover_suppressed = false;
+                            }
+                        });
+                        schedule_hover(&hover_state, hover_handle.clone(), delays, window, cx);
                     })
+                    // Like Radix tooltips: clicking the trigger dismisses.
+                    .on_mouse_down(gpui::MouseButton::Left, move |_, window, cx| {
+                        down_state.update(cx, |s, _| s.hover_suppressed = true);
+                        schedule_hover(&down_state, down_handle.clone(), delays, window, cx);
+                        down_handle.close(window, cx);
+                    })
+                    .child(on_mouse_leave_window(move |window, cx| {
+                        leave_state.update(cx, |s, _| {
+                            s.hovered_trigger = false;
+                            s.hovered_content = false;
+                            s.hover_task = None;
+                        });
+                        leave_handle.close(window, cx);
+                    }))
                 }
                 PopoverTrigger::Manual => this,
             });
@@ -363,6 +407,8 @@ impl RenderOnce for Popover {
                 hide_until_measured: content_size.width <= px(0.) && self.align == Align::Center,
                 mode,
                 appearance: self.appearance,
+                modal: self.modal,
+                generation,
                 style: self.style,
             };
             portal(
@@ -387,6 +433,8 @@ struct FloatingLayer {
     hide_until_measured: bool,
     mode: PopoverTrigger,
     appearance: bool,
+    modal: bool,
+    generation: usize,
     style: StyleRefinement,
 }
 
@@ -398,7 +446,7 @@ impl FloatingLayer {
         let theme = cx.theme();
 
         let panel = div()
-            .id("popover-content")
+            .id(("popover-content", self.generation))
             .track_focus(&self.focus_handle)
             .occlude()
             .relative()
@@ -470,7 +518,7 @@ impl FloatingLayer {
             // so clicking the trigger again doesn't immediately reopen it.
             _ => div()
                 .child(full_window(
-                    div().occlude().on_any_mouse_down(move |_, window, cx| {
+                    div().when(self.modal, |this| this.occlude()).on_any_mouse_down(move |_, window, cx| {
                         cx.stop_propagation();
                         handle.close(window, cx);
                     }),

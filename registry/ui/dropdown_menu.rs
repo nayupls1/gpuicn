@@ -17,7 +17,7 @@
 //! ```
 
 use gpui::{
-    AnyElement, App, Bounds, ElementId, FocusHandle, FontWeight, IntoElement, Pixels, RenderOnce,
+    AnyElement, App, Bounds, ElementId, FocusHandle, FontWeight, IntoElement, Pixels, Point, RenderOnce,
     SharedString, StyleRefinement, Window, anchored, canvas, div, point, prelude::*, px,
 };
 use std::rc::Rc;
@@ -25,7 +25,7 @@ use std::rc::Rc;
 use super::icon::{Icon, IconName};
 use super::popover::{Popover, PopoverHandle};
 use super::theme::ActiveTheme;
-use super::utils::{Align, Side, StyledExt};
+use super::utils::{Align, Side, StyledExt, on_mouse_leave_window};
 
 type SelectHandler = Rc<dyn Fn(&mut Window, &mut App)>;
 
@@ -185,8 +185,26 @@ struct MenuState {
     focus_handle: FocusHandle,
     highlighted: Option<usize>,
     open_submenu: Option<usize>,
+    /// Last pointer position, to tell "heading into the open submenu" from
+    /// "moving to another item".
+    pointer: Option<Point<Pixels>>,
     item_bounds: Vec<Bounds<Pixels>>,
     focused_once: bool,
+}
+
+impl MenuState {
+    /// Records the pointer and reports whether it is moving towards the open
+    /// submenu (which sits to the right). Crossing other items on the way
+    /// there shouldn't close it.
+    fn heading_into_submenu(&mut self, position: Point<Pixels>) -> bool {
+        let previous = self.pointer.replace(position);
+        let Some(previous) = previous else { return false };
+        if self.open_submenu.is_none() {
+            return false;
+        }
+        let (dx, dy) = (position.x - previous.x, position.y - previous.y);
+        dx > px(0.) && dy.abs() <= dx * 3.
+    }
 }
 
 /// Renders a list of [`MenuEntry`]s as a menu panel with keyboard navigation
@@ -245,6 +263,7 @@ impl RenderOnce for MenuList {
             focus_handle: cx.focus_handle(),
             highlighted: None,
             open_submenu: None,
+            pointer: None,
             item_bounds: Vec::new(),
             focused_once: false,
         });
@@ -339,8 +358,11 @@ impl RenderOnce for MenuList {
                             let state = state.clone();
                             let entries = entries.clone();
                             let on_close = on_close.clone();
-                            this.on_mouse_move(move |_, window, cx| {
+                            this.on_mouse_move(move |event, window, cx| {
                                 state.update(cx, |s, cx| {
+                                    if s.heading_into_submenu(event.position) {
+                                        return;
+                                    }
                                     if s.highlighted != Some(ix) || s.open_submenu.is_some() {
                                         s.highlighted = Some(ix);
                                         s.open_submenu = None;
@@ -370,9 +392,9 @@ impl RenderOnce for MenuList {
                         .children(icon.map(|icon| Icon::new(icon).text_color(muted_fg)))
                         .child(div().flex_1().child(label.clone()))
                         .child(Icon::new(IconName::ChevronRight).ml_auto())
-                        .on_mouse_move(move |_, _, cx| {
+                        .on_mouse_move(move |event, _, cx| {
                             state.update(cx, |s, cx| {
-                                if s.open_submenu != Some(ix) {
+                                if s.open_submenu != Some(ix) && !s.heading_into_submenu(event.position) {
                                     s.highlighted = Some(ix);
                                     s.open_submenu = Some(ix);
                                     cx.notify();
@@ -429,6 +451,18 @@ impl RenderOnce for MenuList {
             .text_color(theme.popover_foreground)
             .when(theme.shadows, |this| this.shadow_md())
             .refine_style(&self.style)
+            .child(on_mouse_leave_window({
+                let state = state.clone();
+                move |_, cx| {
+                    state.update(cx, |s, cx| {
+                        s.pointer = None;
+                        if s.open_submenu.is_none() {
+                            s.highlighted = None;
+                            cx.notify();
+                        }
+                    })
+                }
+            }))
             .on_hover({
                 let state = state.clone();
                 move |hovered, _, cx| {

@@ -12,15 +12,16 @@
 //! ```
 
 use gpui::{
-    AnyElement, App, ClickEvent, ElementId, FontWeight, IntoElement, RenderOnce, SharedString,
-    StyleRefinement, Window, div, prelude::*, relative,
+    AnyElement, App, ClickEvent, ElementId, Entity, FontWeight, IntoElement, RenderOnce,
+    SharedString, StyleRefinement, Task, Window, div, prelude::*, relative,
 };
 use std::rc::Rc;
+use std::time::Duration;
 
 use super::icon::{Icon, IconName};
 use super::popover::{Popover, PopoverTrigger};
 use super::theme::ActiveTheme;
-use super::utils::{Align, StyledExt};
+use super::utils::{Align, StyledExt, on_mouse_leave_window};
 
 type ClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
 
@@ -74,11 +75,66 @@ impl NavigationMenu {
     }
 }
 
+/// Which panel is open and what the pointer is over. Shared by all items so
+/// moving between triggers switches panels instantly, like Radix.
+#[derive(Default)]
+struct NavState {
+    open: Option<usize>,
+    hovered: Option<usize>,
+    task: Option<Task<()>>,
+}
+
+const OPEN_DELAY: Duration = Duration::from_millis(150);
+const CLOSE_DELAY: Duration = Duration::from_millis(250);
+
+fn set_hovered(state: &Entity<NavState>, ix: usize, hovered: bool, window: &mut Window, cx: &mut App) {
+    let target = state.update(cx, |s, _| {
+        if hovered {
+            s.hovered = Some(ix);
+        } else if s.hovered == Some(ix) {
+            s.hovered = None;
+        }
+        s.hovered
+    });
+    let open = state.read(cx).open;
+    if target.is_some() && open.is_some() {
+        // Already showing a panel: switch (or stay) right away.
+        state.update(cx, |s, cx| {
+            s.open = target;
+            s.task = None;
+            cx.notify();
+        });
+        return;
+    }
+    if target == open {
+        state.update(cx, |s, _| s.task = None);
+        return;
+    }
+    let delay = if target.is_some() { OPEN_DELAY } else { CLOSE_DELAY };
+    let timer_state = state.clone();
+    let task = window.spawn(cx, async move |cx| {
+        cx.background_executor().timer(delay).await;
+        cx.update(|_, cx| {
+            timer_state.update(cx, |s, cx| {
+                if s.open != s.hovered {
+                    s.open = s.hovered;
+                    cx.notify();
+                }
+            })
+        })
+        .ok();
+    });
+    state.update(cx, |s, _| s.task = Some(task));
+}
+
 impl RenderOnce for NavigationMenu {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let state = window.use_keyed_state(self.id.clone(), cx, |_, _| NavState::default());
+        let open = state.read(cx).open;
         let theme = cx.theme();
         let (accent, accent_fg) = (theme.accent, theme.accent_foreground);
         let radius = theme.radius_md();
+        let leave_state = state.clone();
 
         div()
             .id(self.id)
@@ -86,7 +142,15 @@ impl RenderOnce for NavigationMenu {
             .items_center()
             .gap_1()
             .refine_style(&self.style)
+            .child(on_mouse_leave_window(move |_, cx| {
+                leave_state.update(cx, |s, cx| {
+                    *s = NavState::default();
+                    cx.notify();
+                })
+            }))
             .children(self.items.into_iter().enumerate().map(|(ix, item)| {
+                let is_open = open == Some(ix);
+                let has_content = item.content.is_some();
                 let trigger = div()
                     .id(("nav-trigger", ix))
                     .flex()
@@ -99,25 +163,63 @@ impl RenderOnce for NavigationMenu {
                     .font_weight(FontWeight::MEDIUM)
                     .cursor_pointer()
                     .when(item.active, |this| this.bg(accent.opacity(0.5)))
+                    .when(is_open, |this| this.bg(accent.opacity(0.5)))
                     .hover(move |s| s.bg(accent).text_color(accent_fg))
                     .child(item.label)
-                    .when(item.content.is_some(), |this| {
-                        this.child(Icon::new(IconName::ChevronDown).size_3().ml_1())
+                    .when(has_content, |this| {
+                        this.child(Icon::new(IconName::ChevronDown).size_3().ml_1().when(is_open, |icon| icon.rotate(std::f32::consts::PI)))
+                    })
+                    .on_hover({
+                        let state = state.clone();
+                        move |hovered, window, cx| set_hovered(&state, ix, *hovered, window, cx)
+                    })
+                    .when(has_content, |this| {
+                        let state = state.clone();
+                        this.on_click(move |_, _, cx| {
+                            state.update(cx, |s, cx| {
+                                s.open = if s.open == Some(ix) { None } else { Some(ix) };
+                                s.task = None;
+                                cx.notify();
+                            })
+                        })
                     })
                     .when_some(item.on_click, |this, handler| {
                         this.on_click(move |event, window, cx| handler(event, window, cx))
                     });
 
                 match item.content {
-                    Some(content) => Popover::new(("nav-content", ix))
-                        .mode(PopoverTrigger::Hover { open_delay_ms: 150, close_delay_ms: 250 })
-                        .align(Align::Start)
-                        .side_offset(gpui::px(6.))
-                        .w_auto()
-                        .p_2()
-                        .trigger(trigger)
-                        .content(move |window, cx| content(window, cx))
-                        .into_any_element(),
+                    Some(content) => {
+                        let content_state = state.clone();
+                        let close_state = state.clone();
+                        Popover::new(("nav-content", ix))
+                            .mode(PopoverTrigger::Manual)
+                            .modal(false)
+                            .open(is_open)
+                            .on_open_change(move |open, _, cx| {
+                                if !open {
+                                    close_state.update(cx, |s, cx| {
+                                        if s.open == Some(ix) {
+                                            s.open = None;
+                                            s.task = None;
+                                            cx.notify();
+                                        }
+                                    })
+                                }
+                            })
+                            .align(Align::Start)
+                            .side_offset(gpui::px(6.))
+                            .w_auto()
+                            .p_2()
+                            .trigger(trigger)
+                            .content(move |window, cx| {
+                                let state = content_state.clone();
+                                div()
+                                    .id(("nav-panel", ix))
+                                    .on_hover(move |hovered, window, cx| set_hovered(&state, ix, *hovered, window, cx))
+                                    .child(content(window, cx))
+                            })
+                            .into_any_element()
+                    }
                     None => trigger.into_any_element(),
                 }
             }))

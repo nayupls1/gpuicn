@@ -31,7 +31,8 @@ use std::rc::Rc;
 
 use super::icon::{Icon, IconName};
 use super::theme::ActiveTheme;
-use super::utils::StyledExt;
+use super::tooltip::Tooltip;
+use super::utils::{Side, StyledExt};
 
 pub const SIDEBAR_WIDTH: f32 = 256.;
 pub const SIDEBAR_WIDTH_ICON: f32 = 48.;
@@ -316,6 +317,18 @@ fn menu_item(item: SidebarMenuItem, key: SharedString, icon_mode: bool, sub: boo
             .border_color(border)
             .children(sub_items)
     });
+
+    // Collapsed to icons: the label moves into a tooltip on the right.
+    let button = if icon_mode && !sub {
+        Tooltip::new(gpui::ElementId::Name(format!("{key}-tooltip").into()))
+            .side(Side::Right)
+            .delay(0)
+            .trigger(button)
+            .content(item.label.clone())
+            .into_any_element()
+    } else {
+        button.into_any_element()
+    };
 
     div().flex().flex_col().gap_1().child(button).children(subs).into_any_element()
 }

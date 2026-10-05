@@ -173,7 +173,10 @@ your root view.
 ## Known limitations
 
 - Buttons can't be focused with the keyboard yet. Menus, selects, the command palette and inputs can.
-- Menubar doesn't switch between open menus on hover. You have to click each one.
+- When the mouse leaves the window, gpui keeps the last pointer position, so its built-in
+  `.hover(..)` styles stay applied until the mouse comes back. Components that track hover
+  themselves (tooltips, hover cards, menus, charts, navigation menu) handle this; use
+  `utils::on_mouse_leave_window` in your own components that need it.
 
 ## License
 

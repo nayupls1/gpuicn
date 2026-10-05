@@ -18,7 +18,7 @@ use gpui::{
 };
 
 use super::theme::ActiveTheme;
-use super::utils::StyledExt;
+use super::utils::{StyledExt, on_mouse_leave_window};
 
 /// One data series (a bar color, a line…).
 #[derive(Clone)]
@@ -352,6 +352,7 @@ impl Cartesian {
 
         let move_state = state.clone();
         let leave_state = state.clone();
+        let exit_state = state.clone();
         let label_every = self.label_every;
         div()
             .id(self.id)
@@ -368,6 +369,12 @@ impl Cartesian {
                     .h(self.height)
                     .child(plot)
                     .children(tooltip)
+                    .child(on_mouse_leave_window(move |_, cx| {
+                        exit_state.update(cx, |s, cx| {
+                            s.hovered = None;
+                            cx.notify();
+                        })
+                    }))
                     .on_mouse_move(move |event, _, cx| {
                         move_state.update(cx, |s, cx| {
                             let plot = s.plot;
