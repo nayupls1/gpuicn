@@ -213,8 +213,8 @@ A few gpui behaviors that the components work around, useful if you write
 your own:
 
 - **Box shadows are painted under the element, not just outside it**, so a
-  shadow on a transparent element tints its interior. Give it a background, or
-  draw rings with `utils::ring`.
+  shadow on a transparent element tints its interior, and a zero-blur shadow
+  isn't drawn at all. Give it a background, and draw rings with `utils::ring`.
 - **`overflow_hidden` clips to a rectangle**, not to rounded corners: round the
   children too (see `Progress`, `Avatar`).
 - **`cx.notify()` during prepaint/paint is dropped**: if a `canvas` measurement

@@ -12,7 +12,7 @@ use gpui::{
 use std::rc::Rc;
 
 use super::theme::ActiveTheme;
-use super::utils::{InvisibleDrag, Orientation, StyledExt, ring_shadow};
+use super::utils::{InvisibleDrag, Orientation, StyledExt, ring, use_hover};
 
 struct SliderState {
     values: Vec<f32>,
@@ -112,6 +112,8 @@ impl RenderOnce for Slider {
             state.update(cx, |s, _| s.values = value.clone());
         }
         let values = state.read(cx).values.clone();
+        let hover = use_hover(ElementId::Name(format!("{}-hover", self.id).into()), window, cx);
+        let hovered = hover.get(cx);
         let theme = cx.theme();
         let (min, max, step) = (self.min, self.max, self.step);
         let vertical = self.orientation == Orientation::Vertical;
@@ -193,7 +195,9 @@ impl RenderOnce for Slider {
 
         let (pressed, active_thumb) = {
             let s = state.read(cx);
-            (s.pressed || cx.has_active_drag(), s.active_thumb)
+            // `hover:ring-4`: the active thumb is ringed while the pointer is on
+            // the slider, and while it's held or dragged.
+            (s.pressed || cx.has_active_drag() || hovered, s.active_thumb)
         };
         let thumbs = values.iter().enumerate().map(|(ix, value)| {
             let f = fraction(*value);
@@ -210,7 +214,7 @@ impl RenderOnce for Slider {
                 .border_color(theme.primary)
                 .bg(theme.background)
                 .when(theme.shadows, |this| this.shadow_sm())
-                .when(dragging && !self.disabled, |this| this.shadow(vec![ring_shadow(theme.ring.opacity(0.5), px(4.))]))
+                .when(dragging && !self.disabled, |this| this.child(ring(theme.ring.opacity(0.5), px(4.), px(8.), px(1.))))
                 .map(|this| {
                     if vertical {
                         this.bottom(relative(f)).mb(px(-8.)).left(px(-5.))
@@ -220,7 +224,6 @@ impl RenderOnce for Slider {
                 })
                 .when(!self.disabled, |this| {
                     this.cursor_grab()
-                        .hover(|s| s.shadow(vec![ring_shadow(theme.ring.opacity(0.5), px(4.))]))
                         .on_mouse_down(MouseButton::Left, move |_, _, cx| {
                             cx.stop_propagation();
                             pick.update(cx, |s, cx| {
@@ -254,8 +257,12 @@ impl RenderOnce for Slider {
                     // pointer stays on the slider (`hover:ring-4` in shadcn).
                     .on_hover({
                         let state = state.clone();
-                        move |hovered, _, cx| {
-                            if !hovered {
+                        let set_hover = hover.listener();
+                        move |hovered, window, cx| {
+                            if !cx.has_active_drag() {
+                                set_hover(hovered, window, cx);
+                            }
+                            if !hovered && !cx.has_active_drag() {
                                 state.update(cx, |s, cx| {
                                     if s.pressed {
                                         s.pressed = false;

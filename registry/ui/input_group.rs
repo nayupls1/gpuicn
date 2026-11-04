@@ -136,7 +136,7 @@ impl RenderOnce for InputGroup {
                     .when(!self.end.is_empty(), |this| this.child(addon_row(self.end).pl_0().pr_2())),
             )
             .when(!self.block_end.is_empty(), |this| this.child(addon_row(self.block_end).pb_3()))
-            .when(focused || self.invalid, |this| {
+            .when(focused, |this| {
                 let radius = theme.radius_md();
                 this.child(if self.invalid { invalid_ring(theme, radius) } else { focus_ring(theme, radius) })
             })

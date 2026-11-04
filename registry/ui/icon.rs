@@ -69,6 +69,7 @@ icons! {
     ArrowUpRight => "arrow-up-right": r#"<path d="M7 7h10v10"/><path d="M7 17 17 7"/>"#,
     ArrowBigUp => "arrow-big-up": r#"<path d="M9 18v-6H5l7-7 7 7h-4v6H9z"/>"#,
     Command => "command": r#"<path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/>"#,
+    TrendingUp => "trending-up": r#"<path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/>"#,
     Palette => "palette": r#"<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>"#,
     Option => "option": r#"<path d="M3 3h6l6 18h6"/><path d="M14 3h7"/>"#,
     ChevronsUpDown => "chevrons-up-down": r#"<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>"#,

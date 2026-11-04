@@ -1213,7 +1213,9 @@ impl RenderOnce for Input {
                     .when(focused && !invalid, |this| this.border_color(theme.ring))
                     .when(invalid, |this| this.border_color(theme.destructive))
             })
-            .when(disabled, |this| this.opacity(0.5).cursor_not_allowed())
+            // No shadow when faded: gpui fades the shadow under the element too,
+            // which would tint a disabled field grey.
+            .when(disabled, |this| this.shadow(Vec::new()).opacity(0.5).cursor_not_allowed())
             .refine_style(&self.style);
 
         if !disabled {
@@ -1260,7 +1262,8 @@ impl RenderOnce for Input {
                     .child(TextElement { state: state.clone(), placeholder_color: theme.muted_foreground }),
             )
             .children(self.suffix)
-            .when(self.appearance && !disabled && (focused || invalid), |this| {
+            // `aria-invalid` sets the ring color; the ring shows on focus.
+            .when(self.appearance && !disabled && focused, |this| {
                 let radius = theme.radius_md();
                 this.child(if invalid { invalid_ring(theme, radius) } else { focus_ring(theme, radius) })
             })

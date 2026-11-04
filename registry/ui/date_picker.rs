@@ -81,8 +81,11 @@ impl RenderOnce for DatePicker {
         let label = selection_label(&selection);
         let muted = cx.theme().muted_foreground;
 
+        let empty = label.is_none();
         let trigger = Button::new("date-trigger")
             .outline()
+            // Empty: the whole trigger (icon too) is `text-muted-foreground`.
+            .when(empty, |this| this.text_color(muted))
             .w(px(if mode == CalendarMode::Range { 300. } else { 240. }))
             .justify_start()
             .font_weight(gpui::FontWeight::NORMAL)

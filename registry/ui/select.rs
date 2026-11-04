@@ -355,7 +355,7 @@ impl RenderOnce for Select {
             .control_surface(theme)
             .text_sm().line_height(gpui::rems(1.25))
             .whitespace_nowrap()
-            .when(invalid, |this| this.child(invalid_ring(theme, theme.radius_md())))
+            .when(invalid && focus_visible, |this| this.child(invalid_ring(theme, theme.radius_md())))
             .when(disabled, |this| this.opacity(0.5).cursor_not_allowed())
             .when(!disabled, |this| {
                 let hover = if theme.is_dark() { theme.input.opacity(0.5) } else { theme.accent.opacity(0.5) };

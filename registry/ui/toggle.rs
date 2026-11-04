@@ -65,7 +65,11 @@ pub(super) fn toggle_base(
                 .border_color(theme.input)
                 .when(!theme.is_dark(), |this| this.bg(theme.background).when(theme.shadows, |this| this.shadow_xs()))
         })
-        .when(pressed, |this| this.bg(theme.accent).text_color(theme.accent_foreground))
+        // `data-[state=on]:bg-accent`, nudged a little darker than the hover
+        // fill so "on" and "hovered" stay distinguishable.
+        .when(pressed, |this| {
+            this.bg(super::theme::mix(theme.accent, theme.foreground, 0.06)).text_color(theme.accent_foreground)
+        })
         .when(disabled, |this| this.opacity(0.5))
         .when(!disabled && !pressed, |this| {
             this.cursor_pointer().hover(move |s| s.bg(hover_bg).text_color(hover_fg))

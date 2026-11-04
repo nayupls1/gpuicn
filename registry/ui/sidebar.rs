@@ -276,10 +276,13 @@ fn menu_item(item: SidebarMenuItem, key: SharedString, icon_mode: bool, sub: boo
                 this.h_8().p_2().w_full()
             }
         })
-        .when(item.active, |this| this.bg(accent).text_color(accent_fg).font_weight(FontWeight::MEDIUM))
+        // Active is a notch stronger than hover so the current page stays clear.
+        .when(item.active, |this| {
+            this.bg(super::theme::mix(accent, theme.sidebar_foreground, 0.05)).text_color(accent_fg).font_weight(FontWeight::MEDIUM)
+        })
         // Hover is a lighter tint than the active item so you never lose track
         // of where you are while pointing at another row.
-        .when(!item.active, |this| this.hover(move |s| s.bg(accent.opacity(0.35)).text_color(accent_fg)))
+        .when(!item.active, |this| this.hover(move |s| s.bg(accent).text_color(accent_fg)))
         .children(item.icon.map(Icon::new))
         .when(!icon_mode || sub, |this| {
             this.child(div().flex_1().min_w_0().overflow_hidden().whitespace_nowrap().child(item.label.clone()))

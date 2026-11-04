@@ -671,7 +671,7 @@ fn chart(_: &mut Window, cx: &mut App) -> AnyElement {
                     row()
                         .font_weight(gpui::FontWeight::MEDIUM)
                         .child("Trending up by 5.2% this month")
-                        .child(Icon::new(IconName::ArrowUpRight)),
+                        .child(Icon::new(IconName::TrendingUp)),
                 )
                 .child(div().text_color(muted).child("Showing total visitors for the last 6 months")),
             )
@@ -1386,10 +1386,12 @@ fn popover(_: &mut Window, cx: &mut App) -> AnyElement {
         .w(px(320.))
         .content(move |_, _| {
             col()
+                .gap_3()
                 .child(
                     col()
-                        .gap_2()
-                        .child(div().font_weight(gpui::FontWeight::MEDIUM).child("Dimensions"))
+                        .gap_1p5()
+                        .pb_1()
+                        .child(div().font_weight(gpui::FontWeight::MEDIUM).line_height(px(16.)).child("Dimensions"))
                         .child(div().text_sm().text_color(muted).child("Set the dimensions for the layer.")),
                 )
                 .children(["Width", "Max. width", "Height", "Max. height"].map(|label| {
@@ -1765,7 +1767,7 @@ fn toggle(_: &mut Window, _: &mut App) -> AnyElement {
             row()
                 .child(Toggle::new("bold").icon(IconName::Bold))
                 .child(Toggle::new("italic").default_pressed(true).icon(IconName::Italic))
-                .child(Toggle::new("underline").icon(IconName::Underline).label("Underline")),
+                .child(Toggle::new("underline").icon(IconName::Underline)),
         )
         // Outline variant: off, then on.
         .child(

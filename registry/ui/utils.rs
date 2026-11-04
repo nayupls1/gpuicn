@@ -191,8 +191,8 @@ pub fn invalid_ring(theme: &Theme, radius: Pixels) -> Div {
 
 /// A solid, unblurred "ring" around an element, like tailwind's `ring-*`.
 ///
-/// Prefer [`ring`]: shadows fill the element's interior in gpui, so this only
-/// looks right on elements with an opaque background.
+/// Prefer [`ring`]: shadows fill the element's interior in gpui, and a
+/// shadow with zero blur isn't drawn at all by gpui 0.2's renderer.
 pub fn ring_shadow(color: Hsla, width: Pixels) -> BoxShadow {
     BoxShadow {
         color,

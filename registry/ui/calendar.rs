@@ -369,8 +369,8 @@ impl RenderOnce for Calendar {
                     if selected && !outside {
                         el = if mode == CalendarMode::Range && in_range {
                             // Each week's slice of the band reads as its own pill.
-                            let row_start = weekday == 0 || date.day == 1;
-                            let row_end = weekday == 6 || date.day == Date::days_in_month(date.year, date.month);
+                            let row_start = weekday == 0;
+                            let row_end = weekday == 6;
                             el.rounded_none()
                                 .when(row_start, |this| this.rounded_l(radius))
                                 .when(row_end, |this| this.rounded_r(radius))
@@ -382,6 +382,15 @@ impl RenderOnce for Calendar {
                         if mode == CalendarMode::Range && (range_start || range_end) && !(range_start && range_end) {
                             el = if range_start { el.rounded_r(px(0.)) } else { el.rounded_l(px(0.)) };
                         }
+                    }
+                    // Outside days inside a range continue the band (muted text),
+                    // rounded at the row's ends like in-month days.
+                    if outside && in_range && mode == CalendarMode::Range {
+                        el = el
+                            .rounded_none()
+                            .when(weekday == 0, |this| this.rounded_l(radius))
+                            .when(weekday == 6, |this| this.rounded_r(radius))
+                            .bg(theme.accent);
                     }
                     el.when(is_disabled, |this| this.opacity(0.5))
                         .when(!is_disabled && !outside, |this| {

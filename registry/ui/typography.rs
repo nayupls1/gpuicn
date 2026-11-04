@@ -145,8 +145,9 @@ impl List {
 }
 
 impl RenderOnce for List {
-    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let ordered = self.ordered;
+        let color = cx.theme().foreground;
         div()
             .flex()
             .flex_col()
@@ -156,11 +157,16 @@ impl RenderOnce for List {
             .line_height(rems(1.75))
             .refine_style(&self.style)
             .children(self.children.into_iter().enumerate().map(move |(ix, child)| {
-                let marker: SharedString = if ordered { format!("{}.", ix + 1).into() } else { "•".into() };
+                let marker = if ordered {
+                    div().flex_none().min_w_3().child(SharedString::from(format!("{}.", ix + 1)))
+                } else {
+                    // A `list-disc` bullet: a small filled circle on the first line.
+                    div().flex_none().flex().items_center().h(rems(1.75)).w_3().child(div().size_1p5().rounded_full().bg(color))
+                };
                 div()
                     .flex()
                     .gap_2()
-                    .child(div().flex_none().min_w_3().child(marker))
+                    .child(marker)
                     .child(div().flex_1().min_w_0().child(child))
             }))
     }

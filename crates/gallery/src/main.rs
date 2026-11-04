@@ -196,10 +196,10 @@ fn customizer() -> impl IntoElement {
                 div().text_xs().line_height(rems(1.)).font_weight(FontWeight::MEDIUM).text_color(muted).child(title)
             };
             let grid = || div().grid().grid_cols(3).gap_2();
-            // One selected treatment for every group: primary border + tint.
+            // One selected treatment for every group: a primary border.
             let primary = theme.primary;
             let mark = move |button: Button, selected: bool| {
-                button.when(selected, |this| this.border_color(primary).bg(primary.opacity(0.08)))
+                button.when(selected, |this| this.border_color(primary))
             };
 
             let accents = AccentColor::ALL.map(|a| {
