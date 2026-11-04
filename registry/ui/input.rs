@@ -1262,8 +1262,7 @@ impl RenderOnce for Input {
                     .child(TextElement { state: state.clone(), placeholder_color: theme.muted_foreground }),
             )
             .children(self.suffix)
-            // `aria-invalid` sets the ring color; the ring shows on focus.
-            .when(self.appearance && !disabled && focused, |this| {
+            .when(self.appearance && !disabled && (focused || invalid), |this| {
                 let radius = theme.radius_md();
                 this.child(if invalid { invalid_ring(theme, radius) } else { focus_ring(theme, radius) })
             })

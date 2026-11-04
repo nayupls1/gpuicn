@@ -191,6 +191,7 @@ pub struct Sidebar {
     header: Option<AnyElement>,
     footer: Option<AnyElement>,
     groups: Vec<SidebarGroup>,
+    scroll_handle: Option<gpui::ScrollHandle>,
     style: StyleRefinement,
 }
 
@@ -207,6 +208,7 @@ impl Sidebar {
             header: None,
             footer: None,
             groups: Vec::new(),
+            scroll_handle: None,
             style: StyleRefinement::default(),
         }
     }
@@ -239,6 +241,12 @@ impl Sidebar {
 
     pub fn footer(mut self, footer: impl IntoElement) -> Self {
         self.footer = Some(footer.into_any_element());
+        self
+    }
+
+    /// Use your own scroll handle for the content, e.g. to reveal the active item.
+    pub fn track_scroll(mut self, handle: &gpui::ScrollHandle) -> Self {
+        self.scroll_handle = Some(handle.clone());
         self
     }
 
@@ -400,7 +408,11 @@ impl RenderOnce for Sidebar {
             .children(self.header.map(|h| div().flex().flex_col().gap_2().p_2().child(h)))
             .child(
                 // A themed scrollbar shows there's more below when the menu overflows.
-                ScrollArea::new("sidebar-content").flex_1().min_h_0().child(
+                ScrollArea::new("sidebar-content")
+                    .when_some(self.scroll_handle.as_ref(), |this, handle| this.track_scroll(handle))
+                    .flex_1()
+                    .min_h_0()
+                    .child(
                     div()
                         .flex()
                         .flex_col()

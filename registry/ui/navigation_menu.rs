@@ -107,7 +107,7 @@ impl RenderOnce for NavigationMenu {
                     .hover(move |s| s.bg(accent).text_color(accent_fg))
                     .child(item.label)
                     .when(item.content.is_some(), |this| {
-                        this.child(Icon::new(if is_open { IconName::ChevronUp } else { IconName::ChevronDown }).size_3().ml_1())
+                        this.child(Icon::new(if is_open { IconName::ChevronUp } else { IconName::ChevronDown }).size_3p5().ml_1())
                     })
                     .when_some(item.on_click, |this, handler| {
                         this.on_click(move |event, window, cx| handler(event, window, cx))

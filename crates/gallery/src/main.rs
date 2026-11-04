@@ -6,7 +6,7 @@ mod ui;
 mod demos;
 
 use gpui::{
-    App, Application, Bounds, Context, FontWeight, SharedString, Window, WindowBounds, WindowOptions, div, prelude::*, px, relative,
+    App, Application, Bounds, Context, FontWeight, ScrollHandle, SharedString, Window, WindowBounds, WindowOptions, div, prelude::*, px, relative,
     rems, size,
 };
 use ui::{
@@ -25,11 +25,13 @@ use ui::{
 
 pub struct Gallery {
     page: usize,
+    nav_scroll: ScrollHandle,
+    revealed: Option<usize>,
 }
 
 impl Gallery {
     pub fn new() -> Self {
-        Self { page: 0 }
+        Self { page: 0, nav_scroll: ScrollHandle::new(), revealed: None }
     }
 
     pub fn select(&mut self, page: usize, cx: &mut Context<Self>) {
@@ -38,8 +40,44 @@ impl Gallery {
     }
 }
 
+impl Gallery {
+    /// Scroll the sidebar so the current page's row is visible, e.g. after
+    /// prev/next or when launched on a deep page.
+    fn reveal_active(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.revealed == Some(self.page) {
+            return;
+        }
+        let viewport = self.nav_scroll.bounds().size.height;
+        if viewport <= px(0.) {
+            // Not laid out yet: try again next frame.
+            let view = cx.entity().downgrade();
+            window.on_next_frame(move |_, cx| {
+                view.update(cx, |_, cx| cx.notify()).ok();
+            });
+            return;
+        }
+        // Group padding + label row, then one 32px row plus a 4px gap per item.
+        let top = px(8. + 32. + self.page as f32 * 36.);
+        let bottom = top + px(32.);
+        let margin = px(44.);
+        let scrolled = -self.nav_scroll.offset().y;
+        let max = self.nav_scroll.max_offset().height;
+        let target = if top - margin < scrolled {
+            top - margin
+        } else if bottom + margin > scrolled + viewport {
+            bottom + margin - viewport
+        } else {
+            scrolled
+        };
+        let target = target.max(px(0.)).min(max);
+        self.nav_scroll.set_offset(gpui::point(px(0.), -target));
+        self.revealed = Some(self.page);
+    }
+}
+
 impl Render for Gallery {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.reveal_active(window, cx);
         let (name, demo) = demos::DEMOS[self.page];
         let dark = cx.theme().mode.is_dark();
         let count = demos::DEMOS.len();
@@ -76,6 +114,7 @@ impl Render for Gallery {
             .child(div().font_weight(FontWeight::SEMIBOLD).child("gpuicn"))
             .child(div().text_xs().text_color(theme.muted_foreground).child(concat!("v", env!("CARGO_PKG_VERSION"))));
         let sidebar = Sidebar::new("gallery-nav")
+            .track_scroll(&self.nav_scroll)
             .collapsible(SidebarCollapsible::None)
             .header(brand)
             .group(SidebarGroup::new().label(format!("Components · {count}")).items(items));
@@ -199,7 +238,7 @@ fn customizer() -> impl IntoElement {
             // One selected treatment for every group: a primary border.
             let primary = theme.primary;
             let mark = move |button: Button, selected: bool| {
-                button.when(selected, |this| this.border_color(primary))
+                button.when(selected, |this| this.border_2().border_color(primary))
             };
 
             let accents = AccentColor::ALL.map(|a| {
@@ -249,7 +288,7 @@ fn customizer() -> impl IntoElement {
                 .child(div().flex().flex_col().gap_2().child(section("Color")).child(grid().children(accents)))
                 .child(div().flex().flex_col().gap_2().child(section("Base color")).child(grid().children(bases)))
                 .child(div().flex().flex_col().gap_2().child(section("Radius")).child(grid().children(radii)))
-                .child(div().flex().flex_col().gap_2().child(section("Mode")).child(grid().children(modes)))
+                .child(div().flex().flex_col().gap_2().child(section("Mode")).child(div().grid().grid_cols(2).gap_2().children(modes)))
         })
 }
 
@@ -310,7 +349,7 @@ fn main() {
         let page = initial_page();
         cx.open_window(
             WindowOptions { window_bounds: Some(WindowBounds::Windowed(bounds)), ..Default::default() },
-            |_, cx| cx.new(|_| Gallery { page }),
+            |_, cx| cx.new(|_| { let mut gallery = Gallery::new(); gallery.page = page; gallery }),
         )
         .unwrap();
         cx.activate(true);

@@ -1560,6 +1560,8 @@ fn sidebar_block(tile: AnyElement, title: &'static str, subtitle: &'static str, 
 
 fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
     let theme = cx.theme();
+    // `bg-muted/50` reads on dark; in light it needs full `bg-muted` to show.
+    let placeholder = if theme.is_dark() { theme.muted.opacity(0.5) } else { theme.muted };
     let border = theme.border;
     let logo = div()
         .flex()
@@ -1614,7 +1616,7 @@ fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
                     .child(Separator::vertical().h_4())
                     .child(Breadcrumb::new().item(BreadcrumbItem::new("Building Your Application")).item(BreadcrumbItem::new("Data Fetching").current())),
             )
-            .child(div().p_4().flex().flex_col().gap_4().child(div().h_24().w_full().rounded_xl().bg(theme.muted.opacity(0.5))).child(div().h_40().w_full().rounded_xl().bg(theme.muted.opacity(0.5)))),
+            .child(div().p_4().flex().flex_col().gap_4().child(div().h_24().w_full().rounded_xl().bg(placeholder)).child(div().h_40().w_full().rounded_xl().bg(placeholder))),
         )
         .into_any_element()
 }

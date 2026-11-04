@@ -68,7 +68,12 @@ pub(super) fn toggle_base(
         // `data-[state=on]:bg-accent`, nudged a little darker than the hover
         // fill so "on" and "hovered" stay distinguishable.
         .when(pressed, |this| {
-            this.bg(super::theme::mix(theme.accent, theme.foreground, 0.06)).text_color(theme.accent_foreground)
+            this.bg(super::theme::mix(theme.accent, theme.foreground, 0.06))
+                .text_color(theme.accent_foreground)
+                // Keep the outline variant's edge visible on the darker fill.
+                .when(variant == ToggleVariant::Outline, |this| {
+                    this.border_color(super::theme::mix(theme.input, theme.foreground, 0.12))
+                })
         })
         .when(disabled, |this| this.opacity(0.5))
         .when(!disabled && !pressed, |this| {
