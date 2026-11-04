@@ -159,12 +159,14 @@ impl RenderOnce for Carousel {
             .child({
                 let state = state.clone();
                 canvas(
-                    move |bounds, _, cx| {
+                    move |bounds, window, cx| {
                         let extent = if vertical { bounds.size.height } else { bounds.size.width };
-                        state.update(cx, |s, cx| {
+                        state.update(cx, |s, _| {
                             if s.extent != extent {
                                 s.extent = extent;
-                                cx.notify();
+                                // A notify during prepaint is dropped by gpui;
+                                // schedule the re-render for the next frame.
+                                window.request_animation_frame();
                             }
                         })
                     },

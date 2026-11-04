@@ -16,9 +16,9 @@ use gpui::{
 use std::rc::Rc;
 
 use super::icon::{Icon, IconName};
-use super::popover::{Popover, PopoverHandle};
+use super::popover::{outer_layout, Popover, PopoverHandle};
 use super::theme::ActiveTheme;
-use super::utils::{Align, StyledExt, ring_shadow};
+use super::utils::{Align, StyledExt, invalid_ring};
 
 #[derive(Clone)]
 pub struct SelectItem {
@@ -223,7 +223,7 @@ impl RenderOnce for SelectList {
                 rows.push(div().h_px().mx_neg_1().my_1().bg(theme.border).into_any_element());
             }
             if let Some(label) = &group.label {
-                rows.push(div().px_2().py_1p5().text_xs().text_color(muted_fg).child(label.clone()).into_any_element());
+                rows.push(div().px_2().py_1p5().text_xs().line_height(gpui::rems(1.)).text_color(muted_fg).child(label.clone()).into_any_element());
             }
             for item in &group.items {
                 let item_ix = ix;
@@ -245,7 +245,7 @@ impl RenderOnce for SelectList {
                         .pl_2()
                         .pr_8()
                         .rounded(radius)
-                        .text_sm()
+                        .text_sm().line_height(gpui::rems(1.25))
                         .when(disabled, |this| this.opacity(0.5))
                         .when(is_highlighted && !disabled, |this| this.bg(accent).text_color(accent_fg))
                         .children(item.icon.map(|icon| Icon::new(icon).text_color(muted_fg)))
@@ -339,16 +339,19 @@ impl RenderOnce for Select {
                 SelectSize::Default => this.h_9(),
                 SelectSize::Sm => this.h_8(),
             })
+            .relative()
             .rounded(theme.radius_md())
             .border_1()
             .border_color(if invalid { theme.destructive } else { theme.input })
-            .when(theme.is_dark(), |this| this.bg(theme.input.opacity(0.3)))
-            .when(theme.shadows, |this| this.shadow_xs())
-            .text_sm()
+            .control_surface(theme)
+            .text_sm().line_height(gpui::rems(1.25))
             .whitespace_nowrap()
-            .when(invalid, |this| this.shadow(vec![ring_shadow(theme.destructive.opacity(0.2), px(3.))]))
+            .when(invalid, |this| this.child(invalid_ring(theme, theme.radius_md())))
             .when(disabled, |this| this.opacity(0.5).cursor_not_allowed())
-            .when(!disabled, |this| this.cursor_pointer())
+            .when(!disabled, |this| {
+                let hover = if theme.is_dark() { theme.input.opacity(0.5) } else { theme.accent.opacity(0.5) };
+                this.cursor_pointer().hover(move |s| s.bg(hover))
+            })
             .refine_style(&self.style)
             .child(match selected_label {
                 Some(label) => div().text_color(theme.foreground).child(label),
@@ -363,6 +366,7 @@ impl RenderOnce for Select {
         let groups = Rc::new(self.groups);
         let on_change = self.on_change;
         Popover::new(self.id)
+            .wrapper_style(outer_layout(&self.style))
             .unstyled()
             .align(Align::Start)
             .trigger(trigger)

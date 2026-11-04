@@ -69,7 +69,7 @@ impl RenderOnce for Table {
             .flex()
             .flex_col()
             .w_full()
-            .text_sm()
+            .text_sm().line_height(gpui::rems(1.25))
             .refine_style(&self.style)
             .children(self.header)
             .children(self.body)
@@ -212,7 +212,7 @@ fn cell_base(width: Option<Pixels>, right: bool) -> gpui::Div {
             Some(width) => this.flex_none().w(width),
             None => this.flex_1().flex_basis(gpui::relative(0.)),
         })
-        .when(right, |this| this.text_right().items_end())
+        .map(|this| if right { this.text_right().items_end() } else { this.items_start() })
 }
 
 #[derive(IntoElement)]

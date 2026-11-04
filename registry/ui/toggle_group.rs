@@ -138,7 +138,6 @@ impl RenderOnce for ToggleGroup {
             .flex()
             .items_center()
             .rounded(radius)
-            .when(outline && theme.shadows, |this| this.shadow_xs())
             .refine_style(&self.style)
             .children(self.items.into_iter().enumerate().map(|(ix, item)| {
                 let pressed = values.contains(&item.value);

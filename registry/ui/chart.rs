@@ -58,19 +58,24 @@ struct HoverState {
     hovered: Option<usize>,
 }
 
-/// A "nice" axis maximum (1, 2, 2.5, 5 × 10ⁿ) above `value`.
+/// Number of horizontal grid intervals.
+const GRID_LINES: usize = 4;
+
+/// A "nice" axis maximum at or above `value`: [`GRID_LINES`] × a round tick
+/// step (1, 1.5, 2, 2.5, 3, 4, 5, 6, 8 × 10ⁿ), so the data fills most of the
+/// plot the way Recharts' automatic domain does.
 pub fn nice_max(value: f64) -> f64 {
     if value <= 0. {
         return 1.;
     }
-    let exp = value.log10().floor();
-    let base = 10f64.powf(exp);
-    for step in [1., 2., 2.5, 5., 10.] {
-        if step * base >= value {
-            return step * base;
-        }
-    }
-    10. * base
+    let raw = value / GRID_LINES as f64;
+    let base = 10f64.powf(raw.log10().floor());
+    let step = [1., 1.5, 2., 2.5, 3., 4., 5., 6., 8., 10.]
+        .into_iter()
+        .map(|m| m * base)
+        .find(|step| *step >= raw)
+        .unwrap_or(10. * base);
+    step * GRID_LINES as f64
 }
 
 macro_rules! cartesian_chart {
@@ -216,9 +221,10 @@ impl Cartesian {
                     let y_for = |v: f64| bounds.bottom() - bounds.size.height * (v / max) as f32;
 
                     if grid {
-                        for line in 0..=4 {
-                            let y = bounds.top() + bounds.size.height * (line as f32 / 4.);
-                            let mut builder = PathBuilder::stroke(px(1.)).dash_array(&[px(3.), px(3.)]);
+                        // `<CartesianGrid vertical={false} />`: solid horizontal lines.
+                        for line in 0..GRID_LINES {
+                            let y = bounds.top() + bounds.size.height * (line as f32 / GRID_LINES as f32);
+                            let mut builder = PathBuilder::stroke(px(1.));
                             builder.move_to(point(bounds.left(), y));
                             builder.line_to(point(bounds.right(), y));
                             if let Ok(path) = builder.build() {
@@ -282,9 +288,11 @@ impl Cartesian {
                                     builder.move_to(base[0]);
                                     builder.line_to(pts[0]);
                                     smooth(&mut builder, pts);
-                                    for p in base.iter().rev() {
-                                        builder.line_to(*p);
-                                    }
+                                    // Follow the (smoothed) layer below exactly, so
+                                    // stacked fills meet without seams or overlaps.
+                                    let back: Vec<Point<Pixels>> = base.iter().rev().copied().collect();
+                                    builder.line_to(back[0]);
+                                    smooth(&mut builder, &back);
                                     builder.close();
                                     if let Ok(path) = builder.build() {
                                         window.paint_path(path, colors[s].opacity(0.4));
@@ -299,7 +307,7 @@ impl Cartesian {
                                 if dots || hovered.is_some() {
                                     for (i, p) in pts.iter().enumerate() {
                                         if dots || hovered == Some(i) {
-                                            let r = px(3.);
+                                            let r = if hovered == Some(i) { px(5.) } else { px(4.) };
                                             window.paint_quad(
                                                 fill(Bounds::from_corners(*p - point(r, r), *p + point(r, r)), colors[s]).corner_radii(r),
                                             );
@@ -331,7 +339,7 @@ impl Cartesian {
                 .border_1()
                 .border_color(theme.border.opacity(0.5))
                 .bg(theme.background)
-                .text_xs()
+                .text_xs().line_height(gpui::rems(1.))
                 .when(theme.shadows, |this| this.shadow_xl())
                 .children(self.labels.get(ix).map(|l| div().font_weight(FontWeight::MEDIUM).child(l.clone())))
                 .children(self.series.iter().enumerate().map(|(s, series)| {
@@ -340,7 +348,7 @@ impl Cartesian {
                         .items_center()
                         .gap_2()
                         .child(div().size_2p5().rounded(px(2.)).bg(colors[s]))
-                        .child(div().flex_1().text_color(theme.muted_foreground).child(series.label.clone()))
+                        .child(div().flex_1().min_w_0().text_color(theme.muted_foreground).child(series.label.clone()))
                         .child(
                             div()
                                 .font_family(theme.mono_font_family.clone())
@@ -392,10 +400,10 @@ impl Cartesian {
                         }
                     }),
             )
-            .child(div().flex().w_full().text_xs().text_color(theme.muted_foreground).children(
+            .child(div().flex().w_full().text_xs().line_height(gpui::rems(1.)).text_color(theme.muted_foreground).children(
                 self.labels.iter().enumerate().map(|(ix, label)| {
                     let text: SharedString = if ix % label_every == 0 { label.chars().take(3).collect::<String>().into() } else { "".into() };
-                    div().flex_1().text_center().overflow_hidden().child(text)
+                    div().flex_1().min_w_0().text_center().overflow_hidden().child(text)
                 }),
             ))
             .when(self.legend && self.series.len() > 1, |this| {
@@ -434,7 +442,7 @@ impl ChartLegend {
 
 impl RenderOnce for ChartLegend {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        div().flex().items_center().justify_center().gap_4().pt_3().text_xs().children(self.items.into_iter().map(
+        div().flex().items_center().justify_center().gap_4().pt_3().text_xs().line_height(gpui::rems(1.)).children(self.items.into_iter().map(
             |(label, color)| div().flex().items_center().gap_1p5().child(div().size_2().rounded(px(2.)).bg(color)).child(label),
         ))
     }
@@ -577,8 +585,8 @@ impl RenderOnce for PieChart {
                             .flex_col()
                             .items_center()
                             .justify_center()
-                            .child(div().text_3xl().font_weight(FontWeight::BOLD).child(value))
-                            .child(div().text_sm().text_color(theme.muted_foreground).child(caption))
+                            .child(div().text_3xl().line_height(gpui::rems(2.25)).font_weight(FontWeight::BOLD).child(value))
+                            .child(div().text_sm().line_height(gpui::rems(1.25)).text_color(theme.muted_foreground).child(caption))
                     })),
             )
             .when(self.legend, |this| {

@@ -80,7 +80,7 @@ fn bubble(text: SharedString, style: &StyleRefinement, cx: &App) -> gpui::Div {
         .rounded(theme.radius_md())
         .bg(theme.foreground)
         .text_color(theme.background)
-        .text_xs()
+        .text_xs().line_height(gpui::rems(1.))
         .refine_style(style)
         .child(text)
 }

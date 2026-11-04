@@ -111,11 +111,11 @@ impl RenderOnce for Empty {
                     .text_center()
                     .children(self.media.or(icon_tile).map(|media| div().mb_2().child(media)))
                     .children(self.title.map(|title| {
-                        div().text_lg().font_weight(FontWeight::MEDIUM).child(title)
+                        div().text_lg().line_height(gpui::rems(1.75)).font_weight(FontWeight::MEDIUM).child(title)
                     }))
                     .children(self.description.map(|description| {
                         div()
-                            .text_sm()
+                            .text_sm().line_height(gpui::rems(1.25))
                             .line_height(gpui::relative(1.625))
                             .text_color(theme.muted_foreground)
                             .child(description)
@@ -130,7 +130,7 @@ impl RenderOnce for Empty {
                         .max_w(px(384.))
                         .items_center()
                         .gap_4()
-                        .text_sm()
+                        .text_sm().line_height(gpui::rems(1.25))
                         .children(self.children),
                 )
             })

@@ -55,7 +55,7 @@ registry_dependencies = ["icon", "theme", "utils"]
 name = "button"
 description = "Displays a button or a component that looks like a button."
 files = ["button.rs"]
-registry_dependencies = ["icon", "spinner", "theme", "utils"]
+registry_dependencies = ["icon", "spinner", "theme", "tooltip", "utils"]
 
 [[component]]
 name = "button-group"
@@ -392,5 +392,5 @@ registry_dependencies = ["theme", "utils"]
 name = "utils"
 description = "Small helpers shared by every component — the gpui counterpart of shadcn's `lib/utils.ts`."
 files = ["utils.rs"]
-registry_dependencies = []
+registry_dependencies = ["theme"]
 core = true

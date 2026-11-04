@@ -105,7 +105,7 @@ impl RenderOnce for Badge {
             .border_color(border)
             .bg(bg)
             .text_color(fg)
-            .text_xs()
+            .text_xs().line_height(gpui::rems(1.))
             .font_weight(FontWeight::MEDIUM)
             .whitespace_nowrap()
             .refine_style(&self.style)

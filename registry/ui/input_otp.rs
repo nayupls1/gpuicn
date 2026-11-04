@@ -15,7 +15,7 @@ use std::rc::Rc;
 
 use super::icon::{Icon, IconName};
 use super::theme::ActiveTheme;
-use super::utils::{StyledExt, ring_shadow};
+use super::utils::StyledExt;
 
 /// Which characters a slot accepts.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -158,21 +158,35 @@ impl RenderOnce for InputOtp {
                         .border_y_1()
                         .border_r_1()
                         .border_color(theme.input)
-                        .when(theme.is_dark(), |this| this.bg(theme.input.opacity(0.3)))
+                        .control_surface(theme)
                         .when(first, |this| this.border_l_1().rounded_l(radius))
                         .when(last, |this| this.rounded_r(radius))
-                        .when(theme.shadows, |this| this.shadow_xs())
-                        .text_sm()
-                        .when(is_active, |this| {
-                            this.border_color(theme.ring).shadow(vec![ring_shadow(theme.ring.opacity(0.5), px(3.))])
-                        })
+                        .text_sm().line_height(gpui::rems(1.25))
+                        .when(is_active, |this| this.border_color(theme.ring).border_l_1())
                         .children(chars.get(ix).map(|c| c.to_string()))
                         .when(is_active && chars.len() < length, |this| {
                             this.child(div().h_4().w_px().bg(theme.foreground))
                         }),
                 );
             }
-            group_els.push(div().flex().items_center().children(slots).into_any_element());
+            // The active slot's ring is drawn over the whole group so neighbouring
+            // slots (painted later) don't cover it.
+            let group_start = slot_ix - group_len;
+            let ring = (focused && (group_start..slot_ix).contains(&active)).then(|| {
+                let i = active - group_start;
+                let (first, last) = (i == 0, i + 1 == *group_len);
+                let w = px(3.);
+                div()
+                    .absolute()
+                    .top(-w)
+                    .left(px(36. * i as f32) - w)
+                    .size(px(36.) + w * 2.)
+                    .border(w)
+                    .border_color(theme.ring.opacity(0.5))
+                    .when(first, |this| this.rounded_l(radius + w))
+                    .when(last, |this| this.rounded_r(radius + w))
+            });
+            group_els.push(div().relative().flex().items_center().children(slots).children(ring).into_any_element());
         }
 
         let pattern = self.pattern;

@@ -139,11 +139,11 @@ impl RenderOnce for Accordion {
                             .justify_between()
                             .gap_4()
                             .py_4()
-                            .text_sm()
+                            .text_sm().line_height(gpui::rems(1.25))
                             .font_weight(FontWeight::MEDIUM)
                             .when(disabled, |this| this.opacity(0.5))
                             .when(!disabled, |this| this.cursor_pointer().hover(|s| s.underline()))
-                            .child(div().flex_1().child(item.title))
+                            .child(div().flex_1().min_w_0().child(item.title))
                             .child(
                                 Icon::new(if open { IconName::ChevronUp } else { IconName::ChevronDown })
                                     .text_color(muted_fg)
@@ -173,7 +173,7 @@ impl RenderOnce for Accordion {
                             }),
                     )
                     .when(open, |this| {
-                        this.child(div().pb_4().text_sm().children(item.content))
+                        this.child(div().pb_4().text_sm().line_height(gpui::rems(1.25)).children(item.content))
                     })
             }))
     }

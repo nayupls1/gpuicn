@@ -146,7 +146,7 @@ impl RenderOnce for Tabs {
                     .rounded(theme.radius_md())
                     .border_1()
                     .border_color(gpui::transparent_black())
-                    .text_sm()
+                    .text_sm().line_height(gpui::rems(1.25))
                     .font_weight(FontWeight::MEDIUM)
                     .whitespace_nowrap()
                     .text_color(if theme.is_dark() && !selected { theme.muted_foreground } else { theme.foreground })
@@ -198,6 +198,6 @@ impl RenderOnce for Tabs {
             .map(|this| if vertical { this.flex_row() } else { this.flex_col() })
             .refine_style(&self.style)
             .child(div().flex().when(!vertical && !self.full_width, |this| this.flex_none()).child(list))
-            .children(contents.into_iter().map(|content| div().flex_1().child(content)))
+            .children(contents.into_iter().map(|content| div().flex_1().min_w_0().child(content)))
     }
 }

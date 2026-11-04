@@ -195,6 +195,7 @@ pub struct Calendar {
     mode: CalendarMode,
     months: usize,
     selection: Option<CalendarSelection>,
+    default_selection: Option<CalendarSelection>,
     default_month: Option<Date>,
     disabled: Option<Rc<dyn Fn(Date) -> bool>>,
     on_change: Option<Rc<dyn Fn(&CalendarSelection, &mut Window, &mut App)>>,
@@ -210,6 +211,7 @@ impl Calendar {
             mode: CalendarMode::Single,
             months: 1,
             selection: None,
+            default_selection: None,
             default_month: None,
             disabled: None,
             on_change: None,
@@ -231,6 +233,12 @@ impl Calendar {
     /// Controlled selection.
     pub fn selection(mut self, selection: CalendarSelection) -> Self {
         self.selection = Some(selection);
+        self
+    }
+
+    /// Initial selection of an uncontrolled calendar.
+    pub fn default_selection(mut self, selection: CalendarSelection) -> Self {
+        self.default_selection = Some(selection);
         self
     }
 
@@ -262,10 +270,14 @@ impl RenderOnce for Calendar {
         let mode = self.mode;
         let initial_month = self
             .default_month
-            .or_else(|| self.selection.as_ref().and_then(|s| s.single()))
+            .or_else(|| self.selection.as_ref().or(self.default_selection.as_ref()).and_then(|s| s.single()))
             .unwrap_or_else(Date::today)
             .first_of_month();
-        let initial_selection = self.selection.clone().unwrap_or_else(|| CalendarSelection::empty(mode));
+        let initial_selection = self
+            .selection
+            .clone()
+            .or_else(|| self.default_selection.clone())
+            .unwrap_or_else(|| CalendarSelection::empty(mode));
         let state = window.use_keyed_state(self.id.clone(), cx, move |_, _| CalendarState {
             month: initial_month,
             selection: initial_selection,
@@ -311,7 +323,7 @@ impl RenderOnce for Calendar {
                 .h(cell)
                 .items_center()
                 .justify_center()
-                .text_sm()
+                .text_sm().line_height(gpui::rems(1.25))
                 .font_weight(FontWeight::MEDIUM)
                 .child(format!("{} {}", first.month_name(), first.year))
                 .when(offset == 0, |this| this.child(div().absolute().left_0().child(nav("prev", IconName::ChevronLeft, -1))))
@@ -350,7 +362,7 @@ impl RenderOnce for Calendar {
                         .size(cell)
                         .items_center()
                         .justify_center()
-                        .text_sm()
+                        .text_sm().line_height(gpui::rems(1.25))
                         .rounded(radius)
                         .when(outside, |this| this.text_color(theme.muted_foreground))
                         .when(is_today && !selected, |this| this.bg(theme.accent).text_color(theme.accent_foreground));
@@ -391,6 +403,8 @@ impl RenderOnce for Calendar {
             .flex()
             .gap_4()
             .p_3()
+            // `bg-background`: opaque, so a caller's shadow doesn't tint it.
+            .bg(cx.theme().background)
             .line_height(relative(1.))
             .refine_style(&self.style)
             .children(months)

@@ -153,7 +153,7 @@ impl RenderOnce for Item {
             .rounded(theme.radius_md())
             .border_1()
             .border_color(gpui::transparent_black())
-            .text_sm()
+            .text_sm().line_height(gpui::rems(1.25))
             .map(|this| match self.variant {
                 ItemVariant::Default => this,
                 ItemVariant::Outline => this.border_color(theme.border),
@@ -170,7 +170,7 @@ impl RenderOnce for Item {
                     div()
                         .flex()
                         .flex_col()
-                        .flex_1()
+                        .flex_1().min_w_0()
                         .gap_1()
                         .children(self.title.map(|title| {
                             div()

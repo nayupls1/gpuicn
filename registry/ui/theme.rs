@@ -205,7 +205,7 @@ impl Theme {
             colors: ThemeColors::for_mode(mode),
             radius: px(10.0), // 0.625rem
             font_family: ".SystemUIFont".into(),
-            mono_font_family: "monospace".into(),
+            mono_font_family: default_mono_font().into(),
             shadows: true,
         }
     }
@@ -228,6 +228,18 @@ impl Theme {
 
     pub fn is_dark(&self) -> bool {
         self.mode.is_dark()
+    }
+
+    /// `color` as it looks at `opacity` on top of the page background.
+    ///
+    /// gpui's element `opacity()` fades each primitive separately (unlike CSS,
+    /// which fades the element as a group), so text on a faded fill comes out
+    /// washed out twice. Use this to fade a whole control's colors instead.
+    pub fn faded(&self, color: Hsla, opacity: f32) -> Hsla {
+        if color.a == 0.0 {
+            return color;
+        }
+        mix(self.background, composite(color, self.background), opacity)
     }
 
     pub fn global(cx: &App) -> &Theme {
@@ -288,6 +300,30 @@ pub fn init(cx: &mut App) {
     if !cx.has_global::<Theme>() {
         cx.set_global(Theme::default());
     }
+}
+
+/// A monospaced family that ships with the OS (gpui doesn't resolve the CSS
+/// generic `monospace`).
+fn default_mono_font() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "Menlo"
+    } else if cfg!(target_os = "windows") {
+        "Consolas"
+    } else {
+        "DejaVu Sans Mono"
+    }
+}
+
+/// Linear blend between two colors in sRGB space (`t = 0` → `a`, `t = 1` → `b`).
+pub fn mix(a: Hsla, b: Hsla, t: f32) -> Hsla {
+    let (a, b) = (a.to_rgb(), b.to_rgb());
+    let lerp = |x: f32, y: f32| x + (y - x) * t;
+    Rgba { r: lerp(a.r, b.r), g: lerp(a.g, b.g), b: lerp(a.b, b.b), a: lerp(a.a, b.a) }.into()
+}
+
+/// `top` painted over an opaque `bottom`, as an opaque color.
+pub fn composite(top: Hsla, bottom: Hsla) -> Hsla {
+    mix(bottom, top.alpha(1.0), top.a).alpha(1.0)
 }
 
 /// Convert a CSS `oklch(l c h)` color to gpui's [`Hsla`].

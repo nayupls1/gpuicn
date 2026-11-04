@@ -332,12 +332,12 @@ pub(super) fn header(
             .gap_2()
             .children(title.map(|title| {
                 div()
-                    .text_lg()
+                    .text_lg().line_height(gpui::rems(1.75))
                     .line_height(relative(1.))
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(title)
             }))
-            .children(description.map(|description| div().text_sm().text_color(muted).child(description))),
+            .children(description.map(|description| div().text_sm().line_height(gpui::rems(1.25)).text_color(muted).child(description))),
     )
 }
 

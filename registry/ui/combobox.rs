@@ -17,7 +17,7 @@ use std::rc::Rc;
 use super::button::Button;
 use super::command::{Command, CommandGroup, CommandItem};
 use super::icon::IconName;
-use super::popover::Popover;
+use super::popover::{Popover, outer_layout};
 use super::theme::ActiveTheme;
 use super::utils::{Align, StyledExt};
 
@@ -113,6 +113,7 @@ impl RenderOnce for Combobox {
         let items = Rc::new(self.items);
         let (search_placeholder, empty, on_change) = (self.search_placeholder, self.empty, self.on_change);
         Popover::new(self.id)
+            .wrapper_style(outer_layout(&self.style))
             .unstyled()
             .align(Align::Start)
             .trigger(trigger)

@@ -292,7 +292,7 @@ impl RenderOnce for MenuList {
                     .px_2()
                     .py_1p5()
                     .when(any_indicator, |this| this.pl_8())
-                    .text_sm()
+                    .text_sm().line_height(gpui::rems(1.25))
                     .font_weight(FontWeight::MEDIUM)
                     .child(label.clone())
                     .into_any_element(),
@@ -312,7 +312,7 @@ impl RenderOnce for MenuList {
                         .py_1p5()
                         .when(inset, |this| this.pl_8())
                         .rounded(theme.radius_sm())
-                        .text_sm()
+                        .text_sm().line_height(gpui::rems(1.25))
                         .text_color(fg)
                         .when(item.disabled, |this| this.opacity(0.5))
                         .when(is_highlighted && !item.disabled, |this| this.bg(hover_bg).text_color(hover_fg))
@@ -331,9 +331,9 @@ impl RenderOnce for MenuList {
                                 })
                         }))
                         .children(item.icon.map(|icon| Icon::new(icon).text_color(if item.destructive { destructive } else { muted_fg })))
-                        .child(div().flex_1().child(item.label.clone()))
+                        .child(div().flex_1().min_w_0().child(item.label.clone()))
                         .children(item.shortcut.clone().map(|shortcut| {
-                            div().ml_auto().pl_4().text_xs().text_color(muted_fg).child(shortcut)
+                            div().ml_auto().pl_4().text_xs().line_height(gpui::rems(1.)).text_color(muted_fg).child(shortcut)
                         }))
                         .when(!item.disabled, |this| {
                             let state = state.clone();
@@ -365,10 +365,10 @@ impl RenderOnce for MenuList {
                         .py_1p5()
                         .when(any_indicator && icon.is_none(), |this| this.pl_8())
                         .rounded(theme.radius_sm())
-                        .text_sm()
+                        .text_sm().line_height(gpui::rems(1.25))
                         .when(is_highlighted, |this| this.bg(accent).text_color(accent_fg))
                         .children(icon.map(|icon| Icon::new(icon).text_color(muted_fg)))
-                        .child(div().flex_1().child(label.clone()))
+                        .child(div().flex_1().min_w_0().child(label.clone()))
                         .child(Icon::new(IconName::ChevronRight).ml_auto())
                         .on_mouse_move(move |_, _, cx| {
                             state.update(cx, |s, cx| {
@@ -382,7 +382,7 @@ impl RenderOnce for MenuList {
                         .into_any_element()
                 }
             };
-            rows.push(div().relative().child(row).child(bounds_recorder).into_any_element());
+            rows.push(div().relative().flex().flex_col().child(row).child(bounds_recorder).into_any_element());
         }
 
         // An open submenu floats to the right of its trigger row.
@@ -414,11 +414,17 @@ impl RenderOnce for MenuList {
         let key_close = self.on_close.clone();
         let on_back = self.on_back.clone();
 
+        // Taffy doesn't stretch the rows of a column whose width comes from
+        // `min-width` while it's sized to its content (as floating panels
+        // are), so separators collapse and shortcuts don't right-align. Turn
+        // the min width into a zero-height strut the content has to fit.
+        let mut style = self.style;
+        let min_width = style.min_size.width.take().unwrap_or(gpui::px(128.).into());
+
         div()
             .id(self.id)
             .track_focus(&focus_handle)
             .occlude()
-            .min_w_32()
             .p_1()
             .flex()
             .flex_col()
@@ -428,7 +434,8 @@ impl RenderOnce for MenuList {
             .bg(theme.popover)
             .text_color(theme.popover_foreground)
             .when(theme.shadows, |this| this.shadow_md())
-            .refine_style(&self.style)
+            .refine_style(&style)
+            .child(div().h_0().min_w(min_width))
             .on_hover({
                 let state = state.clone();
                 move |hovered, _, cx| {

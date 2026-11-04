@@ -91,11 +91,11 @@ impl RenderOnce for Field {
                 .when(invalid, |this| this.text_color(theme.destructive))
         });
         let description = self.description.map(|description| {
-            div().text_sm().text_color(theme.muted_foreground).child(description)
+            div().text_sm().line_height(gpui::rems(1.25)).text_color(theme.muted_foreground).child(description)
         });
         let error = self
             .error
-            .map(|error| div().text_sm().text_color(theme.destructive).child(error));
+            .map(|error| div().text_sm().line_height(gpui::rems(1.25)).text_color(theme.destructive).child(error));
 
         match self.orientation {
             Orientation::Vertical => div()
@@ -119,7 +119,7 @@ impl RenderOnce for Field {
                     div()
                         .flex()
                         .flex_col()
-                        .flex_1()
+                        .flex_1().min_w_0()
                         .gap_1p5()
                         .children(label)
                         .children(description)
@@ -188,10 +188,10 @@ impl RenderOnce for FieldSet {
                         .flex_col()
                         .gap_1p5()
                         .children(self.legend.map(|legend| {
-                            div().text_base().font_weight(FontWeight::MEDIUM).child(legend)
+                            div().text_base().line_height(gpui::rems(1.5)).font_weight(FontWeight::MEDIUM).child(legend)
                         }))
                         .children(self.description.map(|description| {
-                            div().text_sm().text_color(theme.muted_foreground).child(description)
+                            div().text_sm().line_height(gpui::rems(1.25)).text_color(theme.muted_foreground).child(description)
                         })),
                 )
             })
@@ -225,7 +225,7 @@ impl RenderOnce for FieldSeparator {
                 .flex()
                 .items_center()
                 .gap_2()
-                .text_sm()
+                .text_sm().line_height(gpui::rems(1.25))
                 .text_color(theme.muted_foreground)
                 .child(Separator::horizontal().flex_1())
                 .child(text)

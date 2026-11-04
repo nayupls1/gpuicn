@@ -51,7 +51,7 @@ pub(super) fn toggle_base(
         .justify_center()
         .gap_2()
         .rounded(theme.radius_md())
-        .text_sm()
+        .text_sm().line_height(gpui::rems(1.25))
         .font_weight(FontWeight::MEDIUM)
         .whitespace_nowrap()
         .map(|this| match size {
@@ -60,7 +60,10 @@ pub(super) fn toggle_base(
             ToggleSize::Lg => this.h_10().px_2p5().min_w_10(),
         })
         .when(variant == ToggleVariant::Outline, |this| {
-            this.border_1().border_color(theme.input).when(theme.shadows, |this| this.shadow_xs())
+            // Opaque in light mode so the shadow can't tint the interior.
+            this.border_1()
+                .border_color(theme.input)
+                .when(!theme.is_dark(), |this| this.bg(theme.background).when(theme.shadows, |this| this.shadow_xs()))
         })
         .when(pressed, |this| this.bg(theme.accent).text_color(theme.accent_foreground))
         .when(disabled, |this| this.opacity(0.5))

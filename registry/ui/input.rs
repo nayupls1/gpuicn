@@ -31,7 +31,7 @@ use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::theme::ActiveTheme;
-use super::utils::{StyledExt, ring_shadow};
+use super::utils::{StyledExt, focus_ring, invalid_ring};
 
 actions!(
     input,
@@ -1135,8 +1135,8 @@ impl Input {
     }
 
     /// Resolve (and create, for self-managed inputs) the backing state.
-    pub fn state(&self, window: &mut Window, cx: &mut App) -> Entity<InputState> {
-        match &self.source {
+    pub fn state(&mut self, window: &mut Window, cx: &mut App) -> Entity<InputState> {
+        let state = match &self.source {
             InputSource::State(state) => state.clone(),
             InputSource::Id(id) => {
                 let default = self.default_value.clone();
@@ -1152,12 +1152,18 @@ impl Input {
                     state
                 })
             }
-        }
+        };
+        // Keyed state is namespaced by the element ids around the call, so a
+        // parent that peeks at the state in its own `render` would otherwise
+        // see a different entity than the one this input edits once it's
+        // rendered deeper in the tree. Pin the resolved entity.
+        self.source = InputSource::State(state.clone());
+        state
     }
 }
 
 impl RenderOnce for Input {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(mut self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let state = self.state(window, cx);
         state.update(cx, |s, _| {
             if let Some(placeholder) = self.placeholder.clone() {
@@ -1193,24 +1199,19 @@ impl RenderOnce for Input {
             .gap_2()
             .w_full()
             .min_w_0()
-            .text_sm()
+            .text_sm().line_height(gpui::rems(1.25))
             .text_color(theme.foreground)
             .map(|this| if multiline { this.items_start() } else { this.items_center() })
             .when(self.appearance, |this| {
-                this.rounded(theme.radius_md())
+                this.relative()
+                    .rounded(theme.radius_md())
                     .border_1()
                     .border_color(theme.input)
-                    .when(theme.is_dark(), |this| this.bg(theme.input.opacity(0.3)))
+                    .control_surface(theme)
                     .px_3()
                     .map(|this| if multiline { this.min_h_16().py_2() } else { this.h_9().py_1() })
-                    .when(theme.shadows, |this| this.shadow_xs())
-                    .when(focused && !invalid, |this| {
-                        this.border_color(theme.ring).shadow(vec![ring_shadow(theme.ring.opacity(0.5), px(3.))])
-                    })
-                    .when(invalid, |this| {
-                        this.border_color(theme.destructive)
-                            .when(focused, |this| this.shadow(vec![ring_shadow(theme.destructive.opacity(0.2), px(3.))]))
-                    })
+                    .when(focused && !invalid, |this| this.border_color(theme.ring))
+                    .when(invalid, |this| this.border_color(theme.destructive))
             })
             .when(disabled, |this| this.opacity(0.5).cursor_not_allowed())
             .refine_style(&self.style);
@@ -1259,5 +1260,9 @@ impl RenderOnce for Input {
                     .child(TextElement { state: state.clone(), placeholder_color: theme.muted_foreground }),
             )
             .children(self.suffix)
+            .when(self.appearance && !disabled && (focused || invalid), |this| {
+                let radius = theme.radius_md();
+                this.child(if invalid { invalid_ring(theme, radius) } else { focus_ring(theme, radius) })
+            })
     }
 }

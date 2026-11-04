@@ -1,6 +1,6 @@
 //! One demo per component, mirroring the examples on ui.shadcn.com.
 
-use gpui::{AnyElement, App, IntoElement, ParentElement, SharedString, Styled, Window, div, px};
+use gpui::{AnyElement, App, IntoElement, prelude::FluentBuilder, ParentElement, SharedString, Styled, Window, div, px};
 use std::rc::Rc;
 
 use crate::ui::{
@@ -13,7 +13,7 @@ use crate::ui::{
     breadcrumb::{Breadcrumb, BreadcrumbItem},
     button::{Button, ButtonSize, ButtonVariant},
     button_group::ButtonGroup,
-    calendar::{Calendar, CalendarMode},
+    calendar::{Calendar, CalendarMode, CalendarSelection, Date},
     card::{Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle},
     carousel::Carousel,
     chart::{AreaChart, BarChart, ChartSeries, LineChart, PieChart},
@@ -131,6 +131,72 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Typography", typography),
 ];
 
+/// One-line summary shown under each page title (from the shadcn docs).
+pub fn description(name: &str) -> &'static str {
+    match name {
+        "Accordion" => "A vertically stacked set of interactive headings that each reveal a section of content.",
+        "Alert" => "Displays a callout for user attention.",
+        "Alert Dialog" => "A modal dialog that interrupts the user with important content and expects a response.",
+        "Aspect Ratio" => "Displays content within a desired ratio.",
+        "Avatar" => "An image element with a fallback for representing the user.",
+        "Badge" => "Displays a badge or a component that looks like a badge.",
+        "Breadcrumb" => "Displays the path to the current resource using a hierarchy of links.",
+        "Button" => "Displays a button or a component that looks like a button.",
+        "Button Group" => "A container that groups related buttons together with consistent styling.",
+        "Calendar" => "A date field component that allows users to enter and edit dates.",
+        "Card" => "Displays a card with header, content, and footer.",
+        "Carousel" => "A carousel that cycles through a set of slides.",
+        "Chart" => "Bar, area, line and pie charts that pick up your theme's chart colors.",
+        "Checkbox" => "A control that allows the user to toggle between checked and not checked.",
+        "Collapsible" => "An interactive component which expands and collapses a panel.",
+        "Combobox" => "Autocomplete input and command palette with a list of suggestions.",
+        "Command" => "Fast, composable command menu with fuzzy filtering and keyboard navigation.",
+        "Context Menu" => "Displays a menu of actions or functions, triggered by a right click.",
+        "Data Table" => "A table with sorting, filtering, pagination, row selection and column visibility.",
+        "Date Picker" => "A date picker component with single and range selection.",
+        "Dialog" => "A window overlaid on the primary window, rendering the content underneath inert.",
+        "Drawer" => "A panel that slides up from the bottom edge of the window.",
+        "Dropdown Menu" => "Displays a menu of actions or functions, triggered by a button.",
+        "Empty" => "Use the Empty component to display an empty state.",
+        "Field" => "Combine labels, controls, and help text to compose accessible form fields.",
+        "Form" => "Building forms with validation and error messages.",
+        "Hover Card" => "For sighted users to preview content available behind a link.",
+        "Input" => "Displays a form input field or a component that looks like an input field.",
+        "Input Group" => "Display additional information or actions next to an input or textarea.",
+        "Input OTP" => "Accessible one-time password component with copy paste functionality.",
+        "Item" => "A versatile component that you can use to display any content.",
+        "Kbd" => "Used to display textual user input from the keyboard.",
+        "Label" => "Renders an accessible label associated with controls.",
+        "Menubar" => "A visually persistent menu common in desktop applications that provides quick access to a consistent set of commands.",
+        "Native Select" => "A styled select for simple option lists.",
+        "Navigation Menu" => "A collection of links for navigating websites.",
+        "Pagination" => "Pagination with page navigation, next and previous links.",
+        "Popover" => "Displays rich content in a portal, triggered by a button.",
+        "Progress" => "Displays an indicator showing the completion progress of a task.",
+        "Radio Group" => "A set of checkable buttons where no more than one can be checked at a time.",
+        "Resizable" => "Resizable panel groups and layouts.",
+        "Scroll Area" => "Augments native scroll functionality with custom, themed scrollbars.",
+        "Select" => "Displays a list of options for the user to pick from, triggered by a button.",
+        "Separator" => "Visually or semantically separates content.",
+        "Sheet" => "Extends the Dialog component to display content that complements the main content of the screen.",
+        "Sidebar" => "A composable, themeable and customizable sidebar component.",
+        "Skeleton" => "Use to show a placeholder while content is loading.",
+        "Slider" => "An input where the user selects a value from within a given range.",
+        "Sonner" => "An opinionated toast component.",
+        "Spinner" => "An indicator that can be used to show a loading state.",
+        "Switch" => "A control that allows the user to toggle between checked and not checked.",
+        "Table" => "A responsive table component.",
+        "Tabs" => "A set of layered sections of content, known as tab panels, that are displayed one at a time.",
+        "Textarea" => "Displays a form textarea or a component that looks like a textarea.",
+        "Toast" => "A succinct message that is displayed temporarily.",
+        "Toggle" => "A two-state button that can be either on or off.",
+        "Toggle Group" => "A set of two-state buttons that can be toggled on or off.",
+        "Tooltip" => "A popup that displays information related to an element when the mouse hovers over it.",
+        "Typography" => "Styles for headings, paragraphs, lists and more.",
+        _ => "",
+    }
+}
+
 fn row() -> gpui::Div {
     div().flex().flex_wrap().items_center().gap_2()
 }
@@ -198,12 +264,24 @@ fn aspect_ratio(_: &mut Window, cx: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-fn avatar(_: &mut Window, _: &mut App) -> AnyElement {
+fn avatar(_: &mut Window, cx: &mut App) -> AnyElement {
     row()
         .gap_4()
         .child(Avatar::new().fallback("CN"))
         .child(Avatar::new().fallback("ER").rounded_lg())
-        .child(Avatar::new().fallback("LR").size_12())
+        .child(Avatar::new().fallback("LR").size_12().text_base())
+        .child({
+            // Avatar group: overlapping, each ringed with the page background.
+            let theme = cx.theme();
+            let ring = theme.background;
+            div().flex().children(["CN", "LR", "ER"].into_iter().enumerate().map(move |(ix, initials)| {
+                Avatar::new()
+                    .fallback(initials)
+                    .border_2()
+                    .border_color(ring)
+                    .when(ix > 0, |this| this.ml(px(-8.)))
+            }))
+        })
         .into_any_element()
 }
 
@@ -214,7 +292,9 @@ fn badge(_: &mut Window, _: &mut App) -> AnyElement {
         .child(Badge::new("Destructive").destructive())
         .child(Badge::new("Outline").outline())
         .child(Badge::new("Verified").secondary().icon(IconName::CircleCheck))
-        .child(Badge::new("8").rounded_full().px_1())
+        .child(Badge::new("8").rounded_full().h_5().min_w_5().px_1())
+        .child(Badge::new("99").destructive().rounded_full().h_5().min_w_5().px_1())
+        .child(Badge::new("20+").outline().rounded_full().h_5().min_w_5().px_1())
         .into_any_element()
 }
 
@@ -244,7 +324,7 @@ fn button(_: &mut Window, _: &mut App) -> AnyElement {
                 .child(Button::new("lg").size(ButtonSize::Lg).outline().label("Large"))
                 .child(Button::new("icon").outline().size(ButtonSize::Icon).icon(IconName::ArrowUp))
                 .child(Button::new("with-icon").outline().icon(IconName::Mail).label("Login with Email"))
-                .child(Button::new("loading").size(ButtonSize::Sm).outline().loading(true).label("Please wait"))
+                .child(Button::new("loading").size(ButtonSize::Sm).loading(true).label("Please wait"))
                 .child(Button::new("disabled").disabled(true).label("Disabled"))
                 .child(Button::new("toast").outline().label("Click me").tooltip("Shows a toast").on_click(|_, _, cx| {
                     toast("Button clicked", cx);
@@ -279,13 +359,24 @@ fn button_group(_: &mut Window, _: &mut App) -> AnyElement {
 
 fn calendar(_: &mut Window, cx: &mut App) -> AnyElement {
     let border = cx.theme().border;
+    let shadows = cx.theme().shadows;
+    let today = Date::today();
     row()
         .items_start()
         .gap_6()
-        .child(Calendar::new("calendar").rounded_md().border_1().border_color(border))
+        .child(
+            Calendar::new("calendar")
+                .default_selection(CalendarSelection::Single(Some(today.add_days(8))))
+                .rounded_lg()
+                .border_1()
+                .border_color(border)
+                .when(shadows, |this| this.shadow_sm()),
+        )
         .child(
             Calendar::new("range-calendar")
                 .mode(CalendarMode::Range)
+                .default_selection(CalendarSelection::Range(Some(today.add_days(2)), Some(today.add_days(16))))
+                .when(shadows, |this| this.shadow_sm())
                 .months(2)
                 .rounded_md()
                 .border_1()
@@ -308,7 +399,17 @@ fn card(_: &mut Window, _: &mut App) -> AnyElement {
                 col()
                     .gap_6()
                     .child(Field::new().label("Email").child(Input::new("card-email").placeholder("m@example.com")))
-                    .child(Field::new().label("Password").child(Input::new("card-password").masked(true))),
+                    .child(
+                        col()
+                            .gap_3()
+                            .child(
+                                row()
+                                    .justify_between()
+                                    .child(Label::new("Password"))
+                                    .child(Button::new("forgot").link().h_auto().p_0().font_weight(gpui::FontWeight::NORMAL).label("Forgot your password?")),
+                            )
+                            .child(Input::new("card-password").masked(true)),
+                    ),
             ),
         )
         .child(
@@ -351,6 +452,7 @@ fn chart(_: &mut Window, _: &mut App) -> AnyElement {
             .child(CardContent::new().child(chart))
     };
     div()
+        .w(px(816.))
         .flex()
         .flex_wrap()
         .gap_4()
@@ -402,6 +504,7 @@ fn checkbox(_: &mut Window, _: &mut App) -> AnyElement {
 
 fn collapsible(_: &mut Window, cx: &mut App) -> AnyElement {
     let border = cx.theme().border;
+    let mono = cx.theme().mono_font_family.clone();
     let repo = move |name: &'static str| {
         div()
             .rounded_md()
@@ -409,7 +512,7 @@ fn collapsible(_: &mut Window, cx: &mut App) -> AnyElement {
             .border_color(border)
             .px_4()
             .py_2()
-            .font_family("monospace")
+            .font_family(mono.clone())
             .text_sm()
             .child(name)
     };
@@ -525,13 +628,13 @@ struct Payment {
 
 fn payments() -> Vec<Payment> {
     vec![
-        Payment { id: "m5gr84i9", amount: 316., status: "success", email: "ken99@example.com" },
-        Payment { id: "3u1reuv4", amount: 242., status: "success", email: "Abe45@example.com" },
-        Payment { id: "derv1ws0", amount: 837., status: "processing", email: "Monserrat44@example.com" },
-        Payment { id: "5kma53ae", amount: 874., status: "success", email: "Silas22@example.com" },
-        Payment { id: "bhqecj4p", amount: 721., status: "failed", email: "carmella@example.com" },
-        Payment { id: "p0r8sd2x", amount: 129., status: "pending", email: "jason@example.com" },
-        Payment { id: "a1b2c3d4", amount: 450., status: "success", email: "olivia@example.com" },
+        Payment { id: "m5gr84i9", amount: 316., status: "Success", email: "ken99@example.com" },
+        Payment { id: "3u1reuv4", amount: 242., status: "Success", email: "Abe45@example.com" },
+        Payment { id: "derv1ws0", amount: 837., status: "Processing", email: "Monserrat44@example.com" },
+        Payment { id: "5kma53ae", amount: 874., status: "Success", email: "Silas22@example.com" },
+        Payment { id: "bhqecj4p", amount: 721., status: "Failed", email: "carmella@example.com" },
+        Payment { id: "p0r8sd2x", amount: 129., status: "Pending", email: "jason@example.com" },
+        Payment { id: "a1b2c3d4", amount: 450., status: "Success", email: "olivia@example.com" },
     ]
 }
 
@@ -566,8 +669,9 @@ fn data_table(_: &mut Window, _: &mut App) -> AnyElement {
 
 fn date_picker(_: &mut Window, _: &mut App) -> AnyElement {
     col()
-        .child(DatePicker::new("date"))
-        .child(DatePicker::new("range").mode(CalendarMode::Range).months(2).placeholder("Pick a date range"))
+        .w(px(280.))
+        .child(DatePicker::new("date").w_full())
+        .child(DatePicker::new("range").mode(CalendarMode::Range).months(2).placeholder("Pick a date range").w_full())
         .into_any_element()
 }
 
@@ -681,10 +785,13 @@ fn field(_: &mut Window, _: &mut App) -> AnyElement {
                             row()
                                 .gap_4()
                                 .flex_nowrap()
-                                .child(Field::new().label("Month").child(
-                                    NativeSelect::new("field-month").option("01", "01").option("02", "02").option("03", "03"),
+                                .child(Field::new().flex_1().min_w_0().label("Month").child(
+                                    NativeSelect::new("field-month").placeholder("MM").option("01", "01").option("02", "02").option("03", "03").option("12", "12"),
                                 ))
-                                .child(Field::new().label("CVV").child(Input::new("field-cvv").placeholder("123"))),
+                                .child(Field::new().flex_1().min_w_0().label("Year").child(
+                                    NativeSelect::new("field-year").placeholder("YYYY").option("2026", "2026").option("2027", "2027").option("2028", "2028"),
+                                ))
+                                .child(Field::new().flex_1().min_w_0().label("CVV").child(Input::new("field-cvv").placeholder("123"))),
                         )
                         .child(FieldSeparator::new())
                         .child(Field::new().horizontal().label("Same as shipping address").child(Checkbox::new("field-same").default_checked(true))),
@@ -729,6 +836,8 @@ fn hover_card(_: &mut Window, cx: &mut App) -> AnyElement {
                 .child(Avatar::new().fallback("VC"))
                 .child(
                     col()
+                        .flex_1()
+                        .min_w_0()
                         .gap_1()
                         .child(div().text_sm().font_weight(gpui::FontWeight::SEMIBOLD).child("@nextjs"))
                         .child(div().text_sm().child("The React Framework – created and maintained by @vercel."))
@@ -816,10 +925,12 @@ fn item(_: &mut Window, _: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-fn kbd(_: &mut Window, _: &mut App) -> AnyElement {
+fn kbd(_: &mut Window, cx: &mut App) -> AnyElement {
+    let muted = cx.theme().muted_foreground;
     col()
+        .items_center()
         .child(KbdGroup::new().child(Kbd::new("⌘")).child(Kbd::new("⇧")).child(Kbd::new("⌥")).child(Kbd::new("⌃")))
-        .child(KbdGroup::new().child(Kbd::new("Ctrl")).child("+").child(Kbd::new("B")))
+        .child(KbdGroup::new().child(Kbd::new("Ctrl")).child(div().text_color(muted).child("+")).child(Kbd::new("B")))
         .into_any_element()
 }
 
@@ -883,11 +994,11 @@ fn navigation_menu(_: &mut Window, _: &mut App) -> AnyElement {
     NavigationMenu::new("nav")
         .item(NavigationMenuItem::new("Getting started").content(|_, _| {
             div()
-                .w(px(420.))
+                .w(px(460.))
                 .grid()
                 .grid_cols(2)
                 .gap_1()
-                .child(NavigationMenuLink::new("Introduction").description("Re-usable components built using Radix UI and Tailwind CSS."))
+                .child(NavigationMenuLink::new("Introduction").description("Re-usable components you copy into your gpui app."))
                 .child(NavigationMenuLink::new("Installation").description("How to install dependencies and structure your app."))
                 .child(NavigationMenuLink::new("Typography").description("Styles for headings, paragraphs, lists...etc"))
                 .child(NavigationMenuLink::new("Theming").description("Restyle everything from a single file."))
@@ -1075,8 +1186,47 @@ fn sheet(_: &mut Window, _: &mut App) -> AnyElement {
         .into_any_element()
 }
 
+/// Two-line block with an icon tile, used for the sidebar's team switcher
+/// and user menu (`SidebarMenuButton size="lg"`).
+fn sidebar_block(tile: AnyElement, title: &'static str, subtitle: &'static str, cx: &App) -> gpui::Div {
+    let theme = cx.theme();
+    row()
+        .flex_nowrap()
+        .gap_2()
+        .p_2()
+        .rounded(theme.radius_md())
+        .child(tile)
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .min_w_0()
+                .text_sm()
+                .line_height(px(18.))
+                .child(div().font_weight(gpui::FontWeight::MEDIUM).child(title))
+                .child(div().text_xs().text_color(theme.muted_foreground).child(subtitle)),
+        )
+        .child(Icon::new(IconName::ChevronsUpDown).text_color(theme.muted_foreground))
+}
+
 fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
-    let border = cx.theme().border;
+    let theme = cx.theme();
+    let border = theme.border;
+    let logo = div()
+        .flex()
+        .flex_none()
+        .size_8()
+        .items_center()
+        .justify_center()
+        .rounded(theme.radius_lg())
+        .bg(theme.sidebar_primary)
+        .text_color(theme.sidebar_primary_foreground)
+        .child(Icon::new(IconName::Terminal))
+        .into_any_element();
+    let header = sidebar_block(logo, "Acme Inc.", "Enterprise", cx);
+    let user = Avatar::new().fallback("CN").size_8().rounded(theme.radius_lg()).into_any_element();
+    let footer = sidebar_block(user, "shadcn", "m@example.com", cx);
     div()
         .flex()
         .w(px(720.))
@@ -1087,7 +1237,7 @@ fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
         .overflow_hidden()
         .child(
             Sidebar::new("demo-sidebar")
-                .header(row().px_2().py_1().font_weight(gpui::FontWeight::SEMIBOLD).child(Icon::new(IconName::Terminal)).child("Acme Inc."))
+                .header(header)
                 .group(
                     SidebarGroup::new()
                         .label("Application")
@@ -1103,7 +1253,7 @@ fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
                                 .sub_item(SidebarMenuItem::new("Billing")),
                         ),
                 )
-                .footer(row().px_2().child(Avatar::new().fallback("CN").size_6()).child(div().text_sm().child("shadcn"))),
+                .footer(footer),
         )
         .child(
             SidebarInset::new().child(
@@ -1135,7 +1285,7 @@ fn slider(_: &mut Window, _: &mut App) -> AnyElement {
         .w(px(300.))
         .child(Slider::new("slider").default_value([50.]).max(100.).step(1.))
         .child(Slider::new("slider-range").default_value([25., 75.]))
-        .child(div().h(px(160.)).child(Slider::new("slider-vertical").vertical().default_value([40.])))
+        .child(div().flex().justify_center().h(px(160.)).child(Slider::new("slider-vertical").vertical().default_value([40.])))
         .into_any_element()
 }
 
@@ -1313,7 +1463,7 @@ fn typography(_: &mut Window, _: &mut App) -> AnyElement {
         .child(h3("The Joke Tax"))
         .child(List::new().item("1st level of puns: 5 gold coins").item("2nd level of jokes: 10 gold coins").item("3rd level of one-liners: 20 gold coins"))
         .child(h4("People stopped telling jokes"))
-        .child(row().child(p("Run")).child(inline_code("gpuicn add typography")).child(p("to get these styles.")))
+        .child(row().gap_1().child(p("Run")).child(inline_code("gpuicn add typography")).child(p("to get these styles.")))
         .child(large("Are you absolutely sure?"))
         .child(small("Email address"))
         .child(muted("Enter your email address."))

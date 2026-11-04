@@ -11,7 +11,7 @@ use std::rc::Rc;
 use super::button::Button;
 use super::calendar::{Calendar, CalendarMode, CalendarSelection, selection_label};
 use super::icon::IconName;
-use super::popover::Popover;
+use super::popover::{Popover, outer_layout};
 use super::theme::ActiveTheme;
 use super::utils::{Align, StyledExt};
 
@@ -95,6 +95,7 @@ impl RenderOnce for DatePicker {
 
         let (months, on_change) = (self.months, self.on_change);
         Popover::new(self.id)
+            .wrapper_style(outer_layout(&self.style))
             .align(Align::Start)
             .w_auto()
             .p_0()

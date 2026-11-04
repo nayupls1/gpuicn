@@ -14,6 +14,7 @@ use std::rc::Rc;
 
 use super::icon::{Icon, IconName};
 use super::spinner::Spinner;
+use super::tooltip::Tooltip;
 use super::theme::{ActiveTheme, Theme};
 use super::utils::StyledExt;
 
@@ -233,8 +234,16 @@ impl RenderOnce for Button {
         let interactive = !self.disabled && !self.loading;
         let radius = theme.radius_md();
         let is_link = self.variant == ButtonVariant::Link;
-        let shadow = theme.shadows && self.variant == ButtonVariant::Outline;
+        let shadow = theme.shadows && !theme.is_dark() && self.variant == ButtonVariant::Outline;
+        // `disabled:opacity-50`, applied to the colors (see `Theme::faded`).
+        let (bg, fg, border) = if interactive {
+            (bg, fg, border)
+        } else {
+            (theme.faded(bg, 0.5), theme.faded(fg, 0.5), border.map(|b| theme.faded(b, 0.5)))
+        };
 
+        let tooltip_id = ElementId::Name(format!("{}-tooltip", self.id).into());
+        let tooltip = self.tooltip.clone();
         let base = div()
             .id(self.id)
             .flex()
@@ -244,7 +253,7 @@ impl RenderOnce for Button {
             .gap_2()
             .whitespace_nowrap()
             .rounded(radius)
-            .text_sm()
+            .text_sm().line_height(gpui::rems(1.25))
             .font_weight(gpui::FontWeight::MEDIUM)
             .bg(if self.selected { hover_bg } else { bg })
             .text_color(if self.selected { accent_fg } else { fg })
@@ -258,7 +267,7 @@ impl RenderOnce for Button {
                 ButtonSize::IconSm => this.size_8(),
                 ButtonSize::IconLg => this.size_10(),
             })
-            .when(!interactive, |this| this.opacity(0.5).cursor_default())
+            .when(!interactive, |this| this.cursor_default())
             .when(interactive, |this| {
                 this.cursor_pointer().hover(move |style| {
                     let style = style.bg(hover_bg).text_color(accent_fg);
@@ -267,39 +276,23 @@ impl RenderOnce for Button {
             })
             .refine_style(&self.style);
 
-        base.when(self.loading, |this| this.child(Spinner::new()))
+        let button = base
+            .when(self.loading, |this| this.child(Spinner::new()))
             .when(!self.loading, |this| this.children(self.icon))
             .children(self.label)
             .children(self.children)
             .children(self.icon_end)
-            .when_some(self.tooltip, |this, text| {
-                this.tooltip(move |_, cx| cx.new(|_| SimpleTooltip(text.clone())).into())
-            })
             .when_some(self.on_click.filter(|_| interactive), |this, handler| {
                 this.on_click(move |event, window, cx| {
                     cx.stop_propagation();
                     handler(event, window, cx)
                 })
-            })
-    }
-}
-
-/// Minimal tooltip view used by [`Button::tooltip`]; the `tooltip` component
-/// offers richer content.
-struct SimpleTooltip(SharedString);
-
-impl gpui::Render for SimpleTooltip {
-    fn render(&mut self, _: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-        div()
-            .mt_1()
-            .px_3()
-            .py_1p5()
-            .rounded(theme.radius_md())
-            .bg(theme.foreground)
-            .text_color(theme.background)
-            .text_xs()
-            .child(self.0.clone())
+            });
+        match tooltip {
+            // A real `Tooltip`, centered above the button like shadcn's.
+            Some(text) => Tooltip::new(tooltip_id).trigger(button).content(text).into_any_element(),
+            None => button.into_any_element(),
+        }
     }
 }
 

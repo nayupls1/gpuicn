@@ -42,7 +42,7 @@ impl RenderOnce for Kbd {
             .rounded(theme.radius_sm())
             .bg(theme.muted)
             .text_color(theme.muted_foreground)
-            .text_xs()
+            .text_xs().line_height(gpui::rems(1.))
             .font_weight(FontWeight::MEDIUM)
             .refine_style(&self.style)
             .child(self.text)

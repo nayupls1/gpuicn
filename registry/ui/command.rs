@@ -218,7 +218,7 @@ impl RenderOnce for Command {
             last_query: SharedString::default(),
             scroll: ScrollHandle::new(),
         });
-        let input = Input::new("command-input").placeholder(self.placeholder.clone()).autofocus().unstyled();
+        let mut input = Input::new("command-input").placeholder(self.placeholder.clone()).autofocus().unstyled();
         let input_state = input.state(window, cx);
         let query = input_state.read(cx).text().clone();
         if state.read(cx).last_query != query {
@@ -254,7 +254,7 @@ impl RenderOnce for Command {
             let mut group = div().flex().flex_col().p_1().text_color(theme.foreground);
             if let Some(heading) = heading {
                 group = group.child(
-                    div().px_2().py_1p5().text_xs().font_weight(FontWeight::MEDIUM).text_color(muted_fg).child(heading.clone()),
+                    div().px_2().py_1p5().text_xs().line_height(gpui::rems(1.)).font_weight(FontWeight::MEDIUM).text_color(muted_fg).child(heading.clone()),
                 );
             }
             for item in group_items {
@@ -273,12 +273,12 @@ impl RenderOnce for Command {
                         .px_2()
                         .py_1p5()
                         .rounded(radius)
-                        .text_sm()
+                        .text_sm().line_height(gpui::rems(1.25))
                         .when(item.disabled, |this| this.opacity(0.5))
                         .when(selected && !item.disabled, |this| this.bg(accent).text_color(accent_fg))
                         .children(item.icon.map(|icon| Icon::new(icon).text_color(muted_fg)))
-                        .child(div().flex_1().child(item.label.clone()))
-                        .children(item.shortcut.clone().map(|s| div().ml_auto().text_xs().text_color(muted_fg).child(s)))
+                        .child(div().flex_1().min_w_0().child(item.label.clone()))
+                        .children(item.shortcut.clone().map(|s| div().ml_auto().text_xs().line_height(gpui::rems(1.)).text_color(muted_fg).child(s)))
                         .children(item.checked.map(|checked| {
                             Icon::new(IconName::Check).ml_auto().opacity(if checked { 1. } else { 0. })
                         }))
@@ -357,7 +357,7 @@ impl RenderOnce for Command {
                     .overflow_y_scroll()
                     .track_scroll(&scroll)
                     .when(count == 0, |this| {
-                        this.child(div().py_6().text_center().text_sm().child(self.empty.clone()))
+                        this.child(div().py_6().text_center().text_sm().line_height(gpui::rems(1.25)).child(self.empty.clone()))
                     })
                     .children(rows),
             )

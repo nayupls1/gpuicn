@@ -130,7 +130,7 @@ impl RenderOnce for Breadcrumb {
             .flex_wrap()
             .items_center()
             .gap_2p5()
-            .text_sm()
+            .text_sm().line_height(gpui::rems(1.25))
             .text_color(muted)
             .refine_style(&self.style)
             .children(children)

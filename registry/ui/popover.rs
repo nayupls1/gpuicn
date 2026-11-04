@@ -142,10 +142,30 @@ pub struct Popover {
     side_offset: Pixels,
     anchor_position: Option<Point<Pixels>>,
     appearance: bool,
+    wrapper_style: StyleRefinement,
+    on_backdrop_move: Option<BackdropMoveHandler>,
     style: StyleRefinement,
 }
 
+type BackdropMoveHandler = Rc<dyn Fn(Point<Pixels>, &mut Window, &mut App)>;
+
 crate::impl_styled!(Popover);
+
+/// The outer-layout part of `style` (width and flex sizing). Components that
+/// wrap their trigger in a [`Popover`] forward it with
+/// [`Popover::wrapper_style`] so that e.g. `Select::new(..).w_full()` sizes
+/// the whole control, not just the trigger inside a content-sized wrapper.
+pub fn outer_layout(style: &StyleRefinement) -> StyleRefinement {
+    let mut out = StyleRefinement::default();
+    out.size.width = style.size.width;
+    out.min_size.width = style.min_size.width;
+    out.max_size.width = style.max_size.width;
+    out.flex_grow = style.flex_grow;
+    out.flex_shrink = style.flex_shrink;
+    out.flex_basis = style.flex_basis;
+    out.align_self = style.align_self;
+    out
+}
 
 impl Popover {
     pub fn new(id: impl Into<ElementId>) -> Self {
@@ -161,6 +181,8 @@ impl Popover {
             side_offset: px(4.),
             anchor_position: None,
             appearance: true,
+            wrapper_style: StyleRefinement::default(),
+            on_backdrop_move: None,
             style: StyleRefinement::default(),
         }
     }
@@ -220,6 +242,22 @@ impl Popover {
     /// (used by context menus).
     pub fn anchor_position(mut self, position: Point<Pixels>) -> Self {
         self.anchor_position = Some(position);
+        self
+    }
+
+    /// Style for the element wrapping the trigger (see [`outer_layout`]).
+    /// When it sets a width, the trigger stretches to fill it.
+    pub fn wrapper_style(mut self, style: StyleRefinement) -> Self {
+        self.wrapper_style = style;
+        self
+    }
+
+    /// Called when the pointer moves over the click-away backdrop of an open
+    /// (click/manual) popover. The backdrop blocks hover on everything below
+    /// it, so this is how e.g. a menubar switches menus as the pointer moves
+    /// across its triggers.
+    pub fn on_backdrop_move(mut self, handler: impl Fn(Point<Pixels>, &mut Window, &mut App) + 'static) -> Self {
+        self.on_backdrop_move = Some(Rc::new(handler));
         self
     }
 
@@ -327,7 +365,18 @@ impl RenderOnce for Popover {
             .child({
                 let state = state.clone();
                 canvas(
-                    move |bounds, _, cx| state.update(cx, |s, _| s.trigger_bounds = bounds),
+                    move |bounds, window, cx| {
+                        state.update(cx, |s, _| {
+                            if s.trigger_bounds != bounds {
+                                s.trigger_bounds = bounds;
+                                // An open popover follows its trigger (scrolling,
+                                // resizing, first frame) on the next frame.
+                                if s.open {
+                                    window.request_animation_frame();
+                                }
+                            }
+                        })
+                    },
                     |_, _, _, _| {},
                 )
                 .absolute()
@@ -363,6 +412,7 @@ impl RenderOnce for Popover {
                 hide_until_measured: content_size.width <= px(0.) && self.align == Align::Center,
                 mode,
                 appearance: self.appearance,
+                on_backdrop_move: self.on_backdrop_move.clone(),
                 style: self.style,
             };
             portal(
@@ -373,7 +423,8 @@ impl RenderOnce for Popover {
             );
         }
 
-        div().id(self.id).flex().child(trigger)
+        let fill = self.wrapper_style.size.width.is_some();
+        div().id(self.id).flex().refine_style(&self.wrapper_style).child(trigger.when(fill, |this| this.w_full()))
     }
 }
 
@@ -387,6 +438,7 @@ struct FloatingLayer {
     hide_until_measured: bool,
     mode: PopoverTrigger,
     appearance: bool,
+    on_backdrop_move: Option<BackdropMoveHandler>,
     style: StyleRefinement,
 }
 
@@ -419,11 +471,14 @@ impl FloatingLayer {
             .child({
                 let state = state.clone();
                 canvas(
-                    move |bounds, _, cx| {
-                        state.update(cx, |s, cx| {
+                    move |bounds, window, cx| {
+                        state.update(cx, |s, _| {
                             if s.content_size != bounds.size {
                                 s.content_size = bounds.size;
-                                cx.notify();
+                                // `cx.notify()` during prepaint is dropped by
+                                // gpui; re-render on the next frame instead so
+                                // the popover gets positioned and shown.
+                                window.request_animation_frame();
                             }
                         })
                     },
@@ -470,10 +525,15 @@ impl FloatingLayer {
             // so clicking the trigger again doesn't immediately reopen it.
             _ => div()
                 .child(full_window(
-                    div().occlude().on_any_mouse_down(move |_, window, cx| {
-                        cx.stop_propagation();
-                        handle.close(window, cx);
-                    }),
+                    div()
+                        .occlude()
+                        .on_any_mouse_down(move |_, window, cx| {
+                            cx.stop_propagation();
+                            handle.close(window, cx);
+                        })
+                        .when_some(self.on_backdrop_move, |this, handler| {
+                            this.on_mouse_move(move |event, window, cx| handler(event.position, window, cx))
+                        }),
                     window,
                 ))
                 .child(floating)
