@@ -314,7 +314,7 @@ fn overview(_: &mut Window, cx: &mut App) -> AnyElement {
                     .child(div().truncate().text_sm().line_height(px(20.)).font_weight(gpui::FontWeight::MEDIUM).child(name))
                     .child(div().truncate().text_sm().line_height(px(20.)).text_color(muted).child(email)),
             )
-            .child(Button::new(SharedString::from(format!("ov-role-{n}"))).outline().size(ButtonSize::Sm).w(px(96.)).justify_between().label(role).icon_end(IconName::ChevronDown))
+            .child(Button::new(SharedString::from(format!("ov-role-{n}"))).outline().size(ButtonSize::Sm).gap_1().px_2p5().label(role).icon_end(IconName::ChevronDown))
     };
     let team = Card::new()
         .child(CardHeader::new().child(CardTitle::new("Team Members")).child(CardDescription::new("Invite your team members to collaborate.")))
@@ -323,8 +323,8 @@ fn overview(_: &mut Window, cx: &mut App) -> AnyElement {
                 col()
                     .gap_5()
                     .child(member(0, "Sofia Davis", "m@acme.co", "Owner"))
-                    .child(member(1, "Jackson Lee", "p@acme.co", "Member"))
-                    .child(member(2, "Olivia Martin", "o@acme.co", "Member")),
+                    .child(member(1, "Ethan Lee", "e@acme.co", "Member"))
+                    .child(member(2, "Olivia Kim", "o@acme.co", "Member")),
             ),
         );
 
