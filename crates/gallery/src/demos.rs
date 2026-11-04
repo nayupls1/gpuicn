@@ -324,7 +324,7 @@ fn overview(_: &mut Window, cx: &mut App) -> AnyElement {
                     .gap_5()
                     .child(member(0, "Sofia Davis", "m@acme.co", "Owner"))
                     .child(member(1, "Jackson Lee", "p@acme.co", "Member"))
-                    .child(member(2, "Isabella Nguyen", "i@acme.co", "Member")),
+                    .child(member(2, "Olivia Martin", "o@acme.co", "Member")),
             ),
         );
 
