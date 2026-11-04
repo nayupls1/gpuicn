@@ -85,9 +85,12 @@ impl RenderOnce for Field {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.theme();
         let invalid = self.error.is_some();
+        let horizontal = matches!(self.orientation, Orientation::Horizontal);
         let label = self.label.map(|label| {
             Label::new(label)
                 .disabled(self.disabled)
+                // A label next to a checkbox reads as body text (`font-normal`).
+                .when(horizontal, |this| this.font_weight(gpui::FontWeight::NORMAL))
                 .when(invalid, |this| this.text_color(theme.destructive))
         });
         let description = self.description.map(|description| {
@@ -106,8 +109,11 @@ impl RenderOnce for Field {
                 .refine_style(&self.style)
                 .children(label)
                 .children(self.children)
-                .children(description)
-                .children(error),
+                // Help text and error stay close together (`gap-1.5`), so
+                // validation doesn't make the form jump as much.
+                .when(description.is_some() || error.is_some(), |this| {
+                    this.child(div().flex().flex_col().gap_1p5().children(description).children(error))
+                }),
             Orientation::Horizontal => div()
                 .flex()
                 .items_start()

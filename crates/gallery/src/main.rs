@@ -137,11 +137,18 @@ impl Render for Gallery {
                     .text_color(theme.muted_foreground)
                     .child(demos::description(name)),
             );
+        // Pages whose main feature is a floating panel anchor the trigger near
+        // the top so the open menu fits inside the preview frame.
+        let floating = matches!(
+            name,
+            "Combobox" | "Context Menu" | "Date Picker" | "Dropdown Menu" | "Hover Card" | "Menubar"
+                | "Navigation Menu" | "Popover" | "Select"
+        );
         let preview = div()
             .flex()
             .flex_none()
-            .min_h(px(440.))
-            .items_center()
+            .min_h(px(if floating { 520. } else { 440. }))
+            .map(|this| if floating { this.items_start().pt_16() } else { this.items_center() })
             .justify_center()
             .p_10()
             .rounded(theme.radius_xl())

@@ -102,6 +102,17 @@ pub trait StyledExt: Styled + Sized {
 
 impl<E: Styled> StyledExt for E {}
 
+/// Border for small toggles (checkbox, radio). `border-input` plus the CSS
+/// `shadow-xs` reads clearly on the web; gpui's lighter shadow doesn't, so
+/// light mode nudges the border toward the foreground.
+pub fn control_border(theme: &Theme) -> Hsla {
+    if theme.is_dark() {
+        theme.input
+    } else {
+        super::theme::mix(theme.input, theme.foreground, 0.12)
+    }
+}
+
 /// A tailwind `ring-[width]` drawn *outside* an element, as an overlay child.
 ///
 /// Add it as the last child of a `.relative()` element whose border is

@@ -16,7 +16,7 @@ use std::rc::Rc;
 
 use super::label::Label;
 use super::theme::ActiveTheme;
-use super::utils::{Orientation, StyledExt};
+use super::utils::{Orientation, StyledExt, control_border};
 
 pub struct RadioGroupItem {
     value: SharedString,
@@ -106,7 +106,7 @@ impl RenderOnce for RadioGroup {
         let state = window.use_keyed_state(self.id.clone(), cx, |_, _| default);
         let selected = self.value.clone().unwrap_or_else(|| state.read(cx).clone());
         let theme = cx.theme();
-        let (primary, input) = (theme.primary, theme.input);
+        let primary = theme.primary;
 
         div()
             .id(self.id)
@@ -138,7 +138,7 @@ impl RenderOnce for RadioGroup {
                             .justify_center()
                             .rounded_full()
                             .border_1()
-                            .border_color(input)
+                            .border_color(control_border(theme))
                             .control_surface(theme)
                             .when(checked, |this| this.child(div().size_2().rounded_full().bg(primary))),
                     )

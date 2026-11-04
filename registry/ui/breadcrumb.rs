@@ -110,7 +110,8 @@ impl RenderOnce for Breadcrumb {
                 }
                 Entry::Ellipsis => div()
                     .flex()
-                    .size_9()
+                    .h_9()
+                    .w_5()
                     .items_center()
                     .justify_center()
                     .child(Icon::new(IconName::Ellipsis))

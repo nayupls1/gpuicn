@@ -16,7 +16,7 @@ use super::icon::{Icon, IconName};
 use super::spinner::Spinner;
 use super::tooltip::Tooltip;
 use super::theme::{ActiveTheme, Theme};
-use super::utils::{StyledExt, focus_ring, is_focus_visible, pointer_pressed, use_tab_stop};
+use super::utils::{StyledExt, is_focus_visible, pointer_pressed, ring, use_tab_stop};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonVariant {
@@ -68,7 +68,8 @@ pub fn variant_colors(variant: ButtonVariant, theme: &Theme) -> (Hsla, Hsla, Hsl
             if theme.is_dark() {
                 (
                     theme.input.opacity(0.3),
-                    theme.input.opacity(0.5),
+                    // Stronger than `input/50` so the hover reads on dark backgrounds.
+                    theme.accent,
                     theme.foreground,
                     Some(theme.input),
                 )
@@ -288,7 +289,11 @@ impl RenderOnce for Button {
             .children(self.label)
             .children(self.children)
             .children(self.icon_end)
-            .when(interactive && focus_visible, |this| this.child(focus_ring(theme, radius)))
+            .when(interactive && focus_visible, |this| {
+                // Hug the button: offset by its border only if it has one.
+                let border_width = if border.is_some() { px(1.) } else { px(0.) };
+                this.child(ring(theme.ring.opacity(0.5), px(3.), radius, border_width))
+            })
             .when_some(self.on_click.filter(|_| interactive), |this, handler| {
                 this.on_click(move |event, window, cx| {
                     cx.stop_propagation();

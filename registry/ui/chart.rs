@@ -413,14 +413,46 @@ impl Cartesian {
 }
 
 /// Catmull-Rom spline through `points` (assumes the path is at `points[0]`).
+/// Monotone cubic interpolation (Fritsch–Carlson, like Recharts'
+/// `type="monotone"`): smooth, but never overshoots the data, so a low point
+/// doesn't dip below its value. Works for points in either x direction.
 fn smooth(builder: &mut PathBuilder, points: &[Point<Pixels>]) {
-    for i in 0..points.len().saturating_sub(1) {
-        let p0 = if i == 0 { points[0] } else { points[i - 1] };
-        let (p1, p2) = (points[i], points[i + 1]);
-        let p3 = points.get(i + 2).copied().unwrap_or(p2);
-        let c1 = p1 + (p2 - p0) * (1. / 6.);
-        let c2 = p2 - (p3 - p1) * (1. / 6.);
-        builder.cubic_bezier_to(p2, c1, c2);
+    let n = points.len();
+    if n < 2 {
+        return;
+    }
+    let (xs, ys): (Vec<f32>, Vec<f32>) = points.iter().map(|p| (f32::from(p.x), f32::from(p.y))).unzip();
+    let secants: Vec<f32> = (0..n - 1)
+        .map(|i| {
+            let dx = xs[i + 1] - xs[i];
+            if dx == 0. { 0. } else { (ys[i + 1] - ys[i]) / dx }
+        })
+        .collect();
+    let mut tangents = vec![0f32; n];
+    tangents[0] = secants[0];
+    tangents[n - 1] = secants[n - 2];
+    for i in 1..n - 1 {
+        tangents[i] = if secants[i - 1] * secants[i] <= 0. { 0. } else { (secants[i - 1] + secants[i]) / 2. };
+    }
+    for i in 0..n - 1 {
+        if secants[i] == 0. {
+            tangents[i] = 0.;
+            tangents[i + 1] = 0.;
+            continue;
+        }
+        let (a, b) = (tangents[i] / secants[i], tangents[i + 1] / secants[i]);
+        let s = a * a + b * b;
+        if s > 9. {
+            let tau = 3. / s.sqrt();
+            tangents[i] = tau * a * secants[i];
+            tangents[i + 1] = tau * b * secants[i];
+        }
+    }
+    for i in 0..n - 1 {
+        let dx = (xs[i + 1] - xs[i]) / 3.;
+        let c1 = point(px(xs[i] + dx), px(ys[i] + tangents[i] * dx));
+        let c2 = point(px(xs[i + 1] - dx), px(ys[i + 1] - tangents[i + 1] * dx));
+        builder.cubic_bezier_to(points[i + 1], c1, c2);
     }
 }
 

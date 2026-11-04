@@ -133,7 +133,7 @@ impl RenderOnce for InputGroup {
                     .min_h_9()
                     .when(!self.start.is_empty(), |this| this.child(addon_row(self.start).pr_0()))
                     .child(div().flex_1().min_w_0().px_3().py_1().child(input))
-                    .when(!self.end.is_empty(), |this| this.child(addon_row(self.end).pl_0().pr_1p5())),
+                    .when(!self.end.is_empty(), |this| this.child(addon_row(self.end).pl_0().pr_2())),
             )
             .when(!self.block_end.is_empty(), |this| this.child(addon_row(self.block_end).pb_3()))
             .when(focused || self.invalid, |this| {

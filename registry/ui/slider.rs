@@ -202,7 +202,7 @@ impl RenderOnce for Slider {
                 .rounded_full()
                 .border_1()
                 .border_color(theme.primary)
-                .bg(gpui::white())
+                .bg(theme.background)
                 .when(theme.shadows, |this| this.shadow_sm())
                 .when(dragging && !self.disabled, |this| this.shadow(vec![ring_shadow(theme.ring.opacity(0.5), px(4.))]))
                 .map(|this| {

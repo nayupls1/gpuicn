@@ -197,6 +197,16 @@ pub fn description(name: &str) -> &'static str {
     }
 }
 
+/// Bundled avatar pictures (illustrations), so demos show the image path.
+fn avatar_image(n: usize) -> gpui::ImageSource {
+    let bytes: &'static [u8] = match n % 3 {
+        0 => include_bytes!("../assets/avatar-1.png"),
+        1 => include_bytes!("../assets/avatar-2.png"),
+        _ => include_bytes!("../assets/avatar-3.png"),
+    };
+    gpui::ImageSource::Image(std::sync::Arc::new(gpui::Image::from_bytes(gpui::ImageFormat::Png, bytes.to_vec())))
+}
+
 fn row() -> gpui::Div {
     div().flex().flex_wrap().items_center().gap_2()
 }
@@ -268,8 +278,8 @@ fn aspect_ratio(_: &mut Window, cx: &mut App) -> AnyElement {
 fn avatar(_: &mut Window, cx: &mut App) -> AnyElement {
     row()
         .gap_4()
-        .child(Avatar::new().fallback("CN"))
-        .child(Avatar::new().fallback("ER").rounded_lg())
+        .child(Avatar::new().src(avatar_image(0)).fallback("CN"))
+        .child(Avatar::new().src(avatar_image(1)).fallback("ER").rounded_lg())
         .child(Avatar::new().fallback("LR").size_12().text_base())
         .child({
             // Avatar group: overlapping, each ringed with the page background.
@@ -282,7 +292,7 @@ fn avatar(_: &mut Window, cx: &mut App) -> AnyElement {
                     .rounded_full()
                     .bg(ring)
                     .when(ix > 0, |this| this.ml(px(-10.)))
-                    .child(Avatar::new().fallback(initials))
+                    .child(Avatar::new().src(avatar_image(ix)).fallback(initials))
             }))
         })
         .into_any_element()
@@ -400,7 +410,7 @@ fn card(_: &mut Window, _: &mut App) -> AnyElement {
             CardHeader::new()
                 .child(CardTitle::new("Login to your account"))
                 .child(CardDescription::new("Enter your email below to login to your account"))
-                .action(Button::new("signup").link().label("Sign Up")),
+                .action(Button::new("signup").link().h_auto().p_0().label("Sign Up")),
         )
         .child(
             CardContent::new().child(
@@ -438,7 +448,7 @@ fn carousel(_: &mut Window, _: &mut App) -> AnyElement {
                 Card::new().child(
                     CardContent::new()
                         .flex()
-                        .h(px(272.))
+                        .h(px(256.))
                         .items_center()
                         .justify_center()
                         .text_3xl()
@@ -812,14 +822,26 @@ fn dropdown_menu(_: &mut Window, _: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-fn empty(_: &mut Window, _: &mut App) -> AnyElement {
+fn empty(_: &mut Window, cx: &mut App) -> AnyElement {
     Empty::new()
         .outline()
         .w(px(560.))
         .icon(IconName::Folder)
         .title("No Projects Yet")
         .description("You haven't created any projects yet. Get started by creating your first project.")
-        .child(row().child(Button::new("create").label("Create Project")).child(Button::new("import").outline().label("Import Project")))
+        .child(
+            col()
+                .items_center()
+                .child(row().flex_nowrap().child(Button::new("create").label("Create Project")).child(Button::new("import").outline().label("Import Project")))
+                .child(
+                    Button::new("learn-more")
+                        .link()
+                        .size(ButtonSize::Sm)
+                        .icon_end(IconName::ArrowUpRight)
+                        .label("Learn More")
+                        .text_color(cx.theme().muted_foreground),
+                ),
+        )
         .into_any_element()
 }
 
@@ -852,9 +874,11 @@ fn field(_: &mut Window, _: &mut App) -> AnyElement {
                                 .child(Field::new().flex_1().min_w_0().label("CVV").child(Input::new("field-cvv").placeholder("123"))),
                         )
                         .child(FieldSeparator::new())
-                        .child(Field::new().horizontal().label("Same as shipping address").child(Checkbox::new("field-same").default_checked(true))),
+                        .child(Field::new().horizontal().label("Same as shipping address").child(Checkbox::new("field-same").default_checked(true)))
+                        .child(Field::new().label("Comments").child(Textarea::new("field-comments").placeholder("Add any additional comments"))),
                 ),
         )
+        .child(row().mt_6().child(Button::new("field-submit").label("Submit")).child(Button::new("field-cancel").outline().label("Cancel")))
         .into_any_element()
 }
 
@@ -892,7 +916,7 @@ fn hover_card(_: &mut Window, cx: &mut App) -> AnyElement {
                 .items_start()
                 .gap_4()
                 .flex_nowrap()
-                .child(Avatar::new().fallback("VC"))
+                .child(Avatar::new().src(avatar_image(2)).fallback("VC"))
                 .child(
                     col()
                         .flex_1()
@@ -978,7 +1002,7 @@ fn item(_: &mut Window, _: &mut App) -> AnyElement {
         .child(
             ItemGroup::new()
                 .separated()
-                .child(Item::new("shadcn").media(Avatar::new().fallback("S")).title("shadcn").description("shadcn@vercel.com"))
+                .child(Item::new("shadcn").media(Avatar::new().src(avatar_image(0)).fallback("S")).title("shadcn").description("shadcn@vercel.com"))
                 .child(Item::new("maxleiter").media(Avatar::new().fallback("M")).title("maxleiter").description("maxleiter@vercel.com")),
         )
         .into_any_element()
@@ -1315,7 +1339,7 @@ fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
         .child(Icon::new(IconName::Terminal))
         .into_any_element();
     let header = sidebar_block(logo, "Acme Inc.", "Enterprise", cx);
-    let user = Avatar::new().fallback("CN").size_8().rounded(theme.radius_lg()).into_any_element();
+    let user = Avatar::new().src(avatar_image(1)).fallback("CN").size_8().rounded(theme.radius_lg()).into_any_element();
     let footer = sidebar_block(user, "shadcn", "m@example.com", cx);
     div()
         .flex()
@@ -1543,7 +1567,7 @@ fn tooltip(_: &mut Window, _: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-fn typography(_: &mut Window, _: &mut App) -> AnyElement {
+fn typography(_: &mut Window, cx: &mut App) -> AnyElement {
     col()
         .w(px(640.))
         .child(h1("Taxing Laughter: The Joke Tax Chronicles").text_center())
@@ -1553,6 +1577,20 @@ fn typography(_: &mut Window, _: &mut App) -> AnyElement {
         .child(blockquote("\"After all,\" he said, \"everyone enjoys a good joke, so it's only fair that they should pay for the privilege.\""))
         .child(h3("The Joke Tax"))
         .child(List::new().item("1st level of puns: 5 gold coins").item("2nd level of jokes: 10 gold coins").item("3rd level of one-liners: 20 gold coins"))
+        .child(h3("The People of the Kingdom"))
+        .child(
+            Table::new()
+                .header(TableHeader::new().row(TableRow::new().child(TableHead::new("King's Treasury")).child(TableHead::new("People's happiness"))))
+                .body(
+                    TableBody::new()
+                        .row(TableRow::new().child(TableCell::new().child("Empty")).child(TableCell::new().child("Overflowing")))
+                        .row(TableRow::new().child(TableCell::new().child("Modest")).child(TableCell::new().child("Satisfied")))
+                        .row(TableRow::new().child(TableCell::new().child("Full")).child(TableCell::new().child("Ecstatic"))),
+                )
+                .rounded_md()
+                .border_1()
+                .border_color(cx.theme().border),
+        )
         .child(h4("People stopped telling jokes"))
         .child(row().gap_1().child(p("Run")).child(inline_code("gpuicn add typography")).child(p("to get these styles.")))
         .child(large("Are you absolutely sure?"))

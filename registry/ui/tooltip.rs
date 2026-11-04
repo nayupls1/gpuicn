@@ -122,7 +122,7 @@ impl RenderOnce for Tooltip {
             .mode(PopoverTrigger::Hover { open_delay_ms: self.delay_ms, close_delay_ms: 0 })
             .side(self.side)
             .align(self.align)
-            .side_offset(px(2.))
+            .side_offset(px(4.))
             .content(move |_, cx| {
                 let color = cx.theme().primary;
                 let bubble = bubble(content.clone(), &style, cx);

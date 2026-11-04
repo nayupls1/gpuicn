@@ -208,7 +208,7 @@ impl RenderOnce for Form {
             .gap_6()
             .refine_style(&self.style)
             .children(rows)
-            .child(div().child(Button::new("form-submit").label(self.submit_label).on_click(move |_, window, cx| {
+            .child(div().flex().child(Button::new("form-submit").label(self.submit_label).on_click(move |_, window, cx| {
                 let mut values = FormValues::new();
                 let mut errors = HashMap::new();
                 for (name, input, validators) in &inputs {

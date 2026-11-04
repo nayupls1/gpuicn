@@ -98,6 +98,7 @@ impl CardTitle {
 impl RenderOnce for CardTitle {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         div()
+            .text_base()
             .line_height(relative(1.))
             .font_weight(FontWeight::SEMIBOLD)
             .refine_style(&self.style)
