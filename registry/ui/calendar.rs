@@ -383,10 +383,6 @@ impl RenderOnce for Calendar {
                             el = if range_start { el.rounded_r(px(0.)) } else { el.rounded_l(px(0.)) };
                         }
                     }
-                    // Outside days that fall inside a range keep the band going.
-                    if outside && in_range && mode == CalendarMode::Range {
-                        el = el.rounded_none().bg(theme.accent);
-                    }
                     el.when(is_disabled, |this| this.opacity(0.5))
                         .when(!is_disabled && !outside, |this| {
                             this.cursor_pointer()

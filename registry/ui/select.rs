@@ -18,7 +18,7 @@ use std::rc::Rc;
 use super::icon::{Icon, IconName};
 use super::popover::{outer_layout, Popover, PopoverHandle};
 use super::theme::ActiveTheme;
-use super::utils::{Align, StyledExt, focus_ring, invalid_ring, is_focus_visible, pointer_pressed, use_tab_stop};
+use super::utils::{Align, StyledExt, focus_ring, invalid_ring, is_focus_visible, keyboard_focus_mode as keyboard_opened, pointer_pressed, use_tab_stop};
 
 #[derive(Clone)]
 pub struct SelectItem {
@@ -328,7 +328,7 @@ impl RenderOnce for Select {
         // While the list is open the trigger keeps its focus styling.
         let open_state = window.use_keyed_state(ElementId::Name(format!("{}-open", self.id).into()), cx, |_, _| false);
         let open = *open_state.read(cx);
-        let focus_visible = is_focus_visible(&focus, window, cx) || open;
+        let focus_visible = is_focus_visible(&focus, window, cx) || (open && keyboard_opened(cx));
         let theme = cx.theme();
         let (disabled, invalid) = (self.disabled, self.invalid);
 

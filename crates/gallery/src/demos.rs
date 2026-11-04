@@ -70,6 +70,7 @@ use crate::ui::{
 type Demo = fn(&mut Window, &mut App) -> AnyElement;
 
 pub const DEMOS: &[(&str, Demo)] = &[
+    ("Overview", overview),
     ("Accordion", accordion),
     ("Alert", alert),
     ("Alert Dialog", alert_dialog),
@@ -134,6 +135,7 @@ pub const DEMOS: &[(&str, Demo)] = &[
 /// One-line summary shown under each page title (from the shadcn docs).
 pub fn description(name: &str) -> &'static str {
     match name {
+        "Overview" => "Many components working together, in the spirit of the examples on ui.shadcn.com.",
         "Accordion" => "A vertically stacked set of interactive headings that each reveal a section of content.",
         "Alert" => "Displays a callout for user attention.",
         "Alert Dialog" => "A modal dialog that interrupts the user with important content and expects a response.",
@@ -209,6 +211,188 @@ fn avatar_image(n: usize) -> gpui::ImageSource {
 
 /// A horizontal row. It doesn't wrap: taffy can measure a wrapping row at a
 /// different width than it finally gets, which leaves stray space in cards.
+/// A dashboard-style composition of many components (the examples on the
+/// shadcn homepage).
+fn overview(_: &mut Window, cx: &mut App) -> AnyElement {
+    let theme = cx.theme().clone();
+    let muted = theme.muted_foreground;
+
+    let create_account = Card::new()
+        .child(
+            CardHeader::new()
+                .child(CardTitle::new("Create an account").text_2xl().line_height(px(28.)))
+                .child(CardDescription::new("Enter your email below to create your account")),
+        )
+        .child(
+            CardContent::new().child(
+                col()
+                    .child(
+                        div()
+                            .grid()
+                            .grid_cols(2)
+                            .gap_4()
+                            .child(Button::new("ov-sso").outline().icon(IconName::User).label("SSO").w_full())
+                            .child(Button::new("ov-mail").outline().icon(IconName::Mail).label("Magic link").w_full()),
+                    )
+                    .child(
+                        row()
+                            .gap_3()
+                            .child(Separator::horizontal().flex_1())
+                            .child(div().text_xs().line_height(px(16.)).text_color(muted).child("OR CONTINUE WITH"))
+                            .child(Separator::horizontal().flex_1()),
+                    )
+                    .child(Field::new().label("Email").child(Input::new("ov-email").placeholder("m@example.com")))
+                    .child(Field::new().label("Password").child(Input::new("ov-password").masked(true))),
+            ),
+        )
+        .child(CardFooter::new().child(Button::new("ov-create").label("Create account").w_full()));
+
+    let setting = |id: &'static str, title: &'static str, description: &'static str, on: bool| {
+        row()
+            .justify_between()
+            .gap_4()
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .flex_1()
+                    .min_w_0()
+                    .child(Label::new(title))
+                    .child(div().text_sm().line_height(px(20.)).text_color(muted).child(description)),
+            )
+            .child(Switch::new(id).default_checked(on))
+    };
+    let cookies = Card::new()
+        .child(CardHeader::new().child(CardTitle::new("Cookie Settings")).child(CardDescription::new("Manage your cookie settings here.")))
+        .child(
+            CardContent::new().child(
+                col()
+                    .gap_5()
+                    .child(setting("ov-necessary", "Strictly Necessary", "These cookies are essential to use the app.", true))
+                    .child(setting("ov-functional", "Functional Cookies", "These cookies remember your preferences.", false))
+                    .child(setting("ov-performance", "Performance Cookies", "These help us improve the experience.", true)),
+            ),
+        )
+        .child(CardFooter::new().child(Button::new("ov-save").outline().label("Save preferences").w_full()));
+
+    let revenue = Card::new()
+        .child(
+            CardHeader::new()
+                .child(CardDescription::new("Total Revenue"))
+                .child(CardTitle::new("$15,231.89").text_2xl().line_height(px(32.)))
+                .child(
+                    row()
+                        .gap_1p5()
+                        .child(Badge::new("+20.1%").outline().icon(IconName::ArrowUpRight))
+                        .child(div().text_xs().line_height(px(16.)).text_color(muted).child("from last month")),
+                )
+                .action(Button::new("ov-revenue-more").ghost().size(ButtonSize::IconSm).icon(IconName::Ellipsis)),
+        )
+        .child(
+            CardContent::new().child(
+                LineChart::new("ov-revenue")
+                    .w(px(230.))
+                    .labels(["Jan", "Feb", "Mar", "Apr", "May", "Jun"])
+                    .series(ChartSeries::new("Revenue").data([10_400., 14_405., 9_400., 8_200., 12_800., 15_231.]))
+                    .height(px(110.))
+                    .legend(false)
+                    .dots(true),
+            ),
+        );
+
+    let member = |n: usize, name: &'static str, email: &'static str, role: &'static str| {
+        row()
+            .gap_3()
+            .child(Avatar::new().src(avatar_image(n)).fallback(&name[..1]))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_w_0()
+                    .child(div().truncate().text_sm().line_height(px(20.)).font_weight(gpui::FontWeight::MEDIUM).child(name))
+                    .child(div().truncate().text_sm().line_height(px(20.)).text_color(muted).child(email)),
+            )
+            .child(Button::new(SharedString::from(format!("ov-role-{n}"))).outline().size(ButtonSize::Sm).label(role))
+    };
+    let team = Card::new()
+        .child(CardHeader::new().child(CardTitle::new("Team Members")).child(CardDescription::new("Invite your team members to collaborate.")))
+        .child(
+            CardContent::new().child(
+                col()
+                    .gap_5()
+                    .child(member(0, "Sofia Davis", "m@acme.co", "Owner"))
+                    .child(member(1, "Jackson Lee", "p@acme.co", "Member"))
+                    .child(member(2, "Isabella Nguyen", "i@acme.co", "Member")),
+            ),
+        );
+
+    let today = Date::today();
+    let calendar = Card::new()
+        .py_0()
+        .items_center()
+        .child(Calendar::new("ov-calendar").bg(theme.card).default_selection(CalendarSelection::Single(Some(today.add_days(3)))));
+
+    let report = Card::new()
+        .child(CardHeader::new().child(CardTitle::new("Report an issue")).child(CardDescription::new("What area are you having problems with?")))
+        .child(
+            CardContent::new().child(
+                col()
+                    .w(px(230.))
+                    .child(
+                        div()
+                            .grid()
+                            .grid_cols(2)
+                            .gap_4()
+                            .child(
+                                Field::new().label("Area").child(
+                                    Select::new("ov-area")
+                                        .w_full()
+                                        .default_value("billing")
+                                        .item(SelectItem::new("team", "Team"))
+                                        .item(SelectItem::new("billing", "Billing"))
+                                        .item(SelectItem::new("account", "Account")),
+                                ),
+                            )
+                            .child(
+                                Field::new().label("Severity").child(
+                                    Select::new("ov-severity")
+                                        .w_full()
+                                        .default_value("2")
+                                        .item(SelectItem::new("1", "Severity 1"))
+                                        .item(SelectItem::new("2", "Severity 2"))
+                                        .item(SelectItem::new("3", "Severity 3")),
+                                ),
+                            ),
+                    )
+                    .child(Field::new().w_full().label("Subject").child(Input::new("ov-subject").w_full().placeholder("I need help with...")))
+                    .child(
+                        Field::new()
+                            .w_full()
+                            .label("Description")
+                            .child(Textarea::new("ov-description").w_full().placeholder("Please include all information relevant to your issue.")),
+                    ),
+            ),
+        )
+        .child(
+            CardFooter::new()
+                .justify_between()
+                .child(Button::new("ov-cancel").ghost().label("Cancel"))
+                .child(Button::new("ov-submit").label("Submit")),
+        );
+
+    div()
+        .w(px(872.))
+        .flex()
+        .gap_4()
+        .items_start()
+        .child(col().w(px(280.)).flex_none().child(create_account).child(cookies))
+        .child(col().w(px(280.)).flex_none().child(revenue).child(team))
+        .child(col().w(px(280.)).flex_none().child(calendar).child(report))
+        .into_any_element()
+}
+
 fn row() -> gpui::Div {
     div().flex().items_center().gap_2()
 }
@@ -405,7 +589,7 @@ fn calendar(_: &mut Window, cx: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-fn card(_: &mut Window, _: &mut App) -> AnyElement {
+fn card(_: &mut Window, cx: &mut App) -> AnyElement {
     Card::new()
         .w(px(380.))
         .child(
@@ -427,7 +611,15 @@ fn card(_: &mut Window, _: &mut App) -> AnyElement {
                                     .flex_nowrap()
                                     .justify_between()
                                     .child(Label::new("Password"))
-                                    .child(Button::new("forgot").link().h_auto().p_0().font_weight(gpui::FontWeight::NORMAL).label("Forgot your password?")),
+                                    .child(
+                                        Button::new("forgot")
+                                            .link()
+                                            .h(px(14.))
+                                            .p_0()
+                                            .font_weight(gpui::FontWeight::NORMAL)
+                                            .text_color(cx.theme().foreground)
+                                            .label("Forgot your password?"),
+                                    ),
                             )
                             .child(Input::new("card-password").masked(true)),
                     ),
@@ -447,10 +639,11 @@ fn carousel(_: &mut Window, _: &mut App) -> AnyElement {
         .px_12()
         .child(
             Carousel::new("carousel").w(px(320.)).items((1..=5).map(|n| {
-                Card::new().child(
+                // `p-1` around each slide keeps the card's shadow and corners visible.
+                div().p_1().child(Card::new().child(
                     CardContent::new()
                         .flex()
-                        .h(px(256.))
+                        .h(px(248.))
                         .items_center()
                         .justify_center()
                         .text_size(px(36.))
@@ -458,7 +651,7 @@ fn carousel(_: &mut Window, _: &mut App) -> AnyElement {
                         .font_weight(gpui::FontWeight::SEMIBOLD)
                         .child(n.to_string()),
                 )
-            })),
+            )})),
         )
         .into_any_element()
 }
@@ -568,6 +761,7 @@ fn frameworks() -> [(&'static str, &'static str); 5] {
 
 fn combobox(_: &mut Window, _: &mut App) -> AnyElement {
     let mut combobox = Combobox::new("framework")
+        .default_value("next.js")
         .placeholder("Select framework...")
         .search_placeholder("Search framework...")
         .empty("No framework found.");
@@ -1041,6 +1235,17 @@ fn menubar(_: &mut Window, _: &mut App) -> AnyElement {
                 .item(MenuItem::new("Undo").shortcut("⌘Z"))
                 .item(MenuItem::new("Redo").shortcut("⇧⌘Z"))
                 .separator()
+                .submenu(
+                    "Find",
+                    vec![
+                        MenuItem::new("Search the web").into(),
+                        crate::ui::dropdown_menu::MenuEntry::Separator,
+                        MenuItem::new("Find...").into(),
+                        MenuItem::new("Find Next").into(),
+                        MenuItem::new("Find Previous").into(),
+                    ],
+                )
+                .separator()
                 .item(MenuItem::new("Cut"))
                 .item(MenuItem::new("Copy"))
                 .item(MenuItem::new("Paste")),
@@ -1092,7 +1297,7 @@ fn navigation_menu(_: &mut Window, _: &mut App) -> AnyElement {
                 .rounded(theme.radius_md())
                 .bg(gpui::linear_gradient(
                     180.,
-                    gpui::linear_color_stop(theme.muted.opacity(0.5), 0.),
+                    gpui::linear_color_stop(theme.muted.opacity(0.15), 0.),
                     gpui::linear_color_stop(theme.muted, 1.),
                 ))
                 .child(Icon::new(IconName::Terminal).size_6())
@@ -1116,7 +1321,7 @@ fn navigation_menu(_: &mut Window, _: &mut App) -> AnyElement {
                         .gap_1()
                         .child(NavigationMenuLink::new("Introduction").description("Re-usable components you copy into your app."))
                         .child(NavigationMenuLink::new("Installation").description("How to install dependencies and structure your app."))
-                        .child(NavigationMenuLink::new("Typography").description("Styles for headings, paragraphs, lists...etc")),
+                        .child(NavigationMenuLink::new("Typography").description("Styles for headings, lists and more.")),
                 )
         }))
         .item(NavigationMenuItem::new("Components").content(|_, _| {
@@ -1206,6 +1411,7 @@ fn resizable(_: &mut Window, cx: &mut App) -> AnyElement {
                 .panel(ResizablePanel::new(
                     ResizablePanelGroup::new("resizable-nested")
                         .vertical()
+                        .with_handle()
                         .panel(ResizablePanel::new(cell("Two")).default_size(25.))
                         .panel(ResizablePanel::new(cell("Three")).default_size(75.)),
                 )
@@ -1383,7 +1589,7 @@ fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
                     .child(Separator::vertical().h_4())
                     .child(Breadcrumb::new().item(BreadcrumbItem::new("Building Your Application")).item(BreadcrumbItem::new("Data Fetching").current())),
             )
-            .child(div().p_4().flex().flex_col().gap_4().child(Skeleton::new().h_24().w_full().rounded_xl()).child(Skeleton::new().h_40().w_full().rounded_xl())),
+            .child(div().p_4().flex().flex_col().gap_4().child(div().h_24().w_full().rounded_xl().bg(theme.muted.opacity(0.5))).child(div().h_40().w_full().rounded_xl().bg(theme.muted.opacity(0.5)))),
         )
         .into_any_element()
 }

@@ -50,6 +50,11 @@ pub fn is_focus_visible(handle: &FocusHandle, window: &Window, cx: &App) -> bool
     handle.is_focused(window) && cx.try_global::<KeyboardFocus>().is_some_and(|k| k.0)
 }
 
+/// Whether focus is currently being driven by the keyboard.
+pub fn keyboard_focus_mode(cx: &App) -> bool {
+    cx.try_global::<KeyboardFocus>().is_some_and(|k| k.0)
+}
+
 /// Forget keyboard focus mode (call on pointer presses).
 pub fn pointer_pressed(cx: &mut App) {
     if cx.try_global::<KeyboardFocus>().is_some_and(|k| k.0) {
