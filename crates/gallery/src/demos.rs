@@ -207,8 +207,10 @@ fn avatar_image(n: usize) -> gpui::ImageSource {
     gpui::ImageSource::Image(std::sync::Arc::new(gpui::Image::from_bytes(gpui::ImageFormat::Png, bytes.to_vec())))
 }
 
+/// A horizontal row. It doesn't wrap: taffy can measure a wrapping row at a
+/// different width than it finally gets, which leaves stray space in cards.
 fn row() -> gpui::Div {
-    div().flex().flex_wrap().items_center().gap_2()
+    div().flex().items_center().gap_2()
 }
 
 fn col() -> gpui::Div {
@@ -280,7 +282,7 @@ fn avatar(_: &mut Window, cx: &mut App) -> AnyElement {
         .gap_4()
         .child(Avatar::new().src(avatar_image(0)).fallback("CN"))
         .child(Avatar::new().src(avatar_image(1)).fallback("ER").rounded_lg())
-        .child(Avatar::new().fallback("LR").size_12().text_base())
+        .child(Avatar::new().fallback("LR"))
         .child({
             // Avatar group: overlapping, each ringed with the page background.
             let theme = cx.theme();
@@ -451,7 +453,8 @@ fn carousel(_: &mut Window, _: &mut App) -> AnyElement {
                         .h(px(256.))
                         .items_center()
                         .justify_center()
-                        .text_3xl()
+                        .text_size(px(36.))
+                        .line_height(px(40.))
                         .font_weight(gpui::FontWeight::SEMIBOLD)
                         .child(n.to_string()),
                 )
@@ -613,7 +616,7 @@ fn context_menu(_: &mut Window, cx: &mut App) -> AnyElement {
                 .items_center()
                 .justify_center()
                 .rounded_md()
-                .border_1()
+                .border(px(1.5))
                 .border_dashed()
                 .border_color(dashed)
                 .text_sm()
@@ -1526,11 +1529,21 @@ fn toast_demo(_: &mut Window, _: &mut App) -> AnyElement {
 }
 
 fn toggle(_: &mut Window, _: &mut App) -> AnyElement {
-    row()
-        .child(Toggle::new("bold").icon(IconName::Bold))
-        .child(Toggle::new("italic").outline().icon(IconName::Italic))
-        .child(Toggle::new("underline").icon(IconName::Underline).label("Underline"))
-        .child(Toggle::new("bookmark").outline().default_pressed(true).icon(IconName::Star).label("Bookmark"))
+    col()
+        .items_center()
+        // Default variant: off, then on.
+        .child(
+            row()
+                .child(Toggle::new("bold").icon(IconName::Bold))
+                .child(Toggle::new("italic").default_pressed(true).icon(IconName::Italic))
+                .child(Toggle::new("underline").icon(IconName::Underline).label("Underline")),
+        )
+        // Outline variant: off, then on.
+        .child(
+            row()
+                .child(Toggle::new("bookmark").outline().icon(IconName::Star).label("Bookmark"))
+                .child(Toggle::new("heart").outline().default_pressed(true).icon(IconName::Heart).label("Favorite")),
+        )
         .into_any_element()
 }
 
@@ -1592,7 +1605,7 @@ fn typography(_: &mut Window, cx: &mut App) -> AnyElement {
                 .border_color(cx.theme().border),
         )
         .child(h4("People stopped telling jokes"))
-        .child(row().gap_1().child(p("Run")).child(inline_code("gpuicn add typography")).child(p("to get these styles.")))
+        .child(row().flex_nowrap().gap_1().child(p("Run")).child(inline_code("gpuicn add typography")).child(p("to get these styles.")))
         .child(large("Are you absolutely sure?"))
         .child(small("Email address"))
         .child(muted("Enter your email address."))

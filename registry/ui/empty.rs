@@ -101,7 +101,7 @@ impl RenderOnce for Empty {
             .rounded(theme.radius_lg())
             // gpui dashes 1px borders 2px-on/1px-off, which reads as faint
             // dots in the `border` color; use a stronger tone.
-            .when(self.outline, |this| this.border_1().border_dashed().border_color(theme.muted_foreground.opacity(0.45)))
+            .when(self.outline, |this| this.border(px(1.5)).border_dashed().border_color(theme.muted_foreground.opacity(0.4)))
             .refine_style(&self.style)
             .child(
                 div()

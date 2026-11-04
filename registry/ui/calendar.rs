@@ -385,7 +385,7 @@ impl RenderOnce for Calendar {
                     }
                     // Outside days that fall inside a range keep the band going.
                     if outside && in_range && mode == CalendarMode::Range {
-                        el = el.rounded_none().bg(theme.accent.opacity(0.6));
+                        el = el.rounded_none().bg(theme.accent);
                     }
                     el.when(is_disabled, |this| this.opacity(0.5))
                         .when(!is_disabled && !outside, |this| {

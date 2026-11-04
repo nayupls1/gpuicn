@@ -562,6 +562,7 @@ impl RenderOnce for PieChart {
                     point(center.x + radius * angle.sin() as f32, center.y - radius * angle.cos() as f32)
                 };
                 let mut start = 0f64;
+                let mut boundaries = Vec::new();
                 for (ix, value) in values.iter().enumerate() {
                     let sweep = value / total * std::f64::consts::TAU;
                     if sweep <= 0. {
@@ -585,14 +586,20 @@ impl RenderOnce for PieChart {
                     if let Ok(path) = builder.build() {
                         window.paint_path(path, paint_colors[ix]);
                     }
-                    // Thin separators between slices.
-                    let mut sep = PathBuilder::stroke(px(1.));
-                    sep.move_to(at(ri, start));
-                    sep.line_to(at(r, start));
-                    if let Ok(path) = sep.build() {
-                        window.paint_path(path, background);
-                    }
+                    boundaries.push(start);
                     start += sweep;
+                }
+                // Separators go on top of every slice (Recharts' background
+                // stroke), so each boundary looks the same.
+                if boundaries.len() > 1 {
+                    for angle in boundaries {
+                        let mut sep = PathBuilder::stroke(px(2.));
+                        sep.move_to(at(ri.max(px(0.)), angle));
+                        sep.line_to(at(r + px(1.), angle));
+                        if let Ok(path) = sep.build() {
+                            window.paint_path(path, background);
+                        }
+                    }
                 }
             },
         )

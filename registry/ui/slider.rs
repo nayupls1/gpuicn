@@ -18,6 +18,8 @@ struct SliderState {
     values: Vec<f32>,
     track: Bounds<Pixels>,
     active_thumb: usize,
+    /// A thumb is held down (pressed or being dragged).
+    pressed: bool,
 }
 
 /// Drag payload identifying which slider is being dragged.
@@ -104,6 +106,7 @@ impl RenderOnce for Slider {
             values: default,
             track: Bounds::default(),
             active_thumb: 0,
+            pressed: false,
         });
         if let Some(value) = &self.value {
             state.update(cx, |s, _| s.values = value.clone());
@@ -188,11 +191,14 @@ impl RenderOnce for Slider {
                     .size_full()
             });
 
-        let (dragging_any, active_thumb) = (cx.has_active_drag(), state.read(cx).active_thumb);
+        let (pressed, active_thumb) = {
+            let s = state.read(cx);
+            (s.pressed || cx.has_active_drag(), s.active_thumb)
+        };
         let thumbs = values.iter().enumerate().map(|(ix, value)| {
             let f = fraction(*value);
             // Keep the `ring-4` while this thumb is being dragged.
-            let dragging = dragging_any && active_thumb == ix;
+            let dragging = pressed && active_thumb == ix;
             let entity_id = state.entity_id();
             let pick = state.clone();
             div()
@@ -217,7 +223,11 @@ impl RenderOnce for Slider {
                         .hover(|s| s.shadow(vec![ring_shadow(theme.ring.opacity(0.5), px(4.))]))
                         .on_mouse_down(MouseButton::Left, move |_, _, cx| {
                             cx.stop_propagation();
-                            pick.update(cx, |s, _| s.active_thumb = ix);
+                            pick.update(cx, |s, cx| {
+                                s.active_thumb = ix;
+                                s.pressed = true;
+                                cx.notify();
+                            });
                         })
                         .on_drag(SliderDrag(entity_id), |_, _, _, cx| cx.new(|_| InvisibleDrag))
                 })
@@ -240,6 +250,22 @@ impl RenderOnce for Slider {
                 this.on_mouse_down(MouseButton::Left, move |event: &gpui::MouseDownEvent, window: &mut Window, cx: &mut App| {
                     click_set(event.position, true, window, cx)
                 })
+                    .on_mouse_up(MouseButton::Left, {
+                        let state = state.clone();
+                        move |_, _, cx| state.update(cx, |s, cx| {
+                            s.pressed = false;
+                            cx.notify();
+                        })
+                    })
+                    .on_mouse_up_out(MouseButton::Left, {
+                        let state = state.clone();
+                        move |_, _, cx| state.update(cx, |s, cx| {
+                            if s.pressed {
+                                s.pressed = false;
+                                cx.notify();
+                            }
+                        })
+                    })
                     .on_drag_move(move |event: &gpui::DragMoveEvent<SliderDrag>, window: &mut Window, cx: &mut App| {
                         if event.drag(cx).0 == entity_id {
                             drag_set(event.event.position, false, window, cx);

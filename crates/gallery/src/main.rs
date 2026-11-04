@@ -137,18 +137,11 @@ impl Render for Gallery {
                     .text_color(theme.muted_foreground)
                     .child(demos::description(name)),
             );
-        // Pages whose main feature is a floating panel anchor the trigger near
-        // the top so the open menu fits inside the preview frame.
-        let floating = matches!(
-            name,
-            "Combobox" | "Context Menu" | "Date Picker" | "Dropdown Menu" | "Hover Card" | "Menubar"
-                | "Navigation Menu" | "Popover" | "Select"
-        );
         let preview = div()
             .flex()
             .flex_none()
-            .min_h(px(if floating { 520. } else { 440. }))
-            .map(|this| if floating { this.items_start().pt_16() } else { this.items_center() })
+            .min_h(px(440.))
+            .items_center()
             .justify_center()
             .p_10()
             .rounded(theme.radius_xl())
@@ -203,43 +196,39 @@ fn customizer() -> impl IntoElement {
                 div().text_xs().line_height(rems(1.)).font_weight(FontWeight::MEDIUM).text_color(muted).child(title)
             };
             let grid = || div().grid().grid_cols(3).gap_2();
+            // One selected treatment for every group: primary border + tint.
+            let primary = theme.primary;
+            let mark = move |button: Button, selected: bool| {
+                button.when(selected, |this| this.border_color(primary).bg(primary.opacity(0.08)))
+            };
 
             let accents = AccentColor::ALL.map(|a| {
                 let swatch = ThemeColors::build(mode, base, a).primary;
-                Button::new(SharedString::from(format!("accent-{}", a.name())))
-                    .outline()
+                mark(Button::new(SharedString::from(format!("accent-{}", a.name()))).outline(), a == accent)
                     .size(ButtonSize::Sm)
                     .justify_start()
-                    .selected(a == accent)
-                    .when(a == accent, |this| this.border_color(swatch))
                     .child(div().size_3p5().flex_none().rounded_full().bg(swatch))
                     .child(a.name())
                     .on_click(move |_, _, cx| Theme::set_accent(a, cx))
             });
             let bases = BaseColor::ALL.map(|b| {
                 let swatch = ThemeColors::build(ThemeMode::Light, b, AccentColor::Default).muted_foreground;
-                Button::new(SharedString::from(format!("base-{}", b.name())))
-                    .outline()
+                mark(Button::new(SharedString::from(format!("base-{}", b.name()))).outline(), b == base)
                     .size(ButtonSize::Sm)
                     .justify_start()
-                    .selected(b == base)
                     .child(div().size_3p5().flex_none().rounded_full().bg(swatch))
                     .child(b.name())
                     .on_click(move |_, _, cx| Theme::set_base(b, cx))
             });
             let radii = [("0", 0.), ("0.3", 4.8), ("0.5", 8.), ("0.625", 10.), ("0.75", 12.), ("1.0", 16.)].map(|(label, value)| {
-                Button::new(SharedString::from(format!("radius-{label}")))
-                    .outline()
+                mark(Button::new(SharedString::from(format!("radius-{label}"))).outline(), radius == px(value))
                     .size(ButtonSize::Sm)
-                    .selected(radius == px(value))
                     .label(label)
                     .on_click(move |_, _, cx| Theme::set_radius(px(value), cx))
             });
             let modes = [(ThemeMode::Light, "Light", IconName::Sun), (ThemeMode::Dark, "Dark", IconName::Moon)].map(|(m, label, icon)| {
-                Button::new(SharedString::from(format!("mode-{label}")))
-                    .outline()
+                mark(Button::new(SharedString::from(format!("mode-{label}"))).outline(), m == mode)
                     .size(ButtonSize::Sm)
-                    .selected(m == mode)
                     .icon(icon)
                     .label(label)
                     .on_click(move |_, _, cx| Theme::change(m, cx))

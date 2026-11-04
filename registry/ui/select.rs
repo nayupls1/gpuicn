@@ -325,7 +325,10 @@ impl RenderOnce for Select {
             self.groups.iter().flat_map(|g| &g.items).find(|i| &i.value == value).map(|i| i.label.clone())
         });
         let focus = use_tab_stop(ElementId::Name(format!("{}-focus", self.id).into()), window, cx);
-        let focus_visible = is_focus_visible(&focus, window, cx);
+        // While the list is open the trigger keeps its focus styling.
+        let open_state = window.use_keyed_state(ElementId::Name(format!("{}-open", self.id).into()), cx, |_, _| false);
+        let open = *open_state.read(cx);
+        let focus_visible = is_focus_visible(&focus, window, cx) || open;
         let theme = cx.theme();
         let (disabled, invalid) = (self.disabled, self.invalid);
 
@@ -334,7 +337,7 @@ impl RenderOnce for Select {
             .when(!disabled, |this| {
                 this.track_focus(&focus).on_mouse_down(gpui::MouseButton::Left, |_, _, cx| pointer_pressed(cx))
             })
-            .when(focus_visible, |this| this.border_color(theme.ring).child(focus_ring(theme, theme.radius_md())))
+            .when(focus_visible && !invalid, |this| this.border_color(theme.ring).child(focus_ring(theme, theme.radius_md())))
             .flex()
             .items_center()
             .justify_between()
@@ -352,7 +355,7 @@ impl RenderOnce for Select {
             .control_surface(theme)
             .text_sm().line_height(gpui::rems(1.25))
             .whitespace_nowrap()
-            .when(invalid, |this| this.child(invalid_ring(theme, theme.radius_md())))
+            .when(invalid && focus_visible, |this| this.child(invalid_ring(theme, theme.radius_md())))
             .when(disabled, |this| this.opacity(0.5).cursor_not_allowed())
             .when(!disabled, |this| {
                 let hover = if theme.is_dark() { theme.input.opacity(0.5) } else { theme.accent.opacity(0.5) };
@@ -373,6 +376,12 @@ impl RenderOnce for Select {
         let on_change = self.on_change;
         Popover::new(self.id)
             .wrapper_style(outer_layout(&self.style))
+            .on_open_change(move |open, _, cx| {
+                open_state.update(cx, |s, cx| {
+                    *s = *open;
+                    cx.notify();
+                })
+            })
             .unstyled()
             .align(Align::Start)
             .trigger(trigger)

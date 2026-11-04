@@ -108,12 +108,18 @@ impl RenderOnce for Field {
                 .gap_3()
                 .refine_style(&self.style)
                 .children(label)
-                .children(self.children)
-                // Help text and error stay close together (`gap-1.5`), so
-                // validation doesn't make the form jump as much.
-                .when(description.is_some() || error.is_some(), |this| {
-                    this.child(div().flex().flex_col().gap_1p5().children(description).children(error))
-                }),
+                // Help text and errors sit close to their control (`gap-2`)
+                // and to each other, so validation doesn't make the form jump.
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_2()
+                        .children(self.children)
+                        .when(description.is_some() || error.is_some(), |this| {
+                            this.child(div().flex().flex_col().gap_1().children(description).children(error))
+                        }),
+                ),
             Orientation::Horizontal => div()
                 .flex()
                 .items_start()
