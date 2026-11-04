@@ -117,6 +117,7 @@ impl Render for Gallery {
 
         let title = div()
             .flex()
+            .flex_none()
             .flex_col()
             .gap_2()
             .child(
@@ -135,6 +136,7 @@ impl Render for Gallery {
             );
         let preview = div()
             .flex()
+            .flex_none()
             .min_h(px(440.))
             .items_center()
             .justify_center()

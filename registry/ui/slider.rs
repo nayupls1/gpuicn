@@ -188,8 +188,11 @@ impl RenderOnce for Slider {
                     .size_full()
             });
 
+        let (dragging_any, active_thumb) = (cx.has_active_drag(), state.read(cx).active_thumb);
         let thumbs = values.iter().enumerate().map(|(ix, value)| {
             let f = fraction(*value);
+            // Keep the `ring-4` while this thumb is being dragged.
+            let dragging = dragging_any && active_thumb == ix;
             let entity_id = state.entity_id();
             let pick = state.clone();
             div()
@@ -201,6 +204,7 @@ impl RenderOnce for Slider {
                 .border_color(theme.primary)
                 .bg(gpui::white())
                 .when(theme.shadows, |this| this.shadow_sm())
+                .when(dragging && !self.disabled, |this| this.shadow(vec![ring_shadow(theme.ring.opacity(0.5), px(4.))]))
                 .map(|this| {
                     if vertical {
                         this.bottom(relative(f)).mb(px(-8.)).left(px(-5.))

@@ -16,7 +16,7 @@ use super::icon::{Icon, IconName};
 use super::spinner::Spinner;
 use super::tooltip::Tooltip;
 use super::theme::{ActiveTheme, Theme};
-use super::utils::StyledExt;
+use super::utils::{StyledExt, focus_ring, is_focus_visible, pointer_pressed, use_tab_stop};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonVariant {
@@ -223,7 +223,9 @@ impl Styled for Button {
 }
 
 impl RenderOnce for Button {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let focus = use_tab_stop(ElementId::Name(format!("{}-focus", self.id).into()), window, cx);
+        let focus_visible = is_focus_visible(&focus, window, cx);
         let theme = cx.theme();
         let (bg, hover_bg, fg, border) = variant_colors(self.variant, theme);
         let accent_fg = match self.variant {
@@ -246,6 +248,7 @@ impl RenderOnce for Button {
         let tooltip = self.tooltip.clone();
         let base = div()
             .id(self.id)
+            .relative()
             .flex()
             .flex_shrink_0()
             .items_center()
@@ -269,7 +272,10 @@ impl RenderOnce for Button {
             })
             .when(!interactive, |this| this.cursor_default())
             .when(interactive, |this| {
-                this.cursor_pointer().hover(move |style| {
+                this.track_focus(&focus)
+                    .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| pointer_pressed(cx))
+                    .cursor_pointer()
+                    .hover(move |style| {
                     let style = style.bg(hover_bg).text_color(accent_fg);
                     if is_link { style.underline() } else { style }
                 })
@@ -282,6 +288,7 @@ impl RenderOnce for Button {
             .children(self.label)
             .children(self.children)
             .children(self.icon_end)
+            .when(interactive && focus_visible, |this| this.child(focus_ring(theme, radius)))
             .when_some(self.on_click.filter(|_| interactive), |this, handler| {
                 this.on_click(move |event, window, cx| {
                     cx.stop_propagation();

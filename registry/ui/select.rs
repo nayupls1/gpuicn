@@ -18,7 +18,7 @@ use std::rc::Rc;
 use super::icon::{Icon, IconName};
 use super::popover::{outer_layout, Popover, PopoverHandle};
 use super::theme::ActiveTheme;
-use super::utils::{Align, StyledExt, invalid_ring};
+use super::utils::{Align, StyledExt, focus_ring, invalid_ring, is_focus_visible, pointer_pressed, use_tab_stop};
 
 #[derive(Clone)]
 pub struct SelectItem {
@@ -324,11 +324,17 @@ impl RenderOnce for Select {
         let selected_label = selected.as_ref().and_then(|value| {
             self.groups.iter().flat_map(|g| &g.items).find(|i| &i.value == value).map(|i| i.label.clone())
         });
+        let focus = use_tab_stop(ElementId::Name(format!("{}-focus", self.id).into()), window, cx);
+        let focus_visible = is_focus_visible(&focus, window, cx);
         let theme = cx.theme();
         let (disabled, invalid) = (self.disabled, self.invalid);
 
         let trigger = div()
             .id("select-trigger")
+            .when(!disabled, |this| {
+                this.track_focus(&focus).on_mouse_down(gpui::MouseButton::Left, |_, _, cx| pointer_pressed(cx))
+            })
+            .when(focus_visible, |this| this.border_color(theme.ring).child(focus_ring(theme, theme.radius_md())))
             .flex()
             .items_center()
             .justify_between()

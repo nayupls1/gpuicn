@@ -100,11 +100,13 @@ impl RenderOnce for DatePicker {
             .w_auto()
             .p_0()
             .trigger(trigger)
-            .content_with_handle(move |popover, _, _| {
+            .content_with_handle(move |popover, _, cx| {
+                let popover_bg = cx.theme().popover;
                 let popover = popover.clone();
                 let state = state.clone();
                 let on_change = on_change.clone();
                 Calendar::new("date-calendar")
+                    .bg(popover_bg)
                     .mode(mode)
                     .months(months)
                     .selection(selection.clone())

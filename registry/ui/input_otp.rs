@@ -115,7 +115,7 @@ impl RenderOnce for InputOtp {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let state = window.use_keyed_state(self.id.clone(), cx, |_, cx| OtpState {
             value: String::new(),
-            focus_handle: cx.focus_handle(),
+            focus_handle: cx.focus_handle().tab_stop(true),
         });
         if let Some(value) = &self.value {
             state.update(cx, |s, _| {

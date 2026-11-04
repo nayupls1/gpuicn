@@ -368,7 +368,14 @@ impl RenderOnce for Calendar {
                         .when(is_today && !selected, |this| this.bg(theme.accent).text_color(theme.accent_foreground));
                     if selected && !outside {
                         el = if mode == CalendarMode::Range && in_range {
-                            el.rounded_none().bg(theme.accent).text_color(theme.accent_foreground)
+                            // Each week's slice of the band reads as its own pill.
+                            let row_start = weekday == 0 || date.day == 1;
+                            let row_end = weekday == 6 || date.day == Date::days_in_month(date.year, date.month);
+                            el.rounded_none()
+                                .when(row_start, |this| this.rounded_l(radius))
+                                .when(row_end, |this| this.rounded_r(radius))
+                                .bg(theme.accent)
+                                .text_color(theme.accent_foreground)
                         } else {
                             el.bg(theme.primary).text_color(theme.primary_foreground)
                         };

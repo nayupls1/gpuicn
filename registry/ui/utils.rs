@@ -1,9 +1,66 @@
 //! Small helpers shared by every component — the gpui counterpart of
 //! shadcn's `lib/utils.ts`.
 
-use gpui::{BoxShadow, Div, Hsla, Pixels, Refineable, StyleRefinement, Styled, div, point, prelude::*, px};
+use gpui::{
+    App, BoxShadow, Div, ElementId, FocusHandle, Global, Hsla, KeyBinding, Pixels, Refineable, StyleRefinement,
+    Styled, Window, actions, div, point, prelude::*, px,
+};
 
 use super::theme::Theme;
+
+actions!(gpuicn, [FocusNext, FocusPrevious]);
+
+/// Whether focus last moved by keyboard, i.e. whether `focus-visible` rings
+/// should show. Tab sets it; a pointer press on a component clears it.
+#[derive(Default)]
+struct KeyboardFocus(bool);
+
+impl Global for KeyboardFocus {}
+
+/// Bind Tab / Shift-Tab to move focus between tab stops (buttons, inputs,
+/// checkboxes, switches...). Called by `ui::init`.
+pub fn init(cx: &mut App) {
+    cx.set_global(KeyboardFocus(false));
+    cx.bind_keys([KeyBinding::new("tab", FocusNext, None), KeyBinding::new("shift-tab", FocusPrevious, None)]);
+    cx.on_action(|_: &FocusNext, cx| move_focus(cx, true));
+    cx.on_action(|_: &FocusPrevious, cx| move_focus(cx, false));
+}
+
+fn move_focus(cx: &mut App, forward: bool) {
+    cx.set_global(KeyboardFocus(true));
+    // Fall back to the only window when none reports itself active (some
+    // window managers, headless X servers).
+    let window = cx.active_window().or_else(|| match cx.windows().as_slice() {
+        [only] => Some(*only),
+        _ => None,
+    });
+    if let Some(window) = window {
+        // Actions are dispatched while the window is checked out, so update it
+        // once dispatch is done.
+        cx.defer(move |cx| {
+            window
+                .update(cx, |_, window, _| if forward { window.focus_next() } else { window.focus_prev() })
+                .ok();
+        });
+    }
+}
+
+/// `:focus-visible` for `handle`: focused, and focus arrived by keyboard.
+pub fn is_focus_visible(handle: &FocusHandle, window: &Window, cx: &App) -> bool {
+    handle.is_focused(window) && cx.try_global::<KeyboardFocus>().is_some_and(|k| k.0)
+}
+
+/// Forget keyboard focus mode (call on pointer presses).
+pub fn pointer_pressed(cx: &mut App) {
+    if cx.try_global::<KeyboardFocus>().is_some_and(|k| k.0) {
+        cx.set_global(KeyboardFocus(false));
+    }
+}
+
+/// A focus handle that is a tab stop, kept alive across frames under `id`.
+pub fn use_tab_stop(id: impl Into<ElementId>, window: &mut Window, cx: &mut App) -> FocusHandle {
+    window.use_keyed_state(id, cx, |_, cx| cx.focus_handle().tab_stop(true)).read(cx).clone()
+}
 
 /// Extension methods available on every [`Styled`] element.
 pub trait StyledExt: Styled + Sized {

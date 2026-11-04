@@ -206,7 +206,7 @@ fn col() -> gpui::Div {
 }
 
 fn accordion(_: &mut Window, _: &mut App) -> AnyElement {
-    Accordion::new("accordion")
+    let accordion = Accordion::new("accordion")
         .default_value(["item-1"])
         .w(px(480.))
         .item(AccordionItem::new("item-1", "Product Information").content(
@@ -220,7 +220,8 @@ fn accordion(_: &mut Window, _: &mut App) -> AnyElement {
         .item(AccordionItem::new("item-3", "Return Policy").content(
             div().child("We stand behind our products with a comprehensive 30-day return policy."),
         ))
-        .into_any_element()
+        ;
+    div().h(px(260.)).child(accordion).into_any_element()
 }
 
 fn alert(_: &mut Window, _: &mut App) -> AnyElement {
@@ -275,23 +276,30 @@ fn avatar(_: &mut Window, cx: &mut App) -> AnyElement {
             let theme = cx.theme();
             let ring = theme.background;
             div().flex().children(["CN", "LR", "ER"].into_iter().enumerate().map(move |(ix, initials)| {
-                Avatar::new()
-                    .fallback(initials)
-                    .border_2()
-                    .border_color(ring)
-                    .when(ix > 0, |this| this.ml(px(-8.)))
+                // `ring-2 ring-background`, so overlapping avatars stay distinct.
+                div()
+                    .p(px(2.))
+                    .rounded_full()
+                    .bg(ring)
+                    .when(ix > 0, |this| this.ml(px(-10.)))
+                    .child(Avatar::new().fallback(initials))
             }))
         })
         .into_any_element()
 }
 
-fn badge(_: &mut Window, _: &mut App) -> AnyElement {
+fn badge(_: &mut Window, cx: &mut App) -> AnyElement {
     row()
         .child(Badge::new("Badge"))
         .child(Badge::new("Secondary").secondary())
         .child(Badge::new("Destructive").destructive())
         .child(Badge::new("Outline").outline())
-        .child(Badge::new("Verified").secondary().icon(IconName::CircleCheck))
+        .child(
+            Badge::new("Verified")
+                .icon(IconName::CircleCheck)
+                .bg(if cx.theme().is_dark() { gpui::rgb(0x155dfc) } else { gpui::rgb(0x2b7fff) })
+                .text_color(gpui::white()),
+        )
         .child(Badge::new("8").rounded_full().h_5().min_w_5().px_1())
         .child(Badge::new("99").destructive().rounded_full().h_5().min_w_5().px_1())
         .child(Badge::new("20+").outline().rounded_full().h_5().min_w_5().px_1())
@@ -404,6 +412,7 @@ fn card(_: &mut Window, _: &mut App) -> AnyElement {
                             .gap_3()
                             .child(
                                 row()
+                                    .flex_nowrap()
                                     .justify_between()
                                     .child(Label::new("Password"))
                                     .child(Button::new("forgot").link().h_auto().p_0().font_weight(gpui::FontWeight::NORMAL).label("Forgot your password?")),
@@ -429,7 +438,7 @@ fn carousel(_: &mut Window, _: &mut App) -> AnyElement {
                 Card::new().child(
                     CardContent::new()
                         .flex()
-                        .h(px(220.))
+                        .h(px(272.))
                         .items_center()
                         .justify_center()
                         .text_3xl()
@@ -557,11 +566,13 @@ fn combobox(_: &mut Window, _: &mut App) -> AnyElement {
 
 fn command(_: &mut Window, cx: &mut App) -> AnyElement {
     let border = cx.theme().border;
-    Command::new("command")
+    let shadows = cx.theme().shadows;
+    let command = Command::new("command")
         .w(px(450.))
         .rounded_lg()
         .border_1()
         .border_color(border)
+        .when(shadows, |this| this.shadow_md())
         .group(
             CommandGroup::new("Suggestions")
                 .item(CommandItem::new("Calendar").icon(IconName::Calendar))
@@ -576,12 +587,13 @@ fn command(_: &mut Window, cx: &mut App) -> AnyElement {
         )
         .on_select(|value, _, cx| {
             toast(format!("Selected {value}"), cx);
-        })
-        .into_any_element()
+        });
+    // Fixed height, anchored to the top: filtering shouldn't move the input.
+    div().h(px(340.)).child(command).into_any_element()
 }
 
 fn context_menu(_: &mut Window, cx: &mut App) -> AnyElement {
-    let border = cx.theme().border;
+    let dashed = cx.theme().muted_foreground.opacity(0.45);
     ContextMenu::new("context")
         .trigger(
             div()
@@ -593,10 +605,11 @@ fn context_menu(_: &mut Window, cx: &mut App) -> AnyElement {
                 .rounded_md()
                 .border_1()
                 .border_dashed()
-                .border_color(border)
+                .border_color(dashed)
                 .text_sm()
                 .child("Right click here"),
         )
+        .min_w(px(208.))
         .item(MenuItem::new("Back").inset().shortcut("⌘["))
         .item(MenuItem::new("Forward").inset().shortcut("⌘]").disabled(true))
         .item(MenuItem::new("Reload").inset().shortcut("⌘R"))
@@ -712,15 +725,52 @@ fn drawer(_: &mut Window, _: &mut App) -> AnyElement {
         .trigger(Button::new("open").outline().label("Open Drawer"))
         .title("Move Goal")
         .description("Set your daily activity goal.")
-        .content(|_, _, cx| {
-            let muted = cx.theme().muted_foreground;
+        .content(|_, window, cx| {
+            let goal = window.use_keyed_state("drawer-goal", cx, |_, _| 350i32);
+            let value = *goal.read(cx);
+            let theme = cx.theme();
+            let (muted, bar) = (theme.muted_foreground, theme.foreground.opacity(0.9));
+            let step = |id: &'static str, icon: IconName, delta: i32| {
+                let goal = goal.clone();
+                Button::new(id)
+                    .outline()
+                    .size(ButtonSize::IconSm)
+                    .rounded_full()
+                    .icon(icon)
+                    .disabled(if delta < 0 { value <= 200 } else { value >= 400 })
+                    .on_click(move |_, _, cx| goal.update(cx, |g, cx| {
+                        *g = (*g + delta).clamp(200, 400);
+                        cx.notify();
+                    }))
+            };
+            let data = [400, 300, 200, 300, 200, 278, 189, 239, 300, 200, 278, 189, 349];
             div()
                 .flex()
                 .flex_col()
                 .items_center()
-                .py_4()
-                .child(div().text_size(px(72.)).font_weight(gpui::FontWeight::BOLD).child("350"))
-                .child(div().text_xs().text_color(muted).child("CALORIES/DAY"))
+                .gap_6()
+                .pb_2()
+                .child(
+                    row()
+                        .flex_nowrap()
+                        .gap_6()
+                        .child(step("goal-minus", IconName::Minus, -10))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .items_center()
+                                .w(px(160.))
+                                .child(div().text_size(px(72.)).line_height(px(72.)).font_weight(gpui::FontWeight::BOLD).child(value.to_string()))
+                                .child(div().text_xs().line_height(px(16.)).text_color(muted).child("CALORIES/DAY")),
+                        )
+                        .child(step("goal-plus", IconName::Plus, 10)),
+                )
+                .child(
+                    div().flex().items_end().gap_1().h(px(120.)).w(px(320.)).children(
+                        data.map(|v| div().flex_1().h(px(v as f32 * 0.3)).rounded_t(px(4.)).bg(bar)),
+                    ),
+                )
         })
         .footer(|drawer, _, _| {
             let close = drawer.clone();
@@ -742,7 +792,15 @@ fn dropdown_menu(_: &mut Window, _: &mut App) -> AnyElement {
         .item(MenuItem::new("Keyboard shortcuts").shortcut("⌘K"))
         .separator()
         .item(MenuItem::new("Team"))
-        .submenu("Invite users", vec![MenuItem::new("Email").into(), MenuItem::new("Message").into(), MenuItem::new("More...").into()])
+        .submenu(
+            "Invite users",
+            vec![
+                MenuItem::new("Email").into(),
+                MenuItem::new("Message").into(),
+                crate::ui::dropdown_menu::MenuEntry::Separator,
+                MenuItem::new("More...").into(),
+            ],
+        )
         .item(MenuItem::new("New Team").shortcut("⌘+T"))
         .separator()
         .item(MenuItem::new("GitHub"))
@@ -827,6 +885,7 @@ fn form(_: &mut Window, _: &mut App) -> AnyElement {
 fn hover_card(_: &mut Window, cx: &mut App) -> AnyElement {
     let muted = cx.theme().muted_foreground;
     HoverCard::new("hover-card")
+        .w(px(320.))
         .trigger(Button::new("trigger").link().label("@nextjs"))
         .content(move |_, _| {
             row()
@@ -992,16 +1051,46 @@ fn native_select(_: &mut Window, _: &mut App) -> AnyElement {
 
 fn navigation_menu(_: &mut Window, _: &mut App) -> AnyElement {
     NavigationMenu::new("nav")
-        .item(NavigationMenuItem::new("Getting started").content(|_, _| {
+        .item(NavigationMenuItem::new("Getting started").content(|_, cx| {
+            let theme = cx.theme();
+            // The featured tile (`row-span-3` with a gradient) next to three links.
+            let hero = div()
+                .flex()
+                .flex_col()
+                .justify_end()
+                .flex_none()
+                .w(px(190.))
+                .p_4()
+                .gap_2()
+                .rounded(theme.radius_md())
+                .bg(gpui::linear_gradient(
+                    180.,
+                    gpui::linear_color_stop(theme.muted.opacity(0.5), 0.),
+                    gpui::linear_color_stop(theme.muted, 1.),
+                ))
+                .child(Icon::new(IconName::Terminal).size_6())
+                .child(div().text_lg().line_height(px(24.)).font_weight(gpui::FontWeight::MEDIUM).child("gpuicn"))
+                .child(
+                    div()
+                        .text_sm()
+                        .line_height(px(18.))
+                        .text_color(theme.muted_foreground)
+                        .child("Beautifully designed components, copied into your gpui app."),
+                );
             div()
-                .w(px(460.))
-                .grid()
-                .grid_cols(2)
-                .gap_1()
-                .child(NavigationMenuLink::new("Introduction").description("Re-usable components you copy into your gpui app."))
-                .child(NavigationMenuLink::new("Installation").description("How to install dependencies and structure your app."))
-                .child(NavigationMenuLink::new("Typography").description("Styles for headings, paragraphs, lists...etc"))
-                .child(NavigationMenuLink::new("Theming").description("Restyle everything from a single file."))
+                .flex()
+                .gap_2()
+                .w(px(480.))
+                .child(hero)
+                .child(
+                    col()
+                        .flex_1()
+                        .min_w_0()
+                        .gap_1()
+                        .child(NavigationMenuLink::new("Introduction").description("Re-usable components you copy into your app."))
+                        .child(NavigationMenuLink::new("Installation").description("How to install dependencies and structure your app."))
+                        .child(NavigationMenuLink::new("Typography").description("Styles for headings, paragraphs, lists...etc")),
+                )
         }))
         .item(NavigationMenuItem::new("Components").content(|_, _| {
             div()
@@ -1052,8 +1141,9 @@ fn popover(_: &mut Window, cx: &mut App) -> AnyElement {
                     row()
                         .flex_nowrap()
                         .gap_4()
-                        .child(Label::new(label).w(px(80.)))
-                        .child(Input::new(SharedString::from(format!("popover-{label}"))).default_value("100%").h_8())
+                        .items_center()
+                        .child(Label::new(label).w(px(88.)).flex_none())
+                        .child(Input::new(SharedString::from(format!("popover-{label}"))).default_value("100%").h_8().flex_1())
                 }))
         })
         .into_any_element()
@@ -1266,7 +1356,7 @@ fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
                     .child(Separator::vertical().h_4())
                     .child(Breadcrumb::new().item(BreadcrumbItem::new("Building Your Application")).item(BreadcrumbItem::new("Data Fetching").current())),
             )
-            .child(div().p_4().flex().flex_col().gap_4().child(Skeleton::new().h_24().w_full()).child(Skeleton::new().h_40().w_full())),
+            .child(div().p_4().flex().flex_col().gap_4().child(Skeleton::new().h_24().w_full().rounded_xl()).child(Skeleton::new().h_40().w_full().rounded_xl())),
         )
         .into_any_element()
 }
@@ -1380,13 +1470,14 @@ fn tabs(_: &mut Window, _: &mut App) -> AnyElement {
             ),
         )
         .child(CardFooter::new().child(Button::new("save-password").label("Save password")));
-    Tabs::new("tabs")
+    let tabs = Tabs::new("tabs")
         .w(px(400.))
         .full_width()
         .default_value("account")
         .tab(Tab::new("account", "Account").content(account))
-        .tab(Tab::new("password", "Password").content(password))
-        .into_any_element()
+        .tab(Tab::new("password", "Password").content(password));
+    // Fixed height so the tab list stays put when panels differ in height.
+    div().h(px(360.)).child(tabs).into_any_element()
 }
 
 fn textarea(_: &mut Window, _: &mut App) -> AnyElement {
@@ -1455,7 +1546,7 @@ fn tooltip(_: &mut Window, _: &mut App) -> AnyElement {
 fn typography(_: &mut Window, _: &mut App) -> AnyElement {
     col()
         .w(px(640.))
-        .child(h1("Taxing Laughter: The Joke Tax Chronicles"))
+        .child(h1("Taxing Laughter: The Joke Tax Chronicles").text_center())
         .child(lead("Once upon a time, in a far-off land, there was a very lazy king who spent all day lounging on his throne."))
         .child(h2("The King's Plan"))
         .child(p("The king thought long and hard, and finally came up with a brilliant plan: he would tax the jokes in the kingdom."))

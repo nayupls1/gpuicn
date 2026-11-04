@@ -97,7 +97,6 @@ impl RenderOnce for Combobox {
             .as_ref()
             .and_then(|v| self.items.iter().find(|(value, _)| value == v))
             .map(|(_, label)| label.clone());
-        let muted = cx.theme().muted_foreground;
 
         let trigger = Button::new("combobox-trigger")
             .outline()
@@ -105,7 +104,7 @@ impl RenderOnce for Combobox {
             .justify_between()
             .child(match label {
                 Some(label) => div().child(label),
-                None => div().text_color(muted).child(self.placeholder.clone()),
+                None => div().child(self.placeholder.clone()),
             })
             .icon_end(super::icon::Icon::new(IconName::ChevronsUpDown).opacity(0.5))
             .refine_style(&self.style);

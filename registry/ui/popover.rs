@@ -51,6 +51,8 @@ pub struct PopoverState {
     hovered_trigger: bool,
     hovered_content: bool,
     hover_task: Option<Task<()>>,
+    /// What had focus before the popover took it; focused again on close.
+    return_focus: Option<FocusHandle>,
 }
 
 impl PopoverState {
@@ -64,6 +66,7 @@ impl PopoverState {
             hovered_trigger: false,
             hovered_content: false,
             hover_task: None,
+            return_focus: None,
         }
     }
 
@@ -81,16 +84,26 @@ pub struct PopoverHandle {
 
 impl PopoverHandle {
     pub fn set_open(&self, open: bool, window: &mut Window, cx: &mut App) {
-        let changed = self.state.update(cx, |state, cx| {
+        let (changed, return_focus) = self.state.update(cx, |state, cx| {
             let changed = state.open != open;
             state.open = open;
             state.needs_focus = open;
+            let mut return_focus = None;
             if !open {
                 state.content_size = Size::default();
+                return_focus = state.return_focus.take();
             }
             cx.notify();
-            changed
+            (changed, return_focus)
         });
+        // Like Radix: closing hands focus back to the trigger, but only if
+        // focus is still inside the popover (not moved elsewhere by a click).
+        if let Some(handle) = return_focus
+            && changed
+            && self.state.read(cx).focus_handle.contains_focused(window, cx)
+        {
+            window.focus(&handle);
+        }
         if changed && let Some(handler) = &self.on_open_change {
             handler(&open, window, cx);
         }
@@ -351,8 +364,12 @@ impl RenderOnce for Popover {
             (s.open, s.trigger_bounds, s.content_size, s.focus_handle.clone(), s.needs_focus)
         };
         if open && needs_focus && !matches!(self.mode, PopoverTrigger::Hover { .. }) {
+            let previous = window.focused(cx);
             window.focus(&focus_handle);
-            state.update(cx, |s, _| s.needs_focus = false);
+            state.update(cx, |s, _| {
+                s.needs_focus = false;
+                s.return_focus = previous.filter(|p| *p != s.focus_handle);
+            });
         }
 
         let mode = self.mode;
@@ -384,8 +401,20 @@ impl RenderOnce for Popover {
             })
             .map(|this| match mode {
                 PopoverTrigger::Click => {
-                    let handle = handle.clone();
-                    this.on_click(move |_, window, cx| handle.toggle(window, cx))
+                    let (click, keys) = (handle.clone(), handle.clone());
+                    this.on_click(move |_, window, cx| click.toggle(window, cx))
+                        // Keyboard: Enter / Space / ↓ on a focused trigger (key
+                        // events bubble up from the focused button inside).
+                        .on_key_down(move |event, window, cx| {
+                            if matches!(event.keystroke.key.as_str(), "enter" | "space" | "down")
+                                && !event.keystroke.modifiers.modified()
+                                && !keys.is_open(cx)
+                            {
+                                cx.stop_propagation();
+                                window.prevent_default();
+                                keys.open(window, cx);
+                            }
+                        })
                 }
                 PopoverTrigger::Hover { open_delay_ms, close_delay_ms } => {
                     let handle = handle.clone();

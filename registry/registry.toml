@@ -208,7 +208,7 @@ registry_dependencies = ["icon", "separator", "theme", "utils"]
 name = "kbd"
 description = "Used to display textual user input from keyboard."
 files = ["kbd.rs"]
-registry_dependencies = ["theme", "utils"]
+registry_dependencies = ["icon", "theme", "utils"]
 
 [[component]]
 name = "label"
@@ -393,4 +393,5 @@ name = "utils"
 description = "Small helpers shared by every component — the gpui counterpart of shadcn's `lib/utils.ts`."
 files = ["utils.rs"]
 registry_dependencies = ["theme"]
+init = true
 core = true

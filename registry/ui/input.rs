@@ -145,7 +145,7 @@ impl Focusable for InputState {
 impl InputState {
     pub fn new(_window: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
-            focus_handle: cx.focus_handle(),
+            focus_handle: cx.focus_handle().tab_stop(true),
             text: SharedString::default(),
             placeholder: SharedString::default(),
             selected_range: 0..0,

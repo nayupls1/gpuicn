@@ -9,6 +9,7 @@ use gpui::{
     StyleRefinement, Window, div, prelude::*,
 };
 
+use super::icon::{Icon, IconName};
 use super::theme::ActiveTheme;
 use super::utils::StyledExt;
 
@@ -30,6 +31,15 @@ impl Kbd {
 impl RenderOnce for Kbd {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.theme();
+        // Draw the modifier symbols as icons: most UI fonts (Geist, Inter,
+        // system fonts) lack ⌘/⌥, and fallback glyphs come out mismatched.
+        let icon = match self.text.as_ref() {
+            "⌘" => Some(IconName::Command),
+            "⇧" => Some(IconName::ArrowBigUp),
+            "⌥" => Some(IconName::Option),
+            "⌃" => Some(IconName::ChevronUp),
+            _ => None,
+        };
         div()
             .flex()
             .flex_none()
@@ -45,7 +55,10 @@ impl RenderOnce for Kbd {
             .text_xs().line_height(gpui::rems(1.))
             .font_weight(FontWeight::MEDIUM)
             .refine_style(&self.style)
-            .child(self.text)
+            .map(|this| match icon {
+                Some(icon) => this.child(Icon::new(icon).size_3()),
+                None => this.child(self.text),
+            })
             .children(self.children)
     }
 }

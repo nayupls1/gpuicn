@@ -72,5 +72,6 @@ pub mod utils;
 pub fn init(cx: &mut gpui::App) {
     theme::init(cx);
     input::init(cx);
+    utils::init(cx);
 }
 // gpuicn:end
