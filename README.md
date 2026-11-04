@@ -217,6 +217,9 @@ your own:
   children too (see `Progress`, `Avatar`).
 - **`cx.notify()` during prepaint/paint is dropped**: if a `canvas` measurement
   changes what you render, call `window.request_animation_frame()`.
+- **`.hover(..)` can't change text**: hover styles are applied after text is
+  laid out, so a hover text color or underline never shows (backgrounds do).
+  Use `utils::use_hover` and style from its state (see `Button`'s link variant).
 - **Element opacity fades each primitive separately**: text on a 50%-opaque
   fill looks washed out twice. Fade colors with `Theme::faded` instead.
 - **Keyed state is namespaced by the surrounding element ids**: if a parent

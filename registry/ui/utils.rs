@@ -57,6 +57,42 @@ pub fn pointer_pressed(cx: &mut App) {
     }
 }
 
+/// Hover state kept across frames, for hover effects on *text*.
+///
+/// gpui applies `.hover(..)` styles after text has been laid out, so a hover
+/// text color or underline never shows (background changes do). Track the
+/// hover yourself and style the element from it:
+///
+/// ```ignore
+/// let hover = use_hover(("link", ix), window, cx);
+/// div().id(..).on_hover(hover.listener()).when(hover.get(cx), |this| this.underline())
+/// ```
+#[derive(Clone)]
+pub struct HoverState(gpui::Entity<bool>);
+
+impl HoverState {
+    pub fn get(&self, cx: &App) -> bool {
+        *self.0.read(cx)
+    }
+
+    /// Pass to `.on_hover(..)`.
+    pub fn listener(&self) -> impl Fn(&bool, &mut Window, &mut App) + 'static {
+        let state = self.0.clone();
+        move |hovered, _, cx| {
+            state.update(cx, |value, cx| {
+                if *value != *hovered {
+                    *value = *hovered;
+                    cx.notify();
+                }
+            })
+        }
+    }
+}
+
+pub fn use_hover(id: impl Into<ElementId>, window: &mut Window, cx: &mut App) -> HoverState {
+    HoverState(window.use_keyed_state(id, cx, |_, _| false))
+}
+
 /// A focus handle that is a tab stop, kept alive across frames under `id`.
 pub fn use_tab_stop(id: impl Into<ElementId>, window: &mut Window, cx: &mut App) -> FocusHandle {
     window.use_keyed_state(id, cx, |_, cx| cx.focus_handle().tab_stop(true)).read(cx).clone()

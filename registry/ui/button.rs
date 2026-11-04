@@ -16,7 +16,7 @@ use super::icon::{Icon, IconName};
 use super::spinner::Spinner;
 use super::tooltip::Tooltip;
 use super::theme::{ActiveTheme, Theme};
-use super::utils::{StyledExt, is_focus_visible, pointer_pressed, ring, use_tab_stop};
+use super::utils::{StyledExt, is_focus_visible, pointer_pressed, ring, use_hover, use_tab_stop};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonVariant {
@@ -226,6 +226,8 @@ impl Styled for Button {
 impl RenderOnce for Button {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let focus = use_tab_stop(ElementId::Name(format!("{}-focus", self.id).into()), window, cx);
+        let hover = use_hover(ElementId::Name(format!("{}-hover", self.id).into()), window, cx);
+        let hovered = hover.get(cx);
         let focus_visible = is_focus_visible(&focus, window, cx);
         let theme = cx.theme();
         let (bg, hover_bg, fg, border) = variant_colors(self.variant, theme);
@@ -275,11 +277,11 @@ impl RenderOnce for Button {
             .when(interactive, |this| {
                 this.track_focus(&focus)
                     .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| pointer_pressed(cx))
+                    .on_hover(hover.listener())
                     .cursor_pointer()
-                    .hover(move |style| {
-                    let style = style.bg(hover_bg).text_color(accent_fg);
-                    if is_link { style.underline() } else { style }
-                })
+                    .hover(move |style| style.bg(hover_bg))
+                    // Text changes on hover need tracked state (see `use_hover`).
+                    .when(hovered, |this| this.text_color(accent_fg).when(is_link, |this| this.underline()))
             })
             .refine_style(&self.style);
 
