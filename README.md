@@ -85,6 +85,12 @@ Dialog::new("edit").open(self.editing).on_open_change(cx.listener(|this, open, _
 own look on top of their behavior. And since you own the source, you can
 always just change the file.
 
+Floating content (popovers, menus, selects) behaves like Radix's: it flips to
+the other side of its trigger when it doesn't fit, and when it fits on neither
+side it takes the roomier one, caps its height there and scrolls. It never
+slides over its trigger. Unstyled popover content gets that room from
+`PopoverHandle::available_height(cx)`.
+
 ## Theming
 
 Everything reads its colors, radius, fonts and shadows from

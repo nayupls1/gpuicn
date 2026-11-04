@@ -181,6 +181,7 @@ pub struct SelectList {
     groups: Rc<Vec<SelectGroup>>,
     selected: Option<SharedString>,
     min_width: gpui::Pixels,
+    max_height: gpui::Pixels,
     on_pick: Rc<dyn Fn(&SharedString, &mut Window, &mut App)>,
 }
 
@@ -191,7 +192,13 @@ impl SelectList {
         min_width: gpui::Pixels,
         on_pick: Rc<dyn Fn(&SharedString, &mut Window, &mut App)>,
     ) -> Self {
-        Self { groups, selected, min_width, on_pick }
+        Self { groups, selected, min_width, max_height: px(384.), on_pick }
+    }
+
+    /// Cap the list's height (default 384px, shadcn's `max-h-96`); it scrolls past that.
+    pub fn max_height(mut self, max: gpui::Pixels) -> Self {
+        self.max_height = max.min(px(384.));
+        self
     }
 }
 
@@ -280,7 +287,7 @@ impl RenderOnce for SelectList {
             .flex()
             .flex_col()
             .min_w(self.min_width.max(px(128.)))
-            .max_h(px(384.))
+            .max_h(self.max_height)
             .overflow_y_scroll()
             .p_1()
             .rounded(theme.radius_md())
@@ -399,7 +406,9 @@ impl RenderOnce for Select {
                         handler(value, window, cx);
                     }
                 });
+                let room = popover.available_height(cx).unwrap_or(px(384.));
                 SelectList::new(groups.clone(), selected.clone(), popover.trigger_bounds(cx).size.width, on_pick)
+                    .max_height(room)
             })
             .into_any_element()
     }

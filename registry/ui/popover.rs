@@ -53,6 +53,8 @@ pub struct PopoverState {
     hover_task: Option<Task<()>>,
     /// What had focus before the popover took it; focused again on close.
     return_focus: Option<FocusHandle>,
+    /// Vertical room on the chosen side (Radix's `--radix-popper-available-height`).
+    available_height: Option<Pixels>,
 }
 
 impl PopoverState {
@@ -67,6 +69,7 @@ impl PopoverState {
             hovered_content: false,
             hover_task: None,
             return_focus: None,
+            available_height: None,
         }
     }
 
@@ -124,6 +127,13 @@ impl PopoverHandle {
 
     pub fn is_open(&self, cx: &App) -> bool {
         self.state.read(cx).open
+    }
+
+    /// Vertical room for the content on the side it opened on. Unstyled
+    /// content should cap its height to this and scroll, like shadcn's
+    /// `max-h-(--radix-…-content-available-height) overflow-y-auto`.
+    pub fn available_height(&self, cx: &App) -> Option<Pixels> {
+        self.state.read(cx).available_height
     }
 
     /// Window-space bounds of the trigger, as of the last frame.
@@ -324,12 +334,11 @@ pub fn floating_position(
 }
 
 /// Radix's `avoidCollisions`: flip to the opposite side when the content
-/// doesn't fit on the preferred one but does on the other, instead of letting
-/// window snapping slide it over the trigger.
-fn avoid_collisions(side: Side, trigger: Bounds<Pixels>, content: Size<Pixels>, offset: Pixels, window: &Window) -> Side {
-    if content.width <= px(0.) || content.height <= px(0.) {
-        return side;
-    }
+/// doesn't fit on the preferred one but does on the other. When it fits on
+/// neither, take the roomier side. Returns the side and the room on it, which
+/// caps the content's height (Radix's `--radix-popper-available-height`) so
+/// window snapping never slides the content over its trigger.
+fn avoid_collisions(side: Side, trigger: Bounds<Pixels>, content: Size<Pixels>, offset: Pixels, window: &Window) -> (Side, Pixels) {
     let viewport = window.viewport_size();
     let margin = px(8.);
     let room = |side: Side| match side {
@@ -338,6 +347,14 @@ fn avoid_collisions(side: Side, trigger: Bounds<Pixels>, content: Size<Pixels>, 
         Side::Right => viewport.width - trigger.right() - offset - margin,
         Side::Left => trigger.left() - offset - margin,
     };
+    // Vertical room for the content when placed on `side`.
+    let height_room = |side: Side| match side {
+        Side::Top | Side::Bottom => room(side),
+        Side::Left | Side::Right => viewport.height - margin * 2.,
+    };
+    if content.width <= px(0.) || content.height <= px(0.) {
+        return (side, height_room(side));
+    }
     let need = match side {
         Side::Top | Side::Bottom => content.height,
         Side::Left | Side::Right => content.width,
@@ -348,7 +365,18 @@ fn avoid_collisions(side: Side, trigger: Bounds<Pixels>, content: Size<Pixels>, 
         Side::Left => Side::Right,
         Side::Right => Side::Left,
     };
-    if room(side) < need && room(opposite) >= need { opposite } else { side }
+    // Content measured at a previous cap on this side hides its natural
+    // height; treat it as not fitting so the roomier side can win.
+    let vertical = matches!(side, Side::Top | Side::Bottom);
+    let capped = vertical && content.height + px(1.) >= room(side);
+    let chosen = if room(side) >= need && !capped {
+        side
+    } else if room(opposite) >= need || room(opposite) > room(side) {
+        opposite
+    } else {
+        side
+    };
+    (chosen, height_room(chosen).max(px(0.)))
 }
 
 fn schedule_hover(state: &Entity<PopoverState>, handle: PopoverHandle, delays: (u64, u64), window: &mut Window, cx: &mut App) {
@@ -456,19 +484,26 @@ impl RenderOnce for Popover {
             });
 
         if open && let Some(content) = self.content.clone() {
-            let (position, corner) = match self.anchor_position {
-                Some(position) => (position, Corner::TopLeft),
+            let (position, corner, max_height) = match self.anchor_position {
+                Some(position) => (position, Corner::TopLeft, None),
                 None => {
-                    let side = avoid_collisions(self.side, trigger_bounds, content_size, self.side_offset, window);
-                    floating_position(trigger_bounds, content_size, side, self.align, self.side_offset)
+                    let (side, room) = avoid_collisions(self.side, trigger_bounds, content_size, self.side_offset, window);
+                    let (position, corner) = floating_position(trigger_bounds, content_size, side, self.align, self.side_offset);
+                    (position, corner, Some(room))
                 }
             };
+            state.update(cx, |s, _| s.available_height = max_height);
             let layer = FloatingLayer {
                 content,
                 handle: handle.clone(),
                 focus_handle,
                 position,
                 corner,
+                // Unstyled content caps itself via `PopoverHandle::available_height`.
+                max_height: max_height.filter(|_| self.appearance),
+                // Scroll only once the content has hit the cap, so small
+                // popovers (tooltips with arrows) are never clipped.
+                scroll: self.appearance && max_height.is_some_and(|max| content_size.height > px(0.) && content_size.height + px(1.) >= max),
                 hide_until_measured: content_size.width <= px(0.) && self.align == Align::Center,
                 mode,
                 appearance: self.appearance,
@@ -495,6 +530,8 @@ struct FloatingLayer {
     focus_handle: FocusHandle,
     position: Point<Pixels>,
     corner: Corner,
+    max_height: Option<Pixels>,
+    scroll: bool,
     hide_until_measured: bool,
     mode: PopoverTrigger,
     appearance: bool,
@@ -525,6 +562,8 @@ impl FloatingLayer {
                     .when(theme.shadows, |this| this.shadow_md())
             })
             .refine_style(&self.style)
+            .when_some(self.max_height, |this, max| this.max_h(max))
+            .when(self.scroll, |this| this.overflow_y_scroll())
             // Hidden for the single frame where we don't know our size yet.
             .when(self.hide_until_measured, |this| this.opacity(0.))
             .child(content)

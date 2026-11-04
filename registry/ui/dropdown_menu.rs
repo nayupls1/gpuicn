@@ -199,6 +199,8 @@ pub struct MenuList {
     on_close: Rc<dyn Fn(&mut Window, &mut App)>,
     /// Called on ← inside a submenu.
     on_back: Option<Rc<dyn Fn(&mut Window, &mut App)>>,
+    /// The popover it lives in, for capping its height to the room there.
+    popover: Option<PopoverHandle>,
     style: StyleRefinement,
 }
 
@@ -210,13 +212,15 @@ impl MenuList {
         entries: Rc<Vec<MenuEntry>>,
         on_close: Rc<dyn Fn(&mut Window, &mut App)>,
     ) -> Self {
-        Self { id: id.into(), entries, on_close, on_back: None, style: StyleRefinement::default() }
+        Self { id: id.into(), entries, on_close, on_back: None, popover: None, style: StyleRefinement::default() }
     }
 
     /// A [`MenuList`] that closes `popover` when an item is chosen.
     pub fn for_popover(id: impl Into<ElementId>, entries: Rc<Vec<MenuEntry>>, popover: &PopoverHandle) -> Self {
-        let popover = popover.clone();
-        Self::new(id, entries, Rc::new(move |window, cx| popover.close(window, cx)))
+        let handle = popover.clone();
+        let mut list = Self::new(id, entries, Rc::new(move |window, cx| handle.close(window, cx)));
+        list.popover = Some(popover.clone());
+        list
     }
 
     fn on_back(mut self, on_back: Rc<dyn Fn(&mut Window, &mut App)>) -> Self {
@@ -420,6 +424,7 @@ impl RenderOnce for MenuList {
         // the min width into a zero-height strut the content has to fit.
         let mut style = self.style;
         let min_width = style.min_size.width.take().unwrap_or(gpui::px(128.).into());
+        let max_height = self.popover.as_ref().and_then(|p| p.available_height(cx));
 
         div()
             .id(self.id)
@@ -434,6 +439,9 @@ impl RenderOnce for MenuList {
             .bg(theme.popover)
             .text_color(theme.popover_foreground)
             .when(theme.shadows, |this| this.shadow_md())
+            // Too tall for the room beside the trigger: scroll rather than
+            // let the window edge push the menu over its trigger.
+            .when_some(max_height, |this, max| this.max_h(max).overflow_y_scroll())
             .refine_style(&style)
             .child(div().h_0().min_w(min_width))
             .on_hover({
