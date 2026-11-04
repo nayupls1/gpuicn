@@ -1260,8 +1260,7 @@ impl RenderOnce for Input {
                     .child(TextElement { state: state.clone(), placeholder_color: theme.muted_foreground }),
             )
             .children(self.suffix)
-            // `aria-invalid` colors the ring; it only shows on focus, like shadcn.
-            .when(self.appearance && !disabled && focused, |this| {
+            .when(self.appearance && !disabled && (focused || invalid), |this| {
                 let radius = theme.radius_md();
                 this.child(if invalid { invalid_ring(theme, radius) } else { focus_ring(theme, radius) })
             })

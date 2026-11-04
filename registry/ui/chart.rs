@@ -222,7 +222,7 @@ impl Cartesian {
 
                     if grid {
                         // `<CartesianGrid vertical={false} />`: solid horizontal lines.
-                        for line in 0..GRID_LINES {
+                        for line in 0..=GRID_LINES {
                             let y = bounds.top() + bounds.size.height * (line as f32 / GRID_LINES as f32);
                             let mut builder = PathBuilder::stroke(px(1.));
                             builder.move_to(point(bounds.left(), y));

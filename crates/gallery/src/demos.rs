@@ -314,7 +314,7 @@ fn overview(_: &mut Window, cx: &mut App) -> AnyElement {
                     .child(div().truncate().text_sm().line_height(px(20.)).font_weight(gpui::FontWeight::MEDIUM).child(name))
                     .child(div().truncate().text_sm().line_height(px(20.)).text_color(muted).child(email)),
             )
-            .child(Button::new(SharedString::from(format!("ov-role-{n}"))).outline().size(ButtonSize::Sm).label(role))
+            .child(Button::new(SharedString::from(format!("ov-role-{n}"))).outline().size(ButtonSize::Sm).w(px(96.)).justify_between().label(role).icon_end(IconName::ChevronDown))
     };
     let team = Card::new()
         .child(CardHeader::new().child(CardTitle::new("Team Members")).child(CardDescription::new("Invite your team members to collaborate.")))
@@ -868,7 +868,6 @@ fn data_table(_: &mut Window, _: &mut App) -> AnyElement {
         .column(DataTableColumn::new("email", "Email", |p: &Payment, _, _| p.email).sortable_by(|p| p.email.to_lowercase()))
         .column(
             DataTableColumn::new("amount", "Amount", |p: &Payment, _, _| format!("${:.2}", p.amount))
-                .sortable_by(|p| (p.amount * 100.) as i64)
                 .align_right()
                 .width(px(120.)),
         )
@@ -1071,7 +1070,12 @@ fn field(_: &mut Window, _: &mut App) -> AnyElement {
                                 .child(Field::new().flex_1().min_w_0().label("CVV").child(Input::new("field-cvv").placeholder("123"))),
                         )
                         .child(FieldSeparator::new())
-                        .child(Field::new().horizontal().label("Same as shipping address").child(Checkbox::new("field-same").default_checked(true)))
+                        .child(
+                            FieldSet::new()
+                                .legend("Billing Address")
+                                .description("The billing address associated with your payment method")
+                                .child(Field::new().horizontal().label("Same as shipping address").child(Checkbox::new("field-same").default_checked(true))),
+                        )
                         .child(Field::new().label("Comments").child(Textarea::new("field-comments").placeholder("Add any additional comments"))),
                 ),
         )
@@ -1297,11 +1301,11 @@ fn navigation_menu(_: &mut Window, _: &mut App) -> AnyElement {
                 .rounded(theme.radius_md())
                 .bg(gpui::linear_gradient(
                     180.,
-                    gpui::linear_color_stop(theme.muted.opacity(0.15), 0.),
-                    gpui::linear_color_stop(theme.muted, 1.),
+                    gpui::linear_color_stop(theme.muted.opacity(0.4), 0.),
+                    gpui::linear_color_stop(crate::ui::theme::mix(theme.muted, theme.foreground, 0.06), 1.),
                 ))
-                .child(Icon::new(IconName::Terminal).size_6())
-                .child(div().text_lg().line_height(px(24.)).font_weight(gpui::FontWeight::MEDIUM).child("gpuicn"))
+                .child(Icon::new(IconName::Terminal).size_8())
+                .child(div().mt_4().text_lg().line_height(px(24.)).font_weight(gpui::FontWeight::MEDIUM).child("gpuicn"))
                 .child(
                     div()
                         .text_sm()

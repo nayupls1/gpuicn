@@ -351,6 +351,8 @@ impl RenderOnce for Sidebar {
                     .w_full()
                     .min_w_0()
                     .p_2()
+                    // Leave room for the scrollbar thumb.
+                    .pr_3()
                     .children(group.label.filter(|_| !icon_mode).map(|label| {
                         div()
                             .flex()

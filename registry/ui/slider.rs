@@ -250,12 +250,20 @@ impl RenderOnce for Slider {
                 this.on_mouse_down(MouseButton::Left, move |event: &gpui::MouseDownEvent, window: &mut Window, cx: &mut App| {
                     click_set(event.position, true, window, cx)
                 })
-                    .on_mouse_up(MouseButton::Left, {
+                    // The active thumb keeps its ring after a drag while the
+                    // pointer stays on the slider (`hover:ring-4` in shadcn).
+                    .on_hover({
                         let state = state.clone();
-                        move |_, _, cx| state.update(cx, |s, cx| {
-                            s.pressed = false;
-                            cx.notify();
-                        })
+                        move |hovered, _, cx| {
+                            if !hovered {
+                                state.update(cx, |s, cx| {
+                                    if s.pressed {
+                                        s.pressed = false;
+                                        cx.notify();
+                                    }
+                                })
+                            }
+                        }
                     })
                     .on_mouse_up_out(MouseButton::Left, {
                         let state = state.clone();

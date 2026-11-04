@@ -100,9 +100,9 @@ impl RenderOnce for ScrollArea {
                         .map(|this| {
                             // `p-px`: keep the thumb inside the container's border and corners.
                             if vertical {
-                                this.top(px(1.)).bottom(px(1.)).right(px(1.)).w_2p5()
+                                this.top(px(4.)).bottom(px(4.)).right(px(1.)).w_2p5()
                             } else {
-                                this.left(px(1.)).right(px(1.)).bottom(px(1.)).h_2p5()
+                                this.left(px(4.)).right(px(4.)).bottom(px(1.)).h_2p5()
                             }
                         })
                         .child(

@@ -170,7 +170,7 @@ impl RenderOnce for ResizablePanelGroup {
                                     .border_color(theme.border)
                                     .bg(theme.border)
                                     .map(|this| if vertical { this.h_3().w_4() } else { this.h_4().w_3() })
-                                    .child(Icon::new(IconName::GripVertical).size_2p5()),
+                                    .child(Icon::new(if vertical { IconName::GripHorizontal } else { IconName::GripVertical }).size_2p5()),
                             )
                         })
                         .on_drag(ResizeDrag { group: group_id, handle: ix }, |_, _, _, cx| cx.new(|_| InvisibleDrag))
