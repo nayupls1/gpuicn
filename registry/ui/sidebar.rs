@@ -30,6 +30,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use super::icon::{Icon, IconName};
+use super::scroll_area::ScrollArea;
 use super::theme::ActiveTheme;
 use super::utils::StyledExt;
 
@@ -393,16 +394,15 @@ impl RenderOnce for Sidebar {
             .refine_style(&self.style)
             .children(self.header.map(|h| div().flex().flex_col().gap_2().p_2().child(h)))
             .child(
-                div()
-                    .id("sidebar-content")
-                    .flex()
-                    .flex_col()
-                    .flex_1()
-                    .min_h_0()
-                    .gap_2()
-                    .overflow_y_scroll()
-                    .when(icon_mode, |this| this.items_center())
-                    .children(groups),
+                // A themed scrollbar shows there's more below when the menu overflows.
+                ScrollArea::new("sidebar-content").flex_1().min_h_0().child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_2()
+                        .when(icon_mode, |this| this.items_center())
+                        .children(groups),
+                ),
             )
             .children(self.footer.map(|f| div().flex().flex_col().gap_2().p_2().child(f)))
             .into_any_element()

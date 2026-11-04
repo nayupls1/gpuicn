@@ -178,6 +178,8 @@ embedded as source), `portal` (overlay layer) and `popover` (floating
 positioning).
 
 Run `cargo run -p gallery` to see all of them, or open `site/index.html`.
+`GALLERY_PAGE=select GALLERY_THEME=dark GALLERY_ACCENT=blue GALLERY_BASE=zinc`
+opens the gallery in a given state (handy for screenshots).
 
 ## Troubleshooting
 
