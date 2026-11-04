@@ -99,7 +99,9 @@ impl RenderOnce for Empty {
             .gap_6()
             .p_12()
             .rounded(theme.radius_lg())
-            .when(self.outline, |this| this.border_1().border_dashed().border_color(theme.border))
+            // gpui dashes 1px borders 2px-on/1px-off, which reads as faint
+            // dots in the `border` color; use a stronger tone.
+            .when(self.outline, |this| this.border(px(1.5)).border_dashed().border_color(theme.muted_foreground.opacity(0.4)))
             .refine_style(&self.style)
             .child(
                 div()
@@ -111,11 +113,11 @@ impl RenderOnce for Empty {
                     .text_center()
                     .children(self.media.or(icon_tile).map(|media| div().mb_2().child(media)))
                     .children(self.title.map(|title| {
-                        div().text_lg().font_weight(FontWeight::MEDIUM).child(title)
+                        div().text_lg().line_height(gpui::rems(1.75)).font_weight(FontWeight::MEDIUM).child(title)
                     }))
                     .children(self.description.map(|description| {
                         div()
-                            .text_sm()
+                            .text_sm().line_height(gpui::rems(1.25))
                             .line_height(gpui::relative(1.625))
                             .text_color(theme.muted_foreground)
                             .child(description)
@@ -130,7 +132,7 @@ impl RenderOnce for Empty {
                         .max_w(px(384.))
                         .items_center()
                         .gap_4()
-                        .text_sm()
+                        .text_sm().line_height(gpui::rems(1.25))
                         .children(self.children),
                 )
             })

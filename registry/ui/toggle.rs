@@ -51,7 +51,7 @@ pub(super) fn toggle_base(
         .justify_center()
         .gap_2()
         .rounded(theme.radius_md())
-        .text_sm()
+        .text_sm().line_height(gpui::rems(1.25))
         .font_weight(FontWeight::MEDIUM)
         .whitespace_nowrap()
         .map(|this| match size {
@@ -60,9 +60,21 @@ pub(super) fn toggle_base(
             ToggleSize::Lg => this.h_10().px_2p5().min_w_10(),
         })
         .when(variant == ToggleVariant::Outline, |this| {
-            this.border_1().border_color(theme.input).when(theme.shadows, |this| this.shadow_xs())
+            // Opaque in light mode so the shadow can't tint the interior.
+            this.border_1()
+                .border_color(theme.input)
+                .when(!theme.is_dark(), |this| this.bg(theme.background).when(theme.shadows, |this| this.shadow_xs()))
         })
-        .when(pressed, |this| this.bg(theme.accent).text_color(theme.accent_foreground))
+        // `data-[state=on]:bg-accent`, nudged a little darker than the hover
+        // fill so "on" and "hovered" stay distinguishable.
+        .when(pressed, |this| {
+            this.bg(super::theme::mix(theme.accent, theme.foreground, 0.06))
+                .text_color(theme.accent_foreground)
+                // Keep the outline variant's edge visible on the darker fill.
+                .when(variant == ToggleVariant::Outline, |this| {
+                    this.border_color(super::theme::mix(theme.input, theme.foreground, 0.12))
+                })
+        })
         .when(disabled, |this| this.opacity(0.5))
         .when(!disabled && !pressed, |this| {
             this.cursor_pointer().hover(move |s| s.bg(hover_bg).text_color(hover_fg))

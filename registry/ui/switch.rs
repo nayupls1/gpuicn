@@ -94,7 +94,7 @@ impl RenderOnce for Switch {
             .border_1()
             .border_color(gpui::transparent_black())
             .bg(track)
-            .when(theme.shadows, |this| this.shadow_xs())
+            .when(theme.shadows && !theme.is_dark(), |this| this.shadow_xs())
             .refine_style(&self.style)
             .child(
                 div()

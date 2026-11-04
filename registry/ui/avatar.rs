@@ -4,7 +4,7 @@
 //! Avatar::new().src("https://github.com/shadcn.png").fallback("CN")
 //! ```
 
-use gpui::{
+use gpui::{Refineable, 
     App, ImageSource, IntoElement, ObjectFit, RenderOnce, SharedString, StyleRefinement, Window,
     div, img, prelude::*,
 };
@@ -45,17 +45,23 @@ impl RenderOnce for Avatar {
         let theme = cx.theme();
         let muted = theme.muted;
         let fallback = self.fallback;
+        // gpui clips overflow to a rectangle, so the image and fallback carry
+        // the avatar's corner radii themselves (`rounded-full` unless overridden).
+        let radii = self.style.corner_radii.clone();
+        let fallback_radii = radii.clone();
         let fallback_el = move || {
-            div()
+            let mut el = div()
                 .flex()
                 .size_full()
                 .items_center()
                 .justify_center()
                 .rounded_full()
                 .bg(muted)
-                .text_sm()
-                .child(fallback.clone())
-                .into_any_element()
+                .text_sm().line_height(gpui::rems(1.25))
+                .font_weight(gpui::FontWeight::MEDIUM)
+                .child(fallback.clone());
+            el.style().corner_radii.refine(&fallback_radii);
+            el.into_any_element()
         };
 
         div()
@@ -67,16 +73,17 @@ impl RenderOnce for Avatar {
             .rounded_full()
             .refine_style(&self.style)
             .map(|this| match self.src {
-                Some(src) => this.child(
-                    img(src)
-                        .size_full()
+                Some(src) => this.child({
+                    let mut image = img(src).size_full().rounded_full();
+                    image.style().corner_radii.refine(&radii);
+                    image
                         .object_fit(ObjectFit::Cover)
                         .with_loading({
                             let fallback_el = fallback_el.clone();
                             move || fallback_el()
                         })
-                        .with_fallback(fallback_el),
-                ),
+                        .with_fallback(fallback_el)
+                }),
                 None => this.child(fallback_el()),
             })
     }

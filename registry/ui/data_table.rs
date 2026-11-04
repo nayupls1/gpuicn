@@ -177,8 +177,8 @@ impl<T: 'static> RenderOnce for DataTable<T> {
         let state = window.use_keyed_state(self.id.clone(), cx, |_, _| TableState::default());
 
         // Filter
-        let filter_input = self.filter.as_ref().map(|(placeholder, _)| Input::new("data-table-filter").placeholder(placeholder.clone()).max_w(px(384.)));
-        let query = match &filter_input {
+        let mut filter_input = self.filter.as_ref().map(|(placeholder, _)| Input::new("data-table-filter").placeholder(placeholder.clone()).max_w(px(384.)));
+        let query = match &mut filter_input {
             Some(input) => input.state(window, cx).read(cx).text().to_lowercase(),
             None => String::new(),
         };
@@ -252,7 +252,8 @@ impl<T: 'static> RenderOnce for DataTable<T> {
                     Button::new(("sort", col_ix))
                         .ghost()
                         .size(ButtonSize::Sm)
-                        .ml(px(-12.))
+                        // Line the label up with the cell text below it.
+                        .map(|this| if column.align_right { this.mr(px(-12.)) } else { this.ml(px(-12.)) })
                         .label(column.header.clone())
                         .icon_end(icon)
                         .on_click(move |_, _, cx| {
@@ -379,7 +380,7 @@ impl<T: 'static> RenderOnce for DataTable<T> {
                     .gap_2()
                     .py_4()
                     .child(
-                        div().flex_1().text_sm().text_color(muted).child(if self.selectable {
+                        div().flex_1().min_w_0().text_sm().line_height(gpui::rems(1.25)).text_color(muted).child(if self.selectable {
                             format!("{selected_count} of {total} row(s) selected.")
                         } else {
                             format!("Page {} of {pages}", page + 1)

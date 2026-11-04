@@ -92,14 +92,14 @@ impl RenderOnce for Alert {
             .border_color(theme.border)
             .bg(theme.card)
             .text_color(fg)
-            .text_sm()
+            .text_sm().line_height(gpui::rems(1.25))
             .refine_style(&self.style)
             .children(self.icon.map(|icon| div().pt_0p5().child(icon)))
             .child(
                 div()
                     .flex()
                     .flex_col()
-                    .flex_1()
+                    .flex_1().min_w_0()
                     .gap_0p5()
                     .children(self.title.map(|title| {
                         div().font_weight(FontWeight::MEDIUM).line_clamp(1).child(title)

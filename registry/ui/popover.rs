@@ -51,6 +51,10 @@ pub struct PopoverState {
     hovered_trigger: bool,
     hovered_content: bool,
     hover_task: Option<Task<()>>,
+    /// What had focus before the popover took it; focused again on close.
+    return_focus: Option<FocusHandle>,
+    /// Vertical room on the chosen side (Radix's `--radix-popper-available-height`).
+    available_height: Option<Pixels>,
 }
 
 impl PopoverState {
@@ -64,6 +68,8 @@ impl PopoverState {
             hovered_trigger: false,
             hovered_content: false,
             hover_task: None,
+            return_focus: None,
+            available_height: None,
         }
     }
 
@@ -81,16 +87,26 @@ pub struct PopoverHandle {
 
 impl PopoverHandle {
     pub fn set_open(&self, open: bool, window: &mut Window, cx: &mut App) {
-        let changed = self.state.update(cx, |state, cx| {
+        let (changed, return_focus) = self.state.update(cx, |state, cx| {
             let changed = state.open != open;
             state.open = open;
             state.needs_focus = open;
+            let mut return_focus = None;
             if !open {
                 state.content_size = Size::default();
+                return_focus = state.return_focus.take();
             }
             cx.notify();
-            changed
+            (changed, return_focus)
         });
+        // Like Radix: closing hands focus back to the trigger, but only if
+        // focus is still inside the popover (not moved elsewhere by a click).
+        if let Some(handle) = return_focus
+            && changed
+            && self.state.read(cx).focus_handle.contains_focused(window, cx)
+        {
+            window.focus(&handle);
+        }
         if changed && let Some(handler) = &self.on_open_change {
             handler(&open, window, cx);
         }
@@ -111,6 +127,13 @@ impl PopoverHandle {
 
     pub fn is_open(&self, cx: &App) -> bool {
         self.state.read(cx).open
+    }
+
+    /// Vertical room for the content on the side it opened on. Unstyled
+    /// content should cap its height to this and scroll, like shadcn's
+    /// `max-h-(--radix-…-content-available-height) overflow-y-auto`.
+    pub fn available_height(&self, cx: &App) -> Option<Pixels> {
+        self.state.read(cx).available_height
     }
 
     /// Window-space bounds of the trigger, as of the last frame.
@@ -142,10 +165,30 @@ pub struct Popover {
     side_offset: Pixels,
     anchor_position: Option<Point<Pixels>>,
     appearance: bool,
+    wrapper_style: StyleRefinement,
+    on_backdrop_move: Option<BackdropMoveHandler>,
     style: StyleRefinement,
 }
 
+type BackdropMoveHandler = Rc<dyn Fn(Point<Pixels>, &mut Window, &mut App)>;
+
 crate::impl_styled!(Popover);
+
+/// The outer-layout part of `style` (width and flex sizing). Components that
+/// wrap their trigger in a [`Popover`] forward it with
+/// [`Popover::wrapper_style`] so that e.g. `Select::new(..).w_full()` sizes
+/// the whole control, not just the trigger inside a content-sized wrapper.
+pub fn outer_layout(style: &StyleRefinement) -> StyleRefinement {
+    let mut out = StyleRefinement::default();
+    out.size.width = style.size.width;
+    out.min_size.width = style.min_size.width;
+    out.max_size.width = style.max_size.width;
+    out.flex_grow = style.flex_grow;
+    out.flex_shrink = style.flex_shrink;
+    out.flex_basis = style.flex_basis;
+    out.align_self = style.align_self;
+    out
+}
 
 impl Popover {
     pub fn new(id: impl Into<ElementId>) -> Self {
@@ -161,6 +204,8 @@ impl Popover {
             side_offset: px(4.),
             anchor_position: None,
             appearance: true,
+            wrapper_style: StyleRefinement::default(),
+            on_backdrop_move: None,
             style: StyleRefinement::default(),
         }
     }
@@ -223,6 +268,22 @@ impl Popover {
         self
     }
 
+    /// Style for the element wrapping the trigger (see [`outer_layout`]).
+    /// When it sets a width, the trigger stretches to fill it.
+    pub fn wrapper_style(mut self, style: StyleRefinement) -> Self {
+        self.wrapper_style = style;
+        self
+    }
+
+    /// Called when the pointer moves over the click-away backdrop of an open
+    /// (click/manual) popover. The backdrop blocks hover on everything below
+    /// it, so this is how e.g. a menubar switches menus as the pointer moves
+    /// across its triggers.
+    pub fn on_backdrop_move(mut self, handler: impl Fn(Point<Pixels>, &mut Window, &mut App) + 'static) -> Self {
+        self.on_backdrop_move = Some(Rc::new(handler));
+        self
+    }
+
     /// Don't draw the default panel (background, border, padding, width).
     pub fn unstyled(mut self) -> Self {
         self.appearance = false;
@@ -272,6 +333,52 @@ pub fn floating_position(
     }
 }
 
+/// Radix's `avoidCollisions`: flip to the opposite side when the content
+/// doesn't fit on the preferred one but does on the other. When it fits on
+/// neither, take the roomier side. Returns the side and the room on it, which
+/// caps the content's height (Radix's `--radix-popper-available-height`) so
+/// window snapping never slides the content over its trigger.
+fn avoid_collisions(side: Side, trigger: Bounds<Pixels>, content: Size<Pixels>, offset: Pixels, window: &Window) -> (Side, Pixels) {
+    let viewport = window.viewport_size();
+    let margin = px(8.);
+    let room = |side: Side| match side {
+        Side::Bottom => viewport.height - trigger.bottom() - offset - margin,
+        Side::Top => trigger.top() - offset - margin,
+        Side::Right => viewport.width - trigger.right() - offset - margin,
+        Side::Left => trigger.left() - offset - margin,
+    };
+    // Vertical room for the content when placed on `side`.
+    let height_room = |side: Side| match side {
+        Side::Top | Side::Bottom => room(side),
+        Side::Left | Side::Right => viewport.height - margin * 2.,
+    };
+    if content.width <= px(0.) || content.height <= px(0.) {
+        return (side, height_room(side));
+    }
+    let need = match side {
+        Side::Top | Side::Bottom => content.height,
+        Side::Left | Side::Right => content.width,
+    };
+    let opposite = match side {
+        Side::Bottom => Side::Top,
+        Side::Top => Side::Bottom,
+        Side::Left => Side::Right,
+        Side::Right => Side::Left,
+    };
+    // Content measured at a previous cap on this side hides its natural
+    // height; treat it as not fitting so the roomier side can win.
+    let vertical = matches!(side, Side::Top | Side::Bottom);
+    let capped = vertical && content.height + px(1.) >= room(side);
+    let chosen = if room(side) >= need && !capped {
+        side
+    } else if room(opposite) >= need || room(opposite) > room(side) {
+        opposite
+    } else {
+        side
+    };
+    (chosen, height_room(chosen).max(px(0.)))
+}
+
 fn schedule_hover(state: &Entity<PopoverState>, handle: PopoverHandle, delays: (u64, u64), window: &mut Window, cx: &mut App) {
     let (hovered, open) = {
         let s = state.read(cx);
@@ -313,8 +420,12 @@ impl RenderOnce for Popover {
             (s.open, s.trigger_bounds, s.content_size, s.focus_handle.clone(), s.needs_focus)
         };
         if open && needs_focus && !matches!(self.mode, PopoverTrigger::Hover { .. }) {
+            let previous = window.focused(cx);
             window.focus(&focus_handle);
-            state.update(cx, |s, _| s.needs_focus = false);
+            state.update(cx, |s, _| {
+                s.needs_focus = false;
+                s.return_focus = previous.filter(|p| *p != s.focus_handle);
+            });
         }
 
         let mode = self.mode;
@@ -327,7 +438,18 @@ impl RenderOnce for Popover {
             .child({
                 let state = state.clone();
                 canvas(
-                    move |bounds, _, cx| state.update(cx, |s, _| s.trigger_bounds = bounds),
+                    move |bounds, window, cx| {
+                        state.update(cx, |s, _| {
+                            if s.trigger_bounds != bounds {
+                                s.trigger_bounds = bounds;
+                                // An open popover follows its trigger (scrolling,
+                                // resizing, first frame) on the next frame.
+                                if s.open {
+                                    window.request_animation_frame();
+                                }
+                            }
+                        })
+                    },
                     |_, _, _, _| {},
                 )
                 .absolute()
@@ -335,8 +457,20 @@ impl RenderOnce for Popover {
             })
             .map(|this| match mode {
                 PopoverTrigger::Click => {
-                    let handle = handle.clone();
-                    this.on_click(move |_, window, cx| handle.toggle(window, cx))
+                    let (click, keys) = (handle.clone(), handle.clone());
+                    this.on_click(move |_, window, cx| click.toggle(window, cx))
+                        // Keyboard: Enter / Space / ↓ on a focused trigger (key
+                        // events bubble up from the focused button inside).
+                        .on_key_down(move |event, window, cx| {
+                            if matches!(event.keystroke.key.as_str(), "enter" | "space" | "down")
+                                && !event.keystroke.modifiers.modified()
+                                && !keys.is_open(cx)
+                            {
+                                cx.stop_propagation();
+                                window.prevent_default();
+                                keys.open(window, cx);
+                            }
+                        })
                 }
                 PopoverTrigger::Hover { open_delay_ms, close_delay_ms } => {
                     let handle = handle.clone();
@@ -350,19 +484,30 @@ impl RenderOnce for Popover {
             });
 
         if open && let Some(content) = self.content.clone() {
-            let (position, corner) = match self.anchor_position {
-                Some(position) => (position, Corner::TopLeft),
-                None => floating_position(trigger_bounds, content_size, self.side, self.align, self.side_offset),
+            let (position, corner, max_height) = match self.anchor_position {
+                Some(position) => (position, Corner::TopLeft, None),
+                None => {
+                    let (side, room) = avoid_collisions(self.side, trigger_bounds, content_size, self.side_offset, window);
+                    let (position, corner) = floating_position(trigger_bounds, content_size, side, self.align, self.side_offset);
+                    (position, corner, Some(room))
+                }
             };
+            state.update(cx, |s, _| s.available_height = max_height);
             let layer = FloatingLayer {
                 content,
                 handle: handle.clone(),
                 focus_handle,
                 position,
                 corner,
+                // Unstyled content caps itself via `PopoverHandle::available_height`.
+                max_height: max_height.filter(|_| self.appearance),
+                // Scroll only once the content has hit the cap, so small
+                // popovers (tooltips with arrows) are never clipped.
+                scroll: self.appearance && max_height.is_some_and(|max| content_size.height > px(0.) && content_size.height + px(1.) >= max),
                 hide_until_measured: content_size.width <= px(0.) && self.align == Align::Center,
                 mode,
                 appearance: self.appearance,
+                on_backdrop_move: self.on_backdrop_move.clone(),
                 style: self.style,
             };
             portal(
@@ -373,7 +518,8 @@ impl RenderOnce for Popover {
             );
         }
 
-        div().id(self.id).flex().child(trigger)
+        let fill = self.wrapper_style.size.width.is_some();
+        div().id(self.id).flex().refine_style(&self.wrapper_style).child(trigger.when(fill, |this| this.w_full()))
     }
 }
 
@@ -384,9 +530,12 @@ struct FloatingLayer {
     focus_handle: FocusHandle,
     position: Point<Pixels>,
     corner: Corner,
+    max_height: Option<Pixels>,
+    scroll: bool,
     hide_until_measured: bool,
     mode: PopoverTrigger,
     appearance: bool,
+    on_backdrop_move: Option<BackdropMoveHandler>,
     style: StyleRefinement,
 }
 
@@ -413,17 +562,22 @@ impl FloatingLayer {
                     .when(theme.shadows, |this| this.shadow_md())
             })
             .refine_style(&self.style)
+            .when_some(self.max_height, |this, max| this.max_h(max))
+            .when(self.scroll, |this| this.overflow_y_scroll())
             // Hidden for the single frame where we don't know our size yet.
             .when(self.hide_until_measured, |this| this.opacity(0.))
             .child(content)
             .child({
                 let state = state.clone();
                 canvas(
-                    move |bounds, _, cx| {
-                        state.update(cx, |s, cx| {
+                    move |bounds, window, cx| {
+                        state.update(cx, |s, _| {
                             if s.content_size != bounds.size {
                                 s.content_size = bounds.size;
-                                cx.notify();
+                                // `cx.notify()` during prepaint is dropped by
+                                // gpui; re-render on the next frame instead so
+                                // the popover gets positioned and shown.
+                                window.request_animation_frame();
                             }
                         })
                     },
@@ -470,10 +624,15 @@ impl FloatingLayer {
             // so clicking the trigger again doesn't immediately reopen it.
             _ => div()
                 .child(full_window(
-                    div().occlude().on_any_mouse_down(move |_, window, cx| {
-                        cx.stop_propagation();
-                        handle.close(window, cx);
-                    }),
+                    div()
+                        .occlude()
+                        .on_any_mouse_down(move |_, window, cx| {
+                            cx.stop_propagation();
+                            handle.close(window, cx);
+                        })
+                        .when_some(self.on_backdrop_move, |this, handler| {
+                            this.on_mouse_move(move |event, window, cx| handler(event.position, window, cx))
+                        }),
                     window,
                 ))
                 .child(floating)

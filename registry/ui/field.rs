@@ -85,17 +85,20 @@ impl RenderOnce for Field {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.theme();
         let invalid = self.error.is_some();
+        let horizontal = matches!(self.orientation, Orientation::Horizontal);
         let label = self.label.map(|label| {
             Label::new(label)
                 .disabled(self.disabled)
+                // A label next to a checkbox reads as body text (`font-normal`).
+                .when(horizontal, |this| this.font_weight(gpui::FontWeight::NORMAL))
                 .when(invalid, |this| this.text_color(theme.destructive))
         });
         let description = self.description.map(|description| {
-            div().text_sm().text_color(theme.muted_foreground).child(description)
+            div().text_sm().line_height(gpui::rems(1.25)).text_color(theme.muted_foreground).child(description)
         });
         let error = self
             .error
-            .map(|error| div().text_sm().text_color(theme.destructive).child(error));
+            .map(|error| div().text_sm().line_height(gpui::rems(1.25)).text_color(theme.destructive).child(error));
 
         match self.orientation {
             Orientation::Vertical => div()
@@ -105,9 +108,18 @@ impl RenderOnce for Field {
                 .gap_3()
                 .refine_style(&self.style)
                 .children(label)
-                .children(self.children)
-                .children(description)
-                .children(error),
+                // Help text and errors sit close to their control (`gap-2`)
+                // and to each other, so validation doesn't make the form jump.
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_2()
+                        .children(self.children)
+                        .when(description.is_some() || error.is_some(), |this| {
+                            this.child(div().flex().flex_col().gap_1().children(description).children(error))
+                        }),
+                ),
             Orientation::Horizontal => div()
                 .flex()
                 .items_start()
@@ -119,7 +131,7 @@ impl RenderOnce for Field {
                     div()
                         .flex()
                         .flex_col()
-                        .flex_1()
+                        .flex_1().min_w_0()
                         .gap_1p5()
                         .children(label)
                         .children(description)
@@ -188,10 +200,10 @@ impl RenderOnce for FieldSet {
                         .flex_col()
                         .gap_1p5()
                         .children(self.legend.map(|legend| {
-                            div().text_base().font_weight(FontWeight::MEDIUM).child(legend)
+                            div().text_base().line_height(gpui::rems(1.5)).font_weight(FontWeight::MEDIUM).child(legend)
                         }))
                         .children(self.description.map(|description| {
-                            div().text_sm().text_color(theme.muted_foreground).child(description)
+                            div().text_sm().line_height(gpui::rems(1.25)).text_color(theme.muted_foreground).child(description)
                         })),
                 )
             })
@@ -225,7 +237,7 @@ impl RenderOnce for FieldSeparator {
                 .flex()
                 .items_center()
                 .gap_2()
-                .text_sm()
+                .text_sm().line_height(gpui::rems(1.25))
                 .text_color(theme.muted_foreground)
                 .child(Separator::horizontal().flex_1())
                 .child(text)

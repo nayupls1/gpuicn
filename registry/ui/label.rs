@@ -34,7 +34,7 @@ impl RenderOnce for Label {
             .flex()
             .items_center()
             .gap_2()
-            .text_sm()
+            .text_sm().line_height(gpui::rems(1.25))
             .line_height(relative(1.))
             .font_weight(FontWeight::MEDIUM)
             .when(self.disabled, |this| this.opacity(0.5))

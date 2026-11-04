@@ -30,6 +30,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use super::icon::{Icon, IconName};
+use super::scroll_area::ScrollArea;
 use super::theme::ActiveTheme;
 use super::utils::StyledExt;
 
@@ -190,6 +191,7 @@ pub struct Sidebar {
     header: Option<AnyElement>,
     footer: Option<AnyElement>,
     groups: Vec<SidebarGroup>,
+    scroll_handle: Option<gpui::ScrollHandle>,
     style: StyleRefinement,
 }
 
@@ -206,6 +208,7 @@ impl Sidebar {
             header: None,
             footer: None,
             groups: Vec::new(),
+            scroll_handle: None,
             style: StyleRefinement::default(),
         }
     }
@@ -241,6 +244,12 @@ impl Sidebar {
         self
     }
 
+    /// Use your own scroll handle for the content, e.g. to reveal the active item.
+    pub fn track_scroll(mut self, handle: &gpui::ScrollHandle) -> Self {
+        self.scroll_handle = Some(handle.clone());
+        self
+    }
+
     pub fn group(mut self, group: SidebarGroup) -> Self {
         self.groups.push(group);
         self
@@ -264,7 +273,7 @@ fn menu_item(item: SidebarMenuItem, key: SharedString, icon_mode: bool, sub: boo
         .gap_2()
         .overflow_hidden()
         .rounded(theme.radius_md())
-        .text_sm()
+        .text_sm().line_height(gpui::rems(1.25))
         .cursor_pointer()
         .map(|this| {
             if icon_mode && !sub {
@@ -275,12 +284,17 @@ fn menu_item(item: SidebarMenuItem, key: SharedString, icon_mode: bool, sub: boo
                 this.h_8().p_2().w_full()
             }
         })
-        .when(item.active, |this| this.bg(accent).text_color(accent_fg).font_weight(FontWeight::MEDIUM))
-        .hover(move |s| s.bg(accent).text_color(accent_fg))
+        // Active is a notch stronger than hover so the current page stays clear.
+        .when(item.active, |this| {
+            this.bg(super::theme::mix(accent, theme.sidebar_foreground, 0.05)).text_color(accent_fg).font_weight(FontWeight::MEDIUM)
+        })
+        // Hover is a lighter tint than the active item so you never lose track
+        // of where you are while pointing at another row.
+        .when(!item.active, |this| this.hover(move |s| s.bg(accent).text_color(accent_fg)))
         .children(item.icon.map(Icon::new))
         .when(!icon_mode || sub, |this| {
-            this.child(div().flex_1().overflow_hidden().whitespace_nowrap().child(item.label.clone()))
-                .children(item.badge.clone().map(|badge| div().ml_auto().text_xs().font_weight(FontWeight::MEDIUM).child(badge)))
+            this.child(div().flex_1().min_w_0().overflow_hidden().whitespace_nowrap().child(item.label.clone()))
+                .children(item.badge.clone().map(|badge| div().ml_auto().text_xs().line_height(gpui::rems(1.)).font_weight(FontWeight::MEDIUM).child(badge)))
                 .when(has_sub, |this| {
                     this.child(Icon::new(if open { IconName::ChevronDown } else { IconName::ChevronRight }).ml_auto())
                 })
@@ -348,6 +362,8 @@ impl RenderOnce for Sidebar {
                     .w_full()
                     .min_w_0()
                     .p_2()
+                    // Leave room for the scrollbar thumb.
+                    .pr_3()
                     .children(group.label.filter(|_| !icon_mode).map(|label| {
                         div()
                             .flex()
@@ -355,7 +371,7 @@ impl RenderOnce for Sidebar {
                             .h_8()
                             .items_center()
                             .px_2()
-                            .text_xs()
+                            .text_xs().line_height(gpui::rems(1.))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(label_color)
                             .child(label)
@@ -391,16 +407,19 @@ impl RenderOnce for Sidebar {
             .refine_style(&self.style)
             .children(self.header.map(|h| div().flex().flex_col().gap_2().p_2().child(h)))
             .child(
-                div()
-                    .id("sidebar-content")
-                    .flex()
-                    .flex_col()
+                // A themed scrollbar shows there's more below when the menu overflows.
+                ScrollArea::new("sidebar-content")
+                    .when_some(self.scroll_handle.as_ref(), |this, handle| this.track_scroll(handle))
                     .flex_1()
                     .min_h_0()
-                    .gap_2()
-                    .overflow_y_scroll()
-                    .when(icon_mode, |this| this.items_center())
-                    .children(groups),
+                    .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_2()
+                        .when(icon_mode, |this| this.items_center())
+                        .children(groups),
+                ),
             )
             .children(self.footer.map(|f| div().flex().flex_col().gap_2().p_2().child(f)))
             .into_any_element()

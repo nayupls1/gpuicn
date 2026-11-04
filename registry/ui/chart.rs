@@ -58,19 +58,24 @@ struct HoverState {
     hovered: Option<usize>,
 }
 
-/// A "nice" axis maximum (1, 2, 2.5, 5 × 10ⁿ) above `value`.
+/// Number of horizontal grid intervals.
+const GRID_LINES: usize = 4;
+
+/// A "nice" axis maximum at or above `value`: [`GRID_LINES`] × a round tick
+/// step (1, 1.5, 2, 2.5, 3, 4, 5, 6, 8 × 10ⁿ), so the data fills most of the
+/// plot the way Recharts' automatic domain does.
 pub fn nice_max(value: f64) -> f64 {
     if value <= 0. {
         return 1.;
     }
-    let exp = value.log10().floor();
-    let base = 10f64.powf(exp);
-    for step in [1., 2., 2.5, 5., 10.] {
-        if step * base >= value {
-            return step * base;
-        }
-    }
-    10. * base
+    let raw = value / GRID_LINES as f64;
+    let base = 10f64.powf(raw.log10().floor());
+    let step = [1., 1.5, 2., 2.5, 3., 4., 5., 6., 8., 10.]
+        .into_iter()
+        .map(|m| m * base)
+        .find(|step| *step >= raw)
+        .unwrap_or(10. * base);
+    step * GRID_LINES as f64
 }
 
 macro_rules! cartesian_chart {
@@ -203,6 +208,7 @@ impl Cartesian {
         let series: Vec<Vec<f64>> = self.series.iter().map(|s| (0..points).map(|i| s.data.get(i).copied().unwrap_or(0.)).collect()).collect();
         let (kind, stacked, grid, dots) = (self.kind, self.stacked, self.grid, self.dots);
         let grid_color = theme.border;
+        let fill_opacity = if theme.is_dark() { 0.3 } else { 0.4 };
         let hover_bg = theme.muted.opacity(0.5);
 
         let plot = {
@@ -216,9 +222,10 @@ impl Cartesian {
                     let y_for = |v: f64| bounds.bottom() - bounds.size.height * (v / max) as f32;
 
                     if grid {
-                        for line in 0..=4 {
-                            let y = bounds.top() + bounds.size.height * (line as f32 / 4.);
-                            let mut builder = PathBuilder::stroke(px(1.)).dash_array(&[px(3.), px(3.)]);
+                        // `<CartesianGrid vertical={false} />`: solid horizontal lines.
+                        for line in 0..=GRID_LINES {
+                            let y = bounds.top() + bounds.size.height * (line as f32 / GRID_LINES as f32);
+                            let mut builder = PathBuilder::stroke(px(1.));
                             builder.move_to(point(bounds.left(), y));
                             builder.line_to(point(bounds.right(), y));
                             if let Ok(path) = builder.build() {
@@ -282,12 +289,16 @@ impl Cartesian {
                                     builder.move_to(base[0]);
                                     builder.line_to(pts[0]);
                                     smooth(&mut builder, pts);
-                                    for p in base.iter().rev() {
-                                        builder.line_to(*p);
-                                    }
+                                    // Follow the (smoothed) layer below exactly, so
+                                    // stacked fills meet without seams or overlaps.
+                                    let back: Vec<Point<Pixels>> = base.iter().rev().copied().collect();
+                                    builder.line_to(back[0]);
+                                    smooth(&mut builder, &back);
                                     builder.close();
                                     if let Ok(path) = builder.build() {
-                                        window.paint_path(path, colors[s].opacity(0.4));
+                                        // `fillOpacity={0.4}`; a touch lighter on dark backgrounds,
+                                        // where saturated fills read heavier.
+                                        window.paint_path(path, colors[s].opacity(fill_opacity));
                                     }
                                 }
                                 let mut builder = PathBuilder::stroke(px(2.));
@@ -299,7 +310,7 @@ impl Cartesian {
                                 if dots || hovered.is_some() {
                                     for (i, p) in pts.iter().enumerate() {
                                         if dots || hovered == Some(i) {
-                                            let r = px(3.);
+                                            let r = if hovered == Some(i) { px(5.) } else { px(4.) };
                                             window.paint_quad(
                                                 fill(Bounds::from_corners(*p - point(r, r), *p + point(r, r)), colors[s]).corner_radii(r),
                                             );
@@ -331,7 +342,7 @@ impl Cartesian {
                 .border_1()
                 .border_color(theme.border.opacity(0.5))
                 .bg(theme.background)
-                .text_xs()
+                .text_xs().line_height(gpui::rems(1.))
                 .when(theme.shadows, |this| this.shadow_xl())
                 .children(self.labels.get(ix).map(|l| div().font_weight(FontWeight::MEDIUM).child(l.clone())))
                 .children(self.series.iter().enumerate().map(|(s, series)| {
@@ -340,7 +351,7 @@ impl Cartesian {
                         .items_center()
                         .gap_2()
                         .child(div().size_2p5().rounded(px(2.)).bg(colors[s]))
-                        .child(div().flex_1().text_color(theme.muted_foreground).child(series.label.clone()))
+                        .child(div().flex_1().min_w_0().text_color(theme.muted_foreground).child(series.label.clone()))
                         .child(
                             div()
                                 .font_family(theme.mono_font_family.clone())
@@ -392,10 +403,10 @@ impl Cartesian {
                         }
                     }),
             )
-            .child(div().flex().w_full().text_xs().text_color(theme.muted_foreground).children(
+            .child(div().flex().w_full().text_xs().line_height(gpui::rems(1.)).text_color(theme.muted_foreground).children(
                 self.labels.iter().enumerate().map(|(ix, label)| {
                     let text: SharedString = if ix % label_every == 0 { label.chars().take(3).collect::<String>().into() } else { "".into() };
-                    div().flex_1().text_center().overflow_hidden().child(text)
+                    div().flex_1().min_w_0().text_center().overflow_hidden().child(text)
                 }),
             ))
             .when(self.legend && self.series.len() > 1, |this| {
@@ -405,14 +416,46 @@ impl Cartesian {
 }
 
 /// Catmull-Rom spline through `points` (assumes the path is at `points[0]`).
+/// Monotone cubic interpolation (Fritsch–Carlson, like Recharts'
+/// `type="monotone"`): smooth, but never overshoots the data, so a low point
+/// doesn't dip below its value. Works for points in either x direction.
 fn smooth(builder: &mut PathBuilder, points: &[Point<Pixels>]) {
-    for i in 0..points.len().saturating_sub(1) {
-        let p0 = if i == 0 { points[0] } else { points[i - 1] };
-        let (p1, p2) = (points[i], points[i + 1]);
-        let p3 = points.get(i + 2).copied().unwrap_or(p2);
-        let c1 = p1 + (p2 - p0) * (1. / 6.);
-        let c2 = p2 - (p3 - p1) * (1. / 6.);
-        builder.cubic_bezier_to(p2, c1, c2);
+    let n = points.len();
+    if n < 2 {
+        return;
+    }
+    let (xs, ys): (Vec<f32>, Vec<f32>) = points.iter().map(|p| (f32::from(p.x), f32::from(p.y))).unzip();
+    let secants: Vec<f32> = (0..n - 1)
+        .map(|i| {
+            let dx = xs[i + 1] - xs[i];
+            if dx == 0. { 0. } else { (ys[i + 1] - ys[i]) / dx }
+        })
+        .collect();
+    let mut tangents = vec![0f32; n];
+    tangents[0] = secants[0];
+    tangents[n - 1] = secants[n - 2];
+    for i in 1..n - 1 {
+        tangents[i] = if secants[i - 1] * secants[i] <= 0. { 0. } else { (secants[i - 1] + secants[i]) / 2. };
+    }
+    for i in 0..n - 1 {
+        if secants[i] == 0. {
+            tangents[i] = 0.;
+            tangents[i + 1] = 0.;
+            continue;
+        }
+        let (a, b) = (tangents[i] / secants[i], tangents[i + 1] / secants[i]);
+        let s = a * a + b * b;
+        if s > 9. {
+            let tau = 3. / s.sqrt();
+            tangents[i] = tau * a * secants[i];
+            tangents[i + 1] = tau * b * secants[i];
+        }
+    }
+    for i in 0..n - 1 {
+        let dx = (xs[i + 1] - xs[i]) / 3.;
+        let c1 = point(px(xs[i] + dx), px(ys[i] + tangents[i] * dx));
+        let c2 = point(px(xs[i + 1] - dx), px(ys[i + 1] - tangents[i + 1] * dx));
+        builder.cubic_bezier_to(points[i + 1], c1, c2);
     }
 }
 
@@ -434,7 +477,7 @@ impl ChartLegend {
 
 impl RenderOnce for ChartLegend {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        div().flex().items_center().justify_center().gap_4().pt_3().text_xs().children(self.items.into_iter().map(
+        div().flex().items_center().justify_center().gap_4().pt_3().text_xs().line_height(gpui::rems(1.)).children(self.items.into_iter().map(
             |(label, color)| div().flex().items_center().gap_1p5().child(div().size_2().rounded(px(2.)).bg(color)).child(label),
         ))
     }
@@ -522,6 +565,7 @@ impl RenderOnce for PieChart {
                     point(center.x + radius * angle.sin() as f32, center.y - radius * angle.cos() as f32)
                 };
                 let mut start = 0f64;
+                let mut boundaries = Vec::new();
                 for (ix, value) in values.iter().enumerate() {
                     let sweep = value / total * std::f64::consts::TAU;
                     if sweep <= 0. {
@@ -545,14 +589,20 @@ impl RenderOnce for PieChart {
                     if let Ok(path) = builder.build() {
                         window.paint_path(path, paint_colors[ix]);
                     }
-                    // Thin separators between slices.
-                    let mut sep = PathBuilder::stroke(px(1.));
-                    sep.move_to(at(ri, start));
-                    sep.line_to(at(r, start));
-                    if let Ok(path) = sep.build() {
-                        window.paint_path(path, background);
-                    }
+                    boundaries.push(start);
                     start += sweep;
+                }
+                // Separators go on top of every slice (Recharts' background
+                // stroke), so each boundary looks the same.
+                if boundaries.len() > 1 {
+                    for angle in boundaries {
+                        let mut sep = PathBuilder::stroke(px(2.));
+                        sep.move_to(at(ri.max(px(0.)), angle));
+                        sep.line_to(at(r + px(1.), angle));
+                        if let Ok(path) = sep.build() {
+                            window.paint_path(path, background);
+                        }
+                    }
                 }
             },
         )
@@ -577,8 +627,8 @@ impl RenderOnce for PieChart {
                             .flex_col()
                             .items_center()
                             .justify_center()
-                            .child(div().text_3xl().font_weight(FontWeight::BOLD).child(value))
-                            .child(div().text_sm().text_color(theme.muted_foreground).child(caption))
+                            .child(div().text_3xl().line_height(gpui::rems(2.25)).font_weight(FontWeight::BOLD).child(value))
+                            .child(div().text_sm().line_height(gpui::rems(1.25)).text_color(theme.muted_foreground).child(caption))
                     })),
             )
             .when(self.legend, |this| {

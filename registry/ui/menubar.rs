@@ -14,7 +14,7 @@
 //! ```
 
 use gpui::{
-    App, ElementId, FontWeight, IntoElement, RenderOnce, SharedString, StyleRefinement, Window,
+    App, Bounds, ElementId, FontWeight, IntoElement, Pixels, RenderOnce, SharedString, StyleRefinement, Window, canvas,
     div, prelude::*,
 };
 use std::rc::Rc;
@@ -41,6 +41,13 @@ impl MenuBuilder for MenubarMenu {
     }
 }
 
+#[derive(Default)]
+struct MenubarState {
+    open: Option<usize>,
+    /// Window bounds of each trigger, as of the last frame.
+    triggers: Vec<Bounds<Pixels>>,
+}
+
 #[derive(IntoElement)]
 pub struct Menubar {
     id: ElementId,
@@ -63,8 +70,8 @@ impl Menubar {
 
 impl RenderOnce for Menubar {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let state = window.use_keyed_state(self.id.clone(), cx, |_, _| None::<usize>);
-        let open_menu = *state.read(cx);
+        let state = window.use_keyed_state(self.id.clone(), cx, |_, _| MenubarState::default());
+        let open_menu = state.read(cx).open;
         let theme = cx.theme();
         let (accent, accent_fg) = (theme.accent, theme.accent_foreground);
         let radius = theme.radius_sm();
@@ -94,18 +101,37 @@ impl RenderOnce for Menubar {
                     .px_2()
                     .py_1()
                     .rounded(radius)
-                    .text_sm()
+                    .text_sm().line_height(gpui::rems(1.25))
                     .font_weight(FontWeight::MEDIUM)
                     .cursor_pointer()
                     .when(is_open, |this| this.bg(accent).text_color(accent_fg))
                     .hover(move |s| s.bg(accent).text_color(accent_fg))
                     .child(menu.label)
+                    .child({
+                        let state = state.clone();
+                        canvas(
+                            move |bounds, _, cx| {
+                                state.update(cx, |s, _| {
+                                    if s.triggers.len() <= ix {
+                                        s.triggers.resize(ix + 1, Bounds::default());
+                                    }
+                                    s.triggers[ix] = bounds;
+                                })
+                            },
+                            |_, _, _, _| {},
+                        )
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .size_full()
+                    })
                     .on_click(move |_, _, cx| {
                         toggle_state.update(cx, |s, cx| {
-                            *s = if *s == Some(ix) { None } else { Some(ix) };
+                            s.open = if s.open == Some(ix) { None } else { Some(ix) };
                             cx.notify();
                         })
                     });
+                let switch_state = state.clone();
 
                 Popover::new(("menubar-menu", ix))
                     .unstyled()
@@ -116,12 +142,24 @@ impl RenderOnce for Menubar {
                     .on_open_change(move |open, _, cx| {
                         if !open {
                             change_state.update(cx, |s, cx| {
-                                if *s == Some(ix) {
-                                    *s = None;
+                                if s.open == Some(ix) {
+                                    s.open = None;
                                     cx.notify();
                                 }
                             })
                         }
+                    })
+                    // While a menu is open, pointing at another trigger opens that menu.
+                    .on_backdrop_move(move |position, _, cx| {
+                        switch_state.update(cx, |s, cx| {
+                            if let Some(hovered) = s.triggers.iter().position(|b| b.contains(&position))
+                                && s.open.is_some()
+                                && s.open != Some(hovered)
+                            {
+                                s.open = Some(hovered);
+                                cx.notify();
+                            }
+                        })
                     })
                     .trigger(trigger)
                     .content_with_handle(move |popover, _, _| {

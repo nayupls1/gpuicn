@@ -1,6 +1,6 @@
 //! One demo per component, mirroring the examples on ui.shadcn.com.
 
-use gpui::{AnyElement, App, IntoElement, ParentElement, SharedString, Styled, Window, div, px};
+use gpui::{AnyElement, App, IntoElement, prelude::FluentBuilder, ParentElement, SharedString, Styled, Window, div, px};
 use std::rc::Rc;
 
 use crate::ui::{
@@ -13,7 +13,7 @@ use crate::ui::{
     breadcrumb::{Breadcrumb, BreadcrumbItem},
     button::{Button, ButtonSize, ButtonVariant},
     button_group::ButtonGroup,
-    calendar::{Calendar, CalendarMode},
+    calendar::{Calendar, CalendarMode, CalendarSelection, Date},
     card::{Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle},
     carousel::Carousel,
     chart::{AreaChart, BarChart, ChartSeries, LineChart, PieChart},
@@ -70,6 +70,7 @@ use crate::ui::{
 type Demo = fn(&mut Window, &mut App) -> AnyElement;
 
 pub const DEMOS: &[(&str, Demo)] = &[
+    ("Overview", overview),
     ("Accordion", accordion),
     ("Alert", alert),
     ("Alert Dialog", alert_dialog),
@@ -131,8 +132,269 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Typography", typography),
 ];
 
+/// One-line summary shown under each page title (from the shadcn docs).
+pub fn description(name: &str) -> &'static str {
+    match name {
+        "Overview" => "Many components working together, in the spirit of the examples on ui.shadcn.com.",
+        "Accordion" => "A vertically stacked set of interactive headings that each reveal a section of content.",
+        "Alert" => "Displays a callout for user attention.",
+        "Alert Dialog" => "A modal dialog that interrupts the user with important content and expects a response.",
+        "Aspect Ratio" => "Displays content within a desired ratio.",
+        "Avatar" => "An image element with a fallback for representing the user.",
+        "Badge" => "Displays a badge or a component that looks like a badge.",
+        "Breadcrumb" => "Displays the path to the current resource using a hierarchy of links.",
+        "Button" => "Displays a button or a component that looks like a button.",
+        "Button Group" => "A container that groups related buttons together with consistent styling.",
+        "Calendar" => "A date field component that allows users to enter and edit dates.",
+        "Card" => "Displays a card with header, content, and footer.",
+        "Carousel" => "A carousel that cycles through a set of slides.",
+        "Chart" => "Bar, area, line and pie charts that pick up your theme's chart colors.",
+        "Checkbox" => "A control that allows the user to toggle between checked and not checked.",
+        "Collapsible" => "An interactive component which expands and collapses a panel.",
+        "Combobox" => "Autocomplete input and command palette with a list of suggestions.",
+        "Command" => "Fast, composable command menu with fuzzy filtering and keyboard navigation.",
+        "Context Menu" => "Displays a menu of actions or functions, triggered by a right click.",
+        "Data Table" => "A table with sorting, filtering, pagination, row selection and column visibility.",
+        "Date Picker" => "A date picker component with single and range selection.",
+        "Dialog" => "A window overlaid on the primary window, rendering the content underneath inert.",
+        "Drawer" => "A panel that slides up from the bottom edge of the window.",
+        "Dropdown Menu" => "Displays a menu of actions or functions, triggered by a button.",
+        "Empty" => "Use the Empty component to display an empty state.",
+        "Field" => "Combine labels, controls, and help text to compose accessible form fields.",
+        "Form" => "Building forms with validation and error messages.",
+        "Hover Card" => "For sighted users to preview content available behind a link.",
+        "Input" => "Displays a form input field or a component that looks like an input field.",
+        "Input Group" => "Display additional information or actions next to an input or textarea.",
+        "Input OTP" => "Accessible one-time password component with copy paste functionality.",
+        "Item" => "A versatile component that you can use to display any content.",
+        "Kbd" => "Used to display textual user input from the keyboard.",
+        "Label" => "Renders an accessible label associated with controls.",
+        "Menubar" => "A visually persistent menu common in desktop applications that provides quick access to a consistent set of commands.",
+        "Native Select" => "A styled select for simple option lists.",
+        "Navigation Menu" => "A collection of links for navigating websites.",
+        "Pagination" => "Pagination with page navigation, next and previous links.",
+        "Popover" => "Displays rich content in a portal, triggered by a button.",
+        "Progress" => "Displays an indicator showing the completion progress of a task.",
+        "Radio Group" => "A set of checkable buttons where no more than one can be checked at a time.",
+        "Resizable" => "Resizable panel groups and layouts.",
+        "Scroll Area" => "Augments native scroll functionality with custom, themed scrollbars.",
+        "Select" => "Displays a list of options for the user to pick from, triggered by a button.",
+        "Separator" => "Visually or semantically separates content.",
+        "Sheet" => "Extends the Dialog component to display content that complements the main content of the screen.",
+        "Sidebar" => "A composable, themeable and customizable sidebar component.",
+        "Skeleton" => "Use to show a placeholder while content is loading.",
+        "Slider" => "An input where the user selects a value from within a given range.",
+        "Sonner" => "An opinionated toast component.",
+        "Spinner" => "An indicator that can be used to show a loading state.",
+        "Switch" => "A control that allows the user to toggle between checked and not checked.",
+        "Table" => "A responsive table component.",
+        "Tabs" => "A set of layered sections of content, known as tab panels, that are displayed one at a time.",
+        "Textarea" => "Displays a form textarea or a component that looks like a textarea.",
+        "Toast" => "A succinct message that is displayed temporarily.",
+        "Toggle" => "A two-state button that can be either on or off.",
+        "Toggle Group" => "A set of two-state buttons that can be toggled on or off.",
+        "Tooltip" => "A popup that displays information related to an element when the mouse hovers over it.",
+        "Typography" => "Styles for headings, paragraphs, lists and more.",
+        _ => "",
+    }
+}
+
+/// Bundled avatar pictures (illustrations), so demos show the image path.
+fn avatar_image(n: usize) -> gpui::ImageSource {
+    let bytes: &'static [u8] = match n % 3 {
+        0 => include_bytes!("../assets/avatar-1.png"),
+        1 => include_bytes!("../assets/avatar-2.png"),
+        _ => include_bytes!("../assets/avatar-3.png"),
+    };
+    gpui::ImageSource::Image(std::sync::Arc::new(gpui::Image::from_bytes(gpui::ImageFormat::Png, bytes.to_vec())))
+}
+
+/// A horizontal row. It doesn't wrap: taffy can measure a wrapping row at a
+/// different width than it finally gets, which leaves stray space in cards.
+/// A dashboard-style composition of many components (the examples on the
+/// shadcn homepage).
+fn overview(_: &mut Window, cx: &mut App) -> AnyElement {
+    let theme = cx.theme().clone();
+    let muted = theme.muted_foreground;
+
+    let create_account = Card::new()
+        .child(
+            CardHeader::new()
+                .child(CardTitle::new("Create an account").text_2xl().line_height(px(28.)))
+                .child(CardDescription::new("Enter your email below to create your account")),
+        )
+        .child(
+            CardContent::new().child(
+                col()
+                    .child(
+                        div()
+                            .grid()
+                            .grid_cols(2)
+                            .gap_4()
+                            .child(Button::new("ov-sso").outline().icon(IconName::User).label("SSO").w_full())
+                            .child(Button::new("ov-mail").outline().icon(IconName::Mail).label("Magic link").w_full()),
+                    )
+                    .child(
+                        row()
+                            .gap_3()
+                            .child(Separator::horizontal().flex_1())
+                            .child(div().text_xs().line_height(px(16.)).text_color(muted).child("OR CONTINUE WITH"))
+                            .child(Separator::horizontal().flex_1()),
+                    )
+                    .child(Field::new().label("Email").child(Input::new("ov-email").placeholder("m@example.com")))
+                    .child(Field::new().label("Password").child(Input::new("ov-password").masked(true))),
+            ),
+        )
+        .child(CardFooter::new().child(Button::new("ov-create").label("Create account").w_full()));
+
+    let setting = |id: &'static str, title: &'static str, description: &'static str, on: bool| {
+        row()
+            .justify_between()
+            .gap_4()
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .flex_1()
+                    .min_w_0()
+                    .child(Label::new(title))
+                    .child(div().text_sm().line_height(px(20.)).text_color(muted).child(description)),
+            )
+            .child(Switch::new(id).default_checked(on))
+    };
+    let cookies = Card::new()
+        .child(CardHeader::new().child(CardTitle::new("Cookie Settings")).child(CardDescription::new("Manage your cookie settings here.")))
+        .child(
+            CardContent::new().child(
+                col()
+                    .gap_5()
+                    .child(setting("ov-necessary", "Strictly Necessary", "These cookies are essential to use the app.", true))
+                    .child(setting("ov-functional", "Functional Cookies", "These cookies remember your preferences.", false))
+                    .child(setting("ov-performance", "Performance Cookies", "These help us improve the experience.", true)),
+            ),
+        )
+        .child(CardFooter::new().child(Button::new("ov-save").outline().label("Save preferences").w_full()));
+
+    let revenue = Card::new()
+        .child(
+            CardHeader::new()
+                .child(CardDescription::new("Total Revenue"))
+                .child(CardTitle::new("$15,231.89").text_2xl().line_height(px(32.)))
+                .child(
+                    row()
+                        .gap_1p5()
+                        .child(Badge::new("+20.1%").outline().icon(IconName::ArrowUpRight))
+                        .child(div().text_xs().line_height(px(16.)).text_color(muted).child("from last month")),
+                )
+                .action(Button::new("ov-revenue-more").ghost().size(ButtonSize::IconSm).icon(IconName::Ellipsis)),
+        )
+        .child(
+            CardContent::new().child(
+                LineChart::new("ov-revenue")
+                    .w(px(230.))
+                    .labels(["Jan", "Feb", "Mar", "Apr", "May", "Jun"])
+                    .series(ChartSeries::new("Revenue").data([10_400., 14_405., 9_400., 8_200., 12_800., 15_231.]))
+                    .height(px(110.))
+                    .legend(false)
+                    .dots(true),
+            ),
+        );
+
+    let member = |n: usize, name: &'static str, email: &'static str, role: &'static str| {
+        row()
+            .gap_3()
+            .child(Avatar::new().src(avatar_image(n)).fallback(&name[..1]))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_w_0()
+                    .child(div().truncate().text_sm().line_height(px(20.)).font_weight(gpui::FontWeight::MEDIUM).child(name))
+                    .child(div().truncate().text_sm().line_height(px(20.)).text_color(muted).child(email)),
+            )
+            .child(Button::new(SharedString::from(format!("ov-role-{n}"))).outline().size(ButtonSize::Sm).gap_1().px_2p5().label(role).icon_end(IconName::ChevronDown))
+    };
+    let team = Card::new()
+        .child(CardHeader::new().child(CardTitle::new("Team Members")).child(CardDescription::new("Invite your team members to collaborate.")))
+        .child(
+            CardContent::new().child(
+                col()
+                    .gap_5()
+                    .child(member(0, "Sofia Davis", "m@acme.co", "Owner"))
+                    .child(member(1, "Ethan Lee", "e@acme.co", "Member"))
+                    .child(member(2, "Olivia Kim", "o@acme.co", "Member")),
+            ),
+        );
+
+    let today = Date::today();
+    let calendar = Card::new()
+        .py_0()
+        .items_center()
+        .child(Calendar::new("ov-calendar").bg(theme.card).default_selection(CalendarSelection::Single(Some(today.add_days(3)))));
+
+    let report = Card::new()
+        .child(CardHeader::new().child(CardTitle::new("Report an issue")).child(CardDescription::new("What area are you having problems with?")))
+        .child(
+            CardContent::new().child(
+                col()
+                    .w(px(230.))
+                    .child(
+                        div()
+                            .grid()
+                            .grid_cols(2)
+                            .gap_4()
+                            .child(
+                                Field::new().label("Area").child(
+                                    Select::new("ov-area")
+                                        .w_full()
+                                        .default_value("billing")
+                                        .item(SelectItem::new("team", "Team"))
+                                        .item(SelectItem::new("billing", "Billing"))
+                                        .item(SelectItem::new("account", "Account")),
+                                ),
+                            )
+                            .child(
+                                Field::new().label("Severity").child(
+                                    Select::new("ov-severity")
+                                        .w_full()
+                                        .default_value("2")
+                                        .item(SelectItem::new("1", "Severity 1"))
+                                        .item(SelectItem::new("2", "Severity 2"))
+                                        .item(SelectItem::new("3", "Severity 3")),
+                                ),
+                            ),
+                    )
+                    .child(Field::new().w_full().label("Subject").child(Input::new("ov-subject").w_full().placeholder("I need help with...")))
+                    .child(
+                        Field::new()
+                            .w_full()
+                            .label("Description")
+                            .child(Textarea::new("ov-description").w_full().placeholder("Please include all information relevant to your issue.")),
+                    ),
+            ),
+        )
+        .child(
+            CardFooter::new()
+                .justify_between()
+                .child(Button::new("ov-cancel").ghost().label("Cancel"))
+                .child(Button::new("ov-submit").label("Submit")),
+        );
+
+    div()
+        .w(px(872.))
+        .flex()
+        .gap_4()
+        .items_start()
+        .child(col().w(px(280.)).flex_none().child(create_account).child(cookies))
+        .child(col().w(px(280.)).flex_none().child(revenue).child(team))
+        .child(col().w(px(280.)).flex_none().child(calendar).child(report))
+        .into_any_element()
+}
+
 fn row() -> gpui::Div {
-    div().flex().flex_wrap().items_center().gap_2()
+    div().flex().items_center().gap_2()
 }
 
 fn col() -> gpui::Div {
@@ -140,7 +402,7 @@ fn col() -> gpui::Div {
 }
 
 fn accordion(_: &mut Window, _: &mut App) -> AnyElement {
-    Accordion::new("accordion")
+    let accordion = Accordion::new("accordion")
         .default_value(["item-1"])
         .w(px(480.))
         .item(AccordionItem::new("item-1", "Product Information").content(
@@ -154,7 +416,8 @@ fn accordion(_: &mut Window, _: &mut App) -> AnyElement {
         .item(AccordionItem::new("item-3", "Return Policy").content(
             div().child("We stand behind our products with a comprehensive 30-day return policy."),
         ))
-        .into_any_element()
+        ;
+    div().h(px(260.)).child(accordion).into_any_element()
 }
 
 fn alert(_: &mut Window, _: &mut App) -> AnyElement {
@@ -198,23 +461,44 @@ fn aspect_ratio(_: &mut Window, cx: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-fn avatar(_: &mut Window, _: &mut App) -> AnyElement {
+fn avatar(_: &mut Window, cx: &mut App) -> AnyElement {
     row()
         .gap_4()
-        .child(Avatar::new().fallback("CN"))
-        .child(Avatar::new().fallback("ER").rounded_lg())
-        .child(Avatar::new().fallback("LR").size_12())
+        .child(Avatar::new().src(avatar_image(0)).fallback("CN"))
+        .child(Avatar::new().src(avatar_image(1)).fallback("ER").rounded_lg())
+        .child(Avatar::new().fallback("LR"))
+        .child({
+            // Avatar group: overlapping, each ringed with the page background.
+            let theme = cx.theme();
+            let ring = theme.background;
+            div().flex().children(["CN", "LR", "ER"].into_iter().enumerate().map(move |(ix, initials)| {
+                // `ring-2 ring-background`, so overlapping avatars stay distinct.
+                div()
+                    .p(px(2.))
+                    .rounded_full()
+                    .bg(ring)
+                    .when(ix > 0, |this| this.ml(px(-10.)))
+                    .child(Avatar::new().src(avatar_image(ix)).fallback(initials))
+            }))
+        })
         .into_any_element()
 }
 
-fn badge(_: &mut Window, _: &mut App) -> AnyElement {
+fn badge(_: &mut Window, cx: &mut App) -> AnyElement {
     row()
         .child(Badge::new("Badge"))
         .child(Badge::new("Secondary").secondary())
         .child(Badge::new("Destructive").destructive())
         .child(Badge::new("Outline").outline())
-        .child(Badge::new("Verified").secondary().icon(IconName::CircleCheck))
-        .child(Badge::new("8").rounded_full().px_1())
+        .child(
+            Badge::new("Verified")
+                .icon(IconName::CircleCheck)
+                .bg(if cx.theme().is_dark() { gpui::rgb(0x155dfc) } else { gpui::rgb(0x2b7fff) })
+                .text_color(gpui::white()),
+        )
+        .child(Badge::new("8").rounded_full().h_5().min_w_5().px_1())
+        .child(Badge::new("99").destructive().rounded_full().h_5().min_w_5().px_1())
+        .child(Badge::new("20+").outline().rounded_full().h_5().min_w_5().px_1())
         .into_any_element()
 }
 
@@ -244,7 +528,7 @@ fn button(_: &mut Window, _: &mut App) -> AnyElement {
                 .child(Button::new("lg").size(ButtonSize::Lg).outline().label("Large"))
                 .child(Button::new("icon").outline().size(ButtonSize::Icon).icon(IconName::ArrowUp))
                 .child(Button::new("with-icon").outline().icon(IconName::Mail).label("Login with Email"))
-                .child(Button::new("loading").size(ButtonSize::Sm).outline().loading(true).label("Please wait"))
+                .child(Button::new("loading").size(ButtonSize::Sm).loading(true).label("Please wait"))
                 .child(Button::new("disabled").disabled(true).label("Disabled"))
                 .child(Button::new("toast").outline().label("Click me").tooltip("Shows a toast").on_click(|_, _, cx| {
                     toast("Button clicked", cx);
@@ -279,13 +563,24 @@ fn button_group(_: &mut Window, _: &mut App) -> AnyElement {
 
 fn calendar(_: &mut Window, cx: &mut App) -> AnyElement {
     let border = cx.theme().border;
+    let shadows = cx.theme().shadows;
+    let today = Date::today();
     row()
         .items_start()
         .gap_6()
-        .child(Calendar::new("calendar").rounded_md().border_1().border_color(border))
+        .child(
+            Calendar::new("calendar")
+                .default_selection(CalendarSelection::Single(Some(today.add_days(8))))
+                .rounded_lg()
+                .border_1()
+                .border_color(border)
+                .when(shadows, |this| this.shadow_sm()),
+        )
         .child(
             Calendar::new("range-calendar")
                 .mode(CalendarMode::Range)
+                .default_selection(CalendarSelection::Range(Some(today.add_days(2)), Some(today.add_days(16))))
+                .when(shadows, |this| this.shadow_sm())
                 .months(2)
                 .rounded_md()
                 .border_1()
@@ -294,21 +589,40 @@ fn calendar(_: &mut Window, cx: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-fn card(_: &mut Window, _: &mut App) -> AnyElement {
+fn card(_: &mut Window, cx: &mut App) -> AnyElement {
     Card::new()
         .w(px(380.))
         .child(
             CardHeader::new()
                 .child(CardTitle::new("Login to your account"))
                 .child(CardDescription::new("Enter your email below to login to your account"))
-                .action(Button::new("signup").link().label("Sign Up")),
+                .action(Button::new("signup").link().h_auto().p_0().label("Sign Up")),
         )
         .child(
             CardContent::new().child(
                 col()
                     .gap_6()
                     .child(Field::new().label("Email").child(Input::new("card-email").placeholder("m@example.com")))
-                    .child(Field::new().label("Password").child(Input::new("card-password").masked(true))),
+                    .child(
+                        col()
+                            .gap_3()
+                            .child(
+                                row()
+                                    .flex_nowrap()
+                                    .justify_between()
+                                    .child(Label::new("Password"))
+                                    .child(
+                                        Button::new("forgot")
+                                            .link()
+                                            .h(px(14.))
+                                            .p_0()
+                                            .font_weight(gpui::FontWeight::NORMAL)
+                                            .text_color(cx.theme().foreground)
+                                            .label("Forgot your password?"),
+                                    ),
+                            )
+                            .child(Input::new("card-password").masked(true)),
+                    ),
             ),
         )
         .child(
@@ -325,32 +639,45 @@ fn carousel(_: &mut Window, _: &mut App) -> AnyElement {
         .px_12()
         .child(
             Carousel::new("carousel").w(px(320.)).items((1..=5).map(|n| {
-                Card::new().child(
+                // `p-1` around each slide keeps the card's shadow and corners visible.
+                div().p_1().child(Card::new().child(
                     CardContent::new()
                         .flex()
-                        .h(px(220.))
+                        .h(px(248.))
                         .items_center()
                         .justify_center()
-                        .text_3xl()
+                        .text_size(px(36.))
+                        .line_height(px(40.))
                         .font_weight(gpui::FontWeight::SEMIBOLD)
                         .child(n.to_string()),
                 )
-            })),
+            )})),
         )
         .into_any_element()
 }
 
-fn chart(_: &mut Window, _: &mut App) -> AnyElement {
+fn chart(_: &mut Window, cx: &mut App) -> AnyElement {
     let months = ["January", "February", "March", "April", "May", "June"];
     let desktop = [186., 305., 237., 73., 209., 214.];
     let mobile = [80., 200., 120., 190., 130., 140.];
-    let card = |title: &'static str, chart: AnyElement| {
+    let muted = cx.theme().muted_foreground;
+    let card = move |title: &'static str, chart: AnyElement| {
         Card::new()
             .w(px(400.))
             .child(CardHeader::new().child(CardTitle::new(title)).child(CardDescription::new("January - June 2024")))
             .child(CardContent::new().child(chart))
+            .child(
+                CardFooter::new().flex_col().items_start().gap_1().text_sm().line_height(px(20.)).child(
+                    row()
+                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .child("Trending up by 5.2% this month")
+                        .child(Icon::new(IconName::TrendingUp)),
+                )
+                .child(div().text_color(muted).child("Showing total visitors for the last 6 months")),
+            )
     };
     div()
+        .w(px(816.))
         .flex()
         .flex_wrap()
         .gap_4()
@@ -402,6 +729,7 @@ fn checkbox(_: &mut Window, _: &mut App) -> AnyElement {
 
 fn collapsible(_: &mut Window, cx: &mut App) -> AnyElement {
     let border = cx.theme().border;
+    let mono = cx.theme().mono_font_family.clone();
     let repo = move |name: &'static str| {
         div()
             .rounded_md()
@@ -409,7 +737,7 @@ fn collapsible(_: &mut Window, cx: &mut App) -> AnyElement {
             .border_color(border)
             .px_4()
             .py_2()
-            .font_family("monospace")
+            .font_family(mono.clone())
             .text_sm()
             .child(name)
     };
@@ -443,6 +771,7 @@ fn frameworks() -> [(&'static str, &'static str); 5] {
 
 fn combobox(_: &mut Window, _: &mut App) -> AnyElement {
     let mut combobox = Combobox::new("framework")
+        .default_value("next.js")
         .placeholder("Select framework...")
         .search_placeholder("Search framework...")
         .empty("No framework found.");
@@ -454,11 +783,13 @@ fn combobox(_: &mut Window, _: &mut App) -> AnyElement {
 
 fn command(_: &mut Window, cx: &mut App) -> AnyElement {
     let border = cx.theme().border;
-    Command::new("command")
+    let shadows = cx.theme().shadows;
+    let command = Command::new("command")
         .w(px(450.))
         .rounded_lg()
         .border_1()
         .border_color(border)
+        .when(shadows, |this| this.shadow_md())
         .group(
             CommandGroup::new("Suggestions")
                 .item(CommandItem::new("Calendar").icon(IconName::Calendar))
@@ -473,12 +804,13 @@ fn command(_: &mut Window, cx: &mut App) -> AnyElement {
         )
         .on_select(|value, _, cx| {
             toast(format!("Selected {value}"), cx);
-        })
-        .into_any_element()
+        });
+    // Fixed height, anchored to the top: filtering shouldn't move the input.
+    div().h(px(340.)).child(command).into_any_element()
 }
 
 fn context_menu(_: &mut Window, cx: &mut App) -> AnyElement {
-    let border = cx.theme().border;
+    let dashed = cx.theme().muted_foreground.opacity(0.45);
     ContextMenu::new("context")
         .trigger(
             div()
@@ -488,12 +820,13 @@ fn context_menu(_: &mut Window, cx: &mut App) -> AnyElement {
                 .items_center()
                 .justify_center()
                 .rounded_md()
-                .border_1()
+                .border(px(1.5))
                 .border_dashed()
-                .border_color(border)
+                .border_color(dashed)
                 .text_sm()
                 .child("Right click here"),
         )
+        .min_w(px(208.))
         .item(MenuItem::new("Back").inset().shortcut("⌘["))
         .item(MenuItem::new("Forward").inset().shortcut("⌘]").disabled(true))
         .item(MenuItem::new("Reload").inset().shortcut("⌘R"))
@@ -525,13 +858,13 @@ struct Payment {
 
 fn payments() -> Vec<Payment> {
     vec![
-        Payment { id: "m5gr84i9", amount: 316., status: "success", email: "ken99@example.com" },
-        Payment { id: "3u1reuv4", amount: 242., status: "success", email: "Abe45@example.com" },
-        Payment { id: "derv1ws0", amount: 837., status: "processing", email: "Monserrat44@example.com" },
-        Payment { id: "5kma53ae", amount: 874., status: "success", email: "Silas22@example.com" },
-        Payment { id: "bhqecj4p", amount: 721., status: "failed", email: "carmella@example.com" },
-        Payment { id: "p0r8sd2x", amount: 129., status: "pending", email: "jason@example.com" },
-        Payment { id: "a1b2c3d4", amount: 450., status: "success", email: "olivia@example.com" },
+        Payment { id: "m5gr84i9", amount: 316., status: "Success", email: "ken99@example.com" },
+        Payment { id: "3u1reuv4", amount: 242., status: "Success", email: "Abe45@example.com" },
+        Payment { id: "derv1ws0", amount: 837., status: "Processing", email: "Monserrat44@example.com" },
+        Payment { id: "5kma53ae", amount: 874., status: "Success", email: "Silas22@example.com" },
+        Payment { id: "bhqecj4p", amount: 721., status: "Failed", email: "carmella@example.com" },
+        Payment { id: "p0r8sd2x", amount: 129., status: "Pending", email: "jason@example.com" },
+        Payment { id: "a1b2c3d4", amount: 450., status: "Success", email: "olivia@example.com" },
     ]
 }
 
@@ -545,7 +878,6 @@ fn data_table(_: &mut Window, _: &mut App) -> AnyElement {
         .column(DataTableColumn::new("email", "Email", |p: &Payment, _, _| p.email).sortable_by(|p| p.email.to_lowercase()))
         .column(
             DataTableColumn::new("amount", "Amount", |p: &Payment, _, _| format!("${:.2}", p.amount))
-                .sortable_by(|p| (p.amount * 100.) as i64)
                 .align_right()
                 .width(px(120.)),
         )
@@ -566,8 +898,9 @@ fn data_table(_: &mut Window, _: &mut App) -> AnyElement {
 
 fn date_picker(_: &mut Window, _: &mut App) -> AnyElement {
     col()
-        .child(DatePicker::new("date"))
-        .child(DatePicker::new("range").mode(CalendarMode::Range).months(2).placeholder("Pick a date range"))
+        .w(px(280.))
+        .child(DatePicker::new("date").w_full())
+        .child(DatePicker::new("range").mode(CalendarMode::Range).months(2).placeholder("Pick a date range").w_full())
         .into_any_element()
 }
 
@@ -608,15 +941,52 @@ fn drawer(_: &mut Window, _: &mut App) -> AnyElement {
         .trigger(Button::new("open").outline().label("Open Drawer"))
         .title("Move Goal")
         .description("Set your daily activity goal.")
-        .content(|_, _, cx| {
-            let muted = cx.theme().muted_foreground;
+        .content(|_, window, cx| {
+            let goal = window.use_keyed_state("drawer-goal", cx, |_, _| 350i32);
+            let value = *goal.read(cx);
+            let theme = cx.theme();
+            let (muted, bar) = (theme.muted_foreground, theme.foreground.opacity(0.9));
+            let step = |id: &'static str, icon: IconName, delta: i32| {
+                let goal = goal.clone();
+                Button::new(id)
+                    .outline()
+                    .size(ButtonSize::IconSm)
+                    .rounded_full()
+                    .icon(icon)
+                    .disabled(if delta < 0 { value <= 200 } else { value >= 400 })
+                    .on_click(move |_, _, cx| goal.update(cx, |g, cx| {
+                        *g = (*g + delta).clamp(200, 400);
+                        cx.notify();
+                    }))
+            };
+            let data = [400, 300, 200, 300, 200, 278, 189, 239, 300, 200, 278, 189, 349];
             div()
                 .flex()
                 .flex_col()
                 .items_center()
-                .py_4()
-                .child(div().text_size(px(72.)).font_weight(gpui::FontWeight::BOLD).child("350"))
-                .child(div().text_xs().text_color(muted).child("CALORIES/DAY"))
+                .gap_6()
+                .pb_2()
+                .child(
+                    row()
+                        .flex_nowrap()
+                        .gap_6()
+                        .child(step("goal-minus", IconName::Minus, -10))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .items_center()
+                                .w(px(160.))
+                                .child(div().text_size(px(72.)).line_height(px(72.)).font_weight(gpui::FontWeight::BOLD).child(value.to_string()))
+                                .child(div().text_xs().line_height(px(16.)).text_color(muted).child("CALORIES/DAY")),
+                        )
+                        .child(step("goal-plus", IconName::Plus, 10)),
+                )
+                .child(
+                    div().flex().items_end().gap_1().h(px(120.)).w(px(320.)).children(
+                        data.map(|v| div().flex_1().h(px(v as f32 * 0.3)).rounded_t(px(4.)).bg(bar)),
+                    ),
+                )
         })
         .footer(|drawer, _, _| {
             let close = drawer.clone();
@@ -638,7 +1008,15 @@ fn dropdown_menu(_: &mut Window, _: &mut App) -> AnyElement {
         .item(MenuItem::new("Keyboard shortcuts").shortcut("⌘K"))
         .separator()
         .item(MenuItem::new("Team"))
-        .submenu("Invite users", vec![MenuItem::new("Email").into(), MenuItem::new("Message").into(), MenuItem::new("More...").into()])
+        .submenu(
+            "Invite users",
+            vec![
+                MenuItem::new("Email").into(),
+                MenuItem::new("Message").into(),
+                crate::ui::dropdown_menu::MenuEntry::Separator,
+                MenuItem::new("More...").into(),
+            ],
+        )
         .item(MenuItem::new("New Team").shortcut("⌘+T"))
         .separator()
         .item(MenuItem::new("GitHub"))
@@ -650,14 +1028,26 @@ fn dropdown_menu(_: &mut Window, _: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-fn empty(_: &mut Window, _: &mut App) -> AnyElement {
+fn empty(_: &mut Window, cx: &mut App) -> AnyElement {
     Empty::new()
         .outline()
         .w(px(560.))
         .icon(IconName::Folder)
         .title("No Projects Yet")
         .description("You haven't created any projects yet. Get started by creating your first project.")
-        .child(row().child(Button::new("create").label("Create Project")).child(Button::new("import").outline().label("Import Project")))
+        .child(
+            col()
+                .items_center()
+                .child(row().flex_nowrap().child(Button::new("create").label("Create Project")).child(Button::new("import").outline().label("Import Project")))
+                .child(
+                    Button::new("learn-more")
+                        .link()
+                        .size(ButtonSize::Sm)
+                        .icon_end(IconName::ArrowUpRight)
+                        .label("Learn More")
+                        .text_color(cx.theme().muted_foreground),
+                ),
+        )
         .into_any_element()
 }
 
@@ -681,15 +1071,25 @@ fn field(_: &mut Window, _: &mut App) -> AnyElement {
                             row()
                                 .gap_4()
                                 .flex_nowrap()
-                                .child(Field::new().label("Month").child(
-                                    NativeSelect::new("field-month").option("01", "01").option("02", "02").option("03", "03"),
+                                .child(Field::new().flex_1().min_w_0().label("Month").child(
+                                    NativeSelect::new("field-month").placeholder("MM").option("01", "01").option("02", "02").option("03", "03").option("12", "12"),
                                 ))
-                                .child(Field::new().label("CVV").child(Input::new("field-cvv").placeholder("123"))),
+                                .child(Field::new().flex_1().min_w_0().label("Year").child(
+                                    NativeSelect::new("field-year").placeholder("YYYY").option("2026", "2026").option("2027", "2027").option("2028", "2028"),
+                                ))
+                                .child(Field::new().flex_1().min_w_0().label("CVV").child(Input::new("field-cvv").placeholder("123"))),
                         )
                         .child(FieldSeparator::new())
-                        .child(Field::new().horizontal().label("Same as shipping address").child(Checkbox::new("field-same").default_checked(true))),
+                        .child(
+                            FieldSet::new()
+                                .legend("Billing Address")
+                                .description("The billing address associated with your payment method")
+                                .child(Field::new().horizontal().label("Same as shipping address").child(Checkbox::new("field-same").default_checked(true))),
+                        )
+                        .child(Field::new().label("Comments").child(Textarea::new("field-comments").placeholder("Add any additional comments"))),
                 ),
         )
+        .child(row().mt_6().child(Button::new("field-submit").label("Submit")).child(Button::new("field-cancel").outline().label("Cancel")))
         .into_any_element()
 }
 
@@ -720,19 +1120,31 @@ fn form(_: &mut Window, _: &mut App) -> AnyElement {
 fn hover_card(_: &mut Window, cx: &mut App) -> AnyElement {
     let muted = cx.theme().muted_foreground;
     HoverCard::new("hover-card")
+        .w(px(320.))
         .trigger(Button::new("trigger").link().label("@nextjs"))
         .content(move |_, _| {
             row()
                 .items_start()
                 .gap_4()
                 .flex_nowrap()
-                .child(Avatar::new().fallback("VC"))
+                .child(Avatar::new().src(avatar_image(2)).fallback("VC"))
                 .child(
                     col()
+                        .flex_1()
+                        .min_w_0()
                         .gap_1()
                         .child(div().text_sm().font_weight(gpui::FontWeight::SEMIBOLD).child("@nextjs"))
                         .child(div().text_sm().child("The React Framework – created and maintained by @vercel."))
-                        .child(div().text_xs().text_color(muted).child("Joined December 2021")),
+                        .child(
+                            row()
+                                .gap_1p5()
+                                .pt_1()
+                                .text_xs()
+                                .line_height(px(16.))
+                                .text_color(muted)
+                                .child(Icon::new(IconName::Calendar).size_3p5())
+                                .child("Joined December 2021"),
+                        ),
                 )
         })
         .into_any_element()
@@ -810,16 +1222,18 @@ fn item(_: &mut Window, _: &mut App) -> AnyElement {
         .child(
             ItemGroup::new()
                 .separated()
-                .child(Item::new("shadcn").media(Avatar::new().fallback("S")).title("shadcn").description("shadcn@vercel.com"))
+                .child(Item::new("shadcn").media(Avatar::new().src(avatar_image(0)).fallback("S")).title("shadcn").description("shadcn@vercel.com"))
                 .child(Item::new("maxleiter").media(Avatar::new().fallback("M")).title("maxleiter").description("maxleiter@vercel.com")),
         )
         .into_any_element()
 }
 
-fn kbd(_: &mut Window, _: &mut App) -> AnyElement {
+fn kbd(_: &mut Window, cx: &mut App) -> AnyElement {
+    let muted = cx.theme().muted_foreground;
     col()
+        .items_center()
         .child(KbdGroup::new().child(Kbd::new("⌘")).child(Kbd::new("⇧")).child(Kbd::new("⌥")).child(Kbd::new("⌃")))
-        .child(KbdGroup::new().child(Kbd::new("Ctrl")).child("+").child(Kbd::new("B")))
+        .child(KbdGroup::new().child(Kbd::new("Ctrl")).child(div().text_color(muted).child("+")).child(Kbd::new("B")))
         .into_any_element()
 }
 
@@ -843,6 +1257,17 @@ fn menubar(_: &mut Window, _: &mut App) -> AnyElement {
             MenubarMenu::new("Edit")
                 .item(MenuItem::new("Undo").shortcut("⌘Z"))
                 .item(MenuItem::new("Redo").shortcut("⇧⌘Z"))
+                .separator()
+                .submenu(
+                    "Find",
+                    vec![
+                        MenuItem::new("Search the web").into(),
+                        crate::ui::dropdown_menu::MenuEntry::Separator,
+                        MenuItem::new("Find...").into(),
+                        MenuItem::new("Find Next").into(),
+                        MenuItem::new("Find Previous").into(),
+                    ],
+                )
                 .separator()
                 .item(MenuItem::new("Cut"))
                 .item(MenuItem::new("Copy"))
@@ -881,16 +1306,46 @@ fn native_select(_: &mut Window, _: &mut App) -> AnyElement {
 
 fn navigation_menu(_: &mut Window, _: &mut App) -> AnyElement {
     NavigationMenu::new("nav")
-        .item(NavigationMenuItem::new("Getting started").content(|_, _| {
+        .item(NavigationMenuItem::new("Getting started").content(|_, cx| {
+            let theme = cx.theme();
+            // The featured tile (`row-span-3` with a gradient) next to three links.
+            let hero = div()
+                .flex()
+                .flex_col()
+                .justify_end()
+                .flex_none()
+                .w(px(190.))
+                .p_4()
+                .gap_2()
+                .rounded(theme.radius_md())
+                .bg(gpui::linear_gradient(
+                    180.,
+                    gpui::linear_color_stop(theme.muted.opacity(0.4), 0.),
+                    gpui::linear_color_stop(crate::ui::theme::mix(theme.muted, theme.foreground, 0.06), 1.),
+                ))
+                .child(Icon::new(IconName::Terminal).size_8())
+                .child(div().mt_4().text_lg().line_height(px(24.)).font_weight(gpui::FontWeight::MEDIUM).child("gpuicn"))
+                .child(
+                    div()
+                        .text_sm()
+                        .line_height(px(18.))
+                        .text_color(theme.muted_foreground)
+                        .child("Beautifully designed components, copied into your gpui app."),
+                );
             div()
-                .w(px(420.))
-                .grid()
-                .grid_cols(2)
-                .gap_1()
-                .child(NavigationMenuLink::new("Introduction").description("Re-usable components built using Radix UI and Tailwind CSS."))
-                .child(NavigationMenuLink::new("Installation").description("How to install dependencies and structure your app."))
-                .child(NavigationMenuLink::new("Typography").description("Styles for headings, paragraphs, lists...etc"))
-                .child(NavigationMenuLink::new("Theming").description("Restyle everything from a single file."))
+                .flex()
+                .gap_2()
+                .w(px(480.))
+                .child(hero)
+                .child(
+                    col()
+                        .flex_1()
+                        .min_w_0()
+                        .gap_1()
+                        .child(NavigationMenuLink::new("Introduction").description("Re-usable components you copy into your app."))
+                        .child(NavigationMenuLink::new("Installation").description("How to install dependencies and structure your app."))
+                        .child(NavigationMenuLink::new("Typography").description("Styles for headings, lists and more.")),
+                )
         }))
         .item(NavigationMenuItem::new("Components").content(|_, _| {
             div()
@@ -931,18 +1386,21 @@ fn popover(_: &mut Window, cx: &mut App) -> AnyElement {
         .w(px(320.))
         .content(move |_, _| {
             col()
+                .gap_3()
                 .child(
                     col()
-                        .gap_2()
-                        .child(div().font_weight(gpui::FontWeight::MEDIUM).child("Dimensions"))
+                        .gap_1p5()
+                        .pb_1()
+                        .child(div().font_weight(gpui::FontWeight::MEDIUM).line_height(px(16.)).child("Dimensions"))
                         .child(div().text_sm().text_color(muted).child("Set the dimensions for the layer.")),
                 )
                 .children(["Width", "Max. width", "Height", "Max. height"].map(|label| {
                     row()
                         .flex_nowrap()
                         .gap_4()
-                        .child(Label::new(label).w(px(80.)))
-                        .child(Input::new(SharedString::from(format!("popover-{label}"))).default_value("100%").h_8())
+                        .items_center()
+                        .child(Label::new(label).w(px(88.)).flex_none())
+                        .child(Input::new(SharedString::from(format!("popover-{label}"))).default_value("100%").h_8().flex_1())
                 }))
         })
         .into_any_element()
@@ -978,6 +1436,7 @@ fn resizable(_: &mut Window, cx: &mut App) -> AnyElement {
                 .panel(ResizablePanel::new(
                     ResizablePanelGroup::new("resizable-nested")
                         .vertical()
+                        .with_handle()
                         .panel(ResizablePanel::new(cell("Two")).default_size(25.))
                         .panel(ResizablePanel::new(cell("Three")).default_size(75.)),
                 )
@@ -1075,8 +1534,49 @@ fn sheet(_: &mut Window, _: &mut App) -> AnyElement {
         .into_any_element()
 }
 
+/// Two-line block with an icon tile, used for the sidebar's team switcher
+/// and user menu (`SidebarMenuButton size="lg"`).
+fn sidebar_block(tile: AnyElement, title: &'static str, subtitle: &'static str, cx: &App) -> gpui::Div {
+    let theme = cx.theme();
+    row()
+        .flex_nowrap()
+        .gap_2()
+        .p_2()
+        .rounded(theme.radius_md())
+        .child(tile)
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .min_w_0()
+                .text_sm()
+                .line_height(px(18.))
+                .child(div().font_weight(gpui::FontWeight::MEDIUM).child(title))
+                .child(div().text_xs().text_color(theme.muted_foreground).child(subtitle)),
+        )
+        .child(Icon::new(IconName::ChevronsUpDown).text_color(theme.muted_foreground))
+}
+
 fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
-    let border = cx.theme().border;
+    let theme = cx.theme();
+    // `bg-muted/50` reads on dark; in light it needs full `bg-muted` to show.
+    let placeholder = if theme.is_dark() { theme.muted.opacity(0.5) } else { theme.muted };
+    let border = theme.border;
+    let logo = div()
+        .flex()
+        .flex_none()
+        .size_8()
+        .items_center()
+        .justify_center()
+        .rounded(theme.radius_lg())
+        .bg(theme.sidebar_primary)
+        .text_color(theme.sidebar_primary_foreground)
+        .child(Icon::new(IconName::Terminal))
+        .into_any_element();
+    let header = sidebar_block(logo, "Acme Inc.", "Enterprise", cx);
+    let user = Avatar::new().src(avatar_image(1)).fallback("CN").size_8().rounded(theme.radius_lg()).into_any_element();
+    let footer = sidebar_block(user, "shadcn", "m@example.com", cx);
     div()
         .flex()
         .w(px(720.))
@@ -1087,7 +1587,7 @@ fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
         .overflow_hidden()
         .child(
             Sidebar::new("demo-sidebar")
-                .header(row().px_2().py_1().font_weight(gpui::FontWeight::SEMIBOLD).child(Icon::new(IconName::Terminal)).child("Acme Inc."))
+                .header(header)
                 .group(
                     SidebarGroup::new()
                         .label("Application")
@@ -1103,7 +1603,7 @@ fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
                                 .sub_item(SidebarMenuItem::new("Billing")),
                         ),
                 )
-                .footer(row().px_2().child(Avatar::new().fallback("CN").size_6()).child(div().text_sm().child("shadcn"))),
+                .footer(footer),
         )
         .child(
             SidebarInset::new().child(
@@ -1116,7 +1616,7 @@ fn sidebar(_: &mut Window, cx: &mut App) -> AnyElement {
                     .child(Separator::vertical().h_4())
                     .child(Breadcrumb::new().item(BreadcrumbItem::new("Building Your Application")).item(BreadcrumbItem::new("Data Fetching").current())),
             )
-            .child(div().p_4().flex().flex_col().gap_4().child(Skeleton::new().h_24().w_full()).child(Skeleton::new().h_40().w_full())),
+            .child(div().p_4().flex().flex_col().gap_4().child(div().h_24().w_full().rounded_xl().bg(placeholder)).child(div().h_40().w_full().rounded_xl().bg(placeholder))),
         )
         .into_any_element()
 }
@@ -1135,7 +1635,7 @@ fn slider(_: &mut Window, _: &mut App) -> AnyElement {
         .w(px(300.))
         .child(Slider::new("slider").default_value([50.]).max(100.).step(1.))
         .child(Slider::new("slider-range").default_value([25., 75.]))
-        .child(div().h(px(160.)).child(Slider::new("slider-vertical").vertical().default_value([40.])))
+        .child(div().flex().justify_center().h(px(160.)).child(Slider::new("slider-vertical").vertical().default_value([40.])))
         .into_any_element()
 }
 
@@ -1230,13 +1730,14 @@ fn tabs(_: &mut Window, _: &mut App) -> AnyElement {
             ),
         )
         .child(CardFooter::new().child(Button::new("save-password").label("Save password")));
-    Tabs::new("tabs")
+    let tabs = Tabs::new("tabs")
         .w(px(400.))
         .full_width()
         .default_value("account")
         .tab(Tab::new("account", "Account").content(account))
-        .tab(Tab::new("password", "Password").content(password))
-        .into_any_element()
+        .tab(Tab::new("password", "Password").content(password));
+    // Fixed height so the tab list stays put when panels differ in height.
+    div().h(px(360.)).child(tabs).into_any_element()
 }
 
 fn textarea(_: &mut Window, _: &mut App) -> AnyElement {
@@ -1261,11 +1762,21 @@ fn toast_demo(_: &mut Window, _: &mut App) -> AnyElement {
 }
 
 fn toggle(_: &mut Window, _: &mut App) -> AnyElement {
-    row()
-        .child(Toggle::new("bold").icon(IconName::Bold))
-        .child(Toggle::new("italic").outline().icon(IconName::Italic))
-        .child(Toggle::new("underline").icon(IconName::Underline).label("Underline"))
-        .child(Toggle::new("bookmark").outline().default_pressed(true).icon(IconName::Star).label("Bookmark"))
+    col()
+        .items_center()
+        // Default variant: off, then on.
+        .child(
+            row()
+                .child(Toggle::new("bold").icon(IconName::Bold))
+                .child(Toggle::new("italic").default_pressed(true).icon(IconName::Italic))
+                .child(Toggle::new("underline").icon(IconName::Underline)),
+        )
+        // Outline variant: off, then on.
+        .child(
+            row()
+                .child(Toggle::new("bookmark").outline().icon(IconName::Star).label("Bookmark"))
+                .child(Toggle::new("heart").outline().default_pressed(true).icon(IconName::Heart).label("Favorite")),
+        )
         .into_any_element()
 }
 
@@ -1302,18 +1813,32 @@ fn tooltip(_: &mut Window, _: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-fn typography(_: &mut Window, _: &mut App) -> AnyElement {
+fn typography(_: &mut Window, cx: &mut App) -> AnyElement {
     col()
         .w(px(640.))
-        .child(h1("Taxing Laughter: The Joke Tax Chronicles"))
+        .child(h1("Taxing Laughter: The Joke Tax Chronicles").text_center())
         .child(lead("Once upon a time, in a far-off land, there was a very lazy king who spent all day lounging on his throne."))
-        .child(h2("The King's Plan"))
+        .child(h2("The King's Plan").mt_6())
         .child(p("The king thought long and hard, and finally came up with a brilliant plan: he would tax the jokes in the kingdom."))
         .child(blockquote("\"After all,\" he said, \"everyone enjoys a good joke, so it's only fair that they should pay for the privilege.\""))
-        .child(h3("The Joke Tax"))
+        .child(h3("The Joke Tax").mt_4())
         .child(List::new().item("1st level of puns: 5 gold coins").item("2nd level of jokes: 10 gold coins").item("3rd level of one-liners: 20 gold coins"))
+        .child(h3("The People of the Kingdom"))
+        .child(
+            Table::new()
+                .header(TableHeader::new().row(TableRow::new().child(TableHead::new("King's Treasury")).child(TableHead::new("People's happiness"))))
+                .body(
+                    TableBody::new()
+                        .row(TableRow::new().child(TableCell::new().child("Empty")).child(TableCell::new().child("Overflowing")))
+                        .row(TableRow::new().child(TableCell::new().child("Modest")).child(TableCell::new().child("Satisfied")))
+                        .row(TableRow::new().child(TableCell::new().child("Full")).child(TableCell::new().child("Ecstatic"))),
+                )
+                .rounded_md()
+                .border_1()
+                .border_color(cx.theme().border),
+        )
         .child(h4("People stopped telling jokes"))
-        .child(row().child(p("Run")).child(inline_code("gpuicn add typography")).child(p("to get these styles.")))
+        .child(row().flex_nowrap().gap_1().child(p("Run")).child(inline_code("gpuicn add typography")).child(p("to get these styles.")))
         .child(large("Are you absolutely sure?"))
         .child(small("Email address"))
         .child(muted("Enter your email address."))

@@ -90,19 +90,21 @@ impl RenderOnce for Typography {
         let el = match self.variant {
             TypographyVariant::H1 => el.text_size(rems(2.25)).line_height(rems(2.5)).font_weight(FontWeight::EXTRA_BOLD),
             TypographyVariant::H2 => el
-                .text_3xl()
+                .text_3xl().line_height(gpui::rems(2.25))
                 .font_weight(FontWeight::SEMIBOLD)
                 .pb_2()
                 .border_b_1()
                 .border_color(theme.border),
-            TypographyVariant::H3 => el.text_2xl().font_weight(FontWeight::SEMIBOLD),
-            TypographyVariant::H4 => el.text_xl().font_weight(FontWeight::SEMIBOLD),
-            TypographyVariant::P => el.line_height(rems(1.75)),
-            TypographyVariant::Blockquote => el.border_l_2().border_color(theme.border).pl_6().italic(),
-            TypographyVariant::Lead => el.text_xl().text_color(theme.muted_foreground),
-            TypographyVariant::Large => el.text_lg().font_weight(FontWeight::SEMIBOLD),
+            TypographyVariant::H3 => el.text_2xl().line_height(gpui::rems(2.)).font_weight(FontWeight::SEMIBOLD),
+            TypographyVariant::H4 => el.text_xl().line_height(gpui::rems(1.75)).font_weight(FontWeight::SEMIBOLD),
+            TypographyVariant::P => el.text_base().line_height(rems(1.75)),
+            TypographyVariant::Blockquote => {
+                el.text_base().line_height(rems(1.75)).border_l_2().border_color(theme.border).pl_6().italic()
+            }
+            TypographyVariant::Lead => el.text_xl().line_height(gpui::rems(1.75)).text_color(theme.muted_foreground),
+            TypographyVariant::Large => el.text_lg().line_height(gpui::rems(1.75)).font_weight(FontWeight::SEMIBOLD),
             TypographyVariant::Small => el.text_sm().line_height(relative(1.)).font_weight(FontWeight::MEDIUM),
-            TypographyVariant::Muted => el.text_sm().text_color(theme.muted_foreground),
+            TypographyVariant::Muted => el.text_sm().line_height(gpui::rems(1.25)).text_color(theme.muted_foreground),
             TypographyVariant::InlineCode => el
                 .flex_none()
                 .px(rems(0.3))
@@ -110,7 +112,8 @@ impl RenderOnce for Typography {
                 .rounded(px(4.))
                 .bg(theme.muted)
                 .font_family(theme.mono_font_family.clone())
-                .text_sm()
+                .text_size(rems(0.875))
+                .line_height(rems(1.25))
                 .font_weight(FontWeight::SEMIBOLD),
         };
         el.refine_style(&self.style).children(self.children)
@@ -142,21 +145,29 @@ impl List {
 }
 
 impl RenderOnce for List {
-    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let ordered = self.ordered;
+        let color = cx.theme().foreground;
         div()
             .flex()
             .flex_col()
             .gap_2()
             .ml_6()
+            .text_base().line_height(gpui::rems(1.5))
+            .line_height(rems(1.75))
             .refine_style(&self.style)
             .children(self.children.into_iter().enumerate().map(move |(ix, child)| {
-                let marker: SharedString = if ordered { format!("{}.", ix + 1).into() } else { "•".into() };
+                let marker = if ordered {
+                    div().flex_none().min_w_3().child(SharedString::from(format!("{}.", ix + 1)))
+                } else {
+                    // A `list-disc` bullet: a small filled circle on the first line.
+                    div().flex_none().flex().items_center().h(rems(1.75)).w_3().child(div().size_1p5().rounded_full().bg(color))
+                };
                 div()
                     .flex()
                     .gap_2()
-                    .child(div().flex_none().min_w_3().child(marker))
-                    .child(div().flex_1().child(child))
+                    .child(marker)
+                    .child(div().flex_1().min_w_0().child(child))
             }))
     }
 }

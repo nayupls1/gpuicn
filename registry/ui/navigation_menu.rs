@@ -75,7 +75,10 @@ impl NavigationMenu {
 }
 
 impl RenderOnce for NavigationMenu {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        // Which item's panel is open, to flip its chevron and keep it highlighted.
+        let open_state = window.use_keyed_state(ElementId::Name(format!("{}-open", self.id).into()), cx, |_, _| None::<usize>);
+        let open_ix = *open_state.read(cx);
         let theme = cx.theme();
         let (accent, accent_fg) = (theme.accent, theme.accent_foreground);
         let radius = theme.radius_md();
@@ -87,6 +90,7 @@ impl RenderOnce for NavigationMenu {
             .gap_1()
             .refine_style(&self.style)
             .children(self.items.into_iter().enumerate().map(|(ix, item)| {
+                let is_open = open_ix == Some(ix);
                 let trigger = div()
                     .id(("nav-trigger", ix))
                     .flex()
@@ -95,14 +99,15 @@ impl RenderOnce for NavigationMenu {
                     .px_4()
                     .py_2()
                     .rounded(radius)
-                    .text_sm()
+                    .text_sm().line_height(gpui::rems(1.25))
                     .font_weight(FontWeight::MEDIUM)
                     .cursor_pointer()
                     .when(item.active, |this| this.bg(accent.opacity(0.5)))
+                    .when(is_open, |this| this.bg(accent.opacity(0.5)))
                     .hover(move |s| s.bg(accent).text_color(accent_fg))
                     .child(item.label)
                     .when(item.content.is_some(), |this| {
-                        this.child(Icon::new(IconName::ChevronDown).size_3().ml_1())
+                        this.child(Icon::new(if is_open { IconName::ChevronUp } else { IconName::ChevronDown }).size_3p5().ml_1())
                     })
                     .when_some(item.on_click, |this, handler| {
                         this.on_click(move |event, window, cx| handler(event, window, cx))
@@ -113,6 +118,19 @@ impl RenderOnce for NavigationMenu {
                         .mode(PopoverTrigger::Hover { open_delay_ms: 150, close_delay_ms: 250 })
                         .align(Align::Start)
                         .side_offset(gpui::px(6.))
+                        .on_open_change({
+                            let open_state = open_state.clone();
+                            move |open, _, cx| {
+                                open_state.update(cx, |s, cx| {
+                                    if *open {
+                                        *s = Some(ix);
+                                    } else if *s == Some(ix) {
+                                        *s = None;
+                                    }
+                                    cx.notify();
+                                })
+                            }
+                        })
                         .w_auto()
                         .p_2()
                         .trigger(trigger)
@@ -164,7 +182,7 @@ impl RenderOnce for NavigationMenuLink {
             .gap_1()
             .p_2()
             .rounded(theme.radius_sm())
-            .text_sm()
+            .text_sm().line_height(gpui::rems(1.25))
             .cursor_pointer()
             .hover(move |s| s.bg(accent).text_color(accent_fg))
             .refine_style(&self.style)
@@ -173,6 +191,7 @@ impl RenderOnce for NavigationMenuLink {
                 div()
                     .text_color(theme.muted_foreground)
                     .line_clamp(2)
+                    .text_ellipsis()
                     .line_height(relative(1.375))
                     .child(description)
             }))

@@ -16,7 +16,7 @@ use std::rc::Rc;
 
 use super::icon::{Icon, IconName};
 use super::theme::ActiveTheme;
-use super::utils::StyledExt;
+use super::utils::{HoverState, StyledExt, use_hover};
 
 pub struct AccordionItem {
     value: SharedString,
@@ -107,6 +107,14 @@ impl RenderOnce for Accordion {
         let default = self.default_value.clone();
         let state = window.use_keyed_state(self.id.clone(), cx, |_, _| default);
         let open_values = self.value.clone().unwrap_or_else(|| state.read(cx).clone());
+        // `hover:underline` on the triggers (text hover needs tracked state).
+        let hovers: Vec<(HoverState, bool)> = (0..self.items.len())
+            .map(|ix| {
+                let hover = use_hover(ElementId::Name(format!("{}-hover-{ix}", self.id).into()), window, cx);
+                let hovered = hover.get(cx);
+                (hover, hovered)
+            })
+            .collect();
         let theme = cx.theme();
         let border = theme.border;
         let muted_fg = theme.muted_foreground;
@@ -139,11 +147,14 @@ impl RenderOnce for Accordion {
                             .justify_between()
                             .gap_4()
                             .py_4()
-                            .text_sm()
+                            .text_sm().line_height(gpui::rems(1.25))
                             .font_weight(FontWeight::MEDIUM)
                             .when(disabled, |this| this.opacity(0.5))
-                            .when(!disabled, |this| this.cursor_pointer().hover(|s| s.underline()))
-                            .child(div().flex_1().child(item.title))
+                            .when(!disabled, |this| {
+                                let (hover, hovered) = &hovers[ix];
+                                this.cursor_pointer().on_hover(hover.listener()).when(*hovered, |this| this.underline())
+                            })
+                            .child(div().flex_1().min_w_0().child(item.title))
                             .child(
                                 Icon::new(if open { IconName::ChevronUp } else { IconName::ChevronDown })
                                     .text_color(muted_fg)
@@ -173,7 +184,7 @@ impl RenderOnce for Accordion {
                             }),
                     )
                     .when(open, |this| {
-                        this.child(div().pb_4().text_sm().children(item.content))
+                        this.child(div().pb_4().text_sm().line_height(gpui::rems(1.25)).children(item.content))
                     })
             }))
     }

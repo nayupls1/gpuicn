@@ -19,7 +19,7 @@ use super::button::Button;
 use super::icon::{Icon, IconName};
 use super::input::Input;
 use super::theme::ActiveTheme;
-use super::utils::{StyledExt, ring_shadow};
+use super::utils::{StyledExt, focus_ring, invalid_ring};
 
 /// Content placed beside the input (`InputGroupAddon`).
 pub struct InputGroupAddon(AnyElement);
@@ -101,7 +101,7 @@ impl InputGroup {
 }
 
 impl RenderOnce for InputGroup {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(mut self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         // Resolve the input's state here so the focus ring can live on the group.
         let state = self.input.state(window, cx);
         let focused = state.read(cx).is_focused(window);
@@ -109,7 +109,7 @@ impl RenderOnce for InputGroup {
         let theme = cx.theme();
         let muted_fg = theme.muted_foreground;
         let addon_row = |items: Vec<AnyElement>| {
-            div().flex().items_center().gap_2().px_3().text_sm().text_color(muted_fg).children(items)
+            div().flex().items_center().gap_2().px_3().text_sm().line_height(gpui::rems(1.25)).text_color(muted_fg).children(items)
         };
 
         div()
@@ -119,12 +119,10 @@ impl RenderOnce for InputGroup {
             .min_w_0()
             .rounded(theme.radius_md())
             .border_1()
+            .relative()
             .border_color(theme.input)
-            .when(theme.is_dark(), |this| this.bg(theme.input.opacity(0.3)))
-            .when(theme.shadows, |this| this.shadow_xs())
-            .when(focused && !self.invalid, |this| {
-                this.border_color(theme.ring).shadow(vec![ring_shadow(theme.ring.opacity(0.5), px(3.))])
-            })
+            .control_surface(theme)
+            .when(focused && !self.invalid, |this| this.border_color(theme.ring))
             .when(self.invalid, |this| this.border_color(theme.destructive))
             .refine_style(&self.style)
             .when(!self.block_start.is_empty(), |this| this.child(addon_row(self.block_start).pt_3()))
@@ -135,8 +133,12 @@ impl RenderOnce for InputGroup {
                     .min_h_9()
                     .when(!self.start.is_empty(), |this| this.child(addon_row(self.start).pr_0()))
                     .child(div().flex_1().min_w_0().px_3().py_1().child(input))
-                    .when(!self.end.is_empty(), |this| this.child(addon_row(self.end).pl_0().pr_1p5())),
+                    .when(!self.end.is_empty(), |this| this.child(addon_row(self.end).pl_0().pr_2())),
             )
             .when(!self.block_end.is_empty(), |this| this.child(addon_row(self.block_end).pb_3()))
+            .when(focused || self.invalid, |this| {
+                let radius = theme.radius_md();
+                this.child(if self.invalid { invalid_ring(theme, radius) } else { focus_ring(theme, radius) })
+            })
     }
 }

@@ -110,7 +110,7 @@ impl RenderOnce for ButtonGroup {
                         .items_center()
                         .gap_2()
                         .px_4()
-                        .text_sm()
+                        .text_sm().line_height(gpui::rems(1.25))
                         .font_weight(gpui::FontWeight::MEDIUM)
                         .bg(theme.muted)
                         .border_1()

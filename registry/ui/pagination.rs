@@ -101,6 +101,7 @@ impl RenderOnce for Pagination {
                     .ghost()
                     .icon(IconName::ChevronLeft)
                     .label("Previous")
+                    .gap_1()
                     .pl_2p5()
                     .disabled(page <= 1)
                     .on_click(go(page.saturating_sub(1).max(1))),
@@ -128,6 +129,7 @@ impl RenderOnce for Pagination {
                     .ghost()
                     .label("Next")
                     .icon_end(IconName::ChevronRight)
+                    .gap_1()
                     .pr_2p5()
                     .disabled(page >= total)
                     .on_click(go((page + 1).min(total))),

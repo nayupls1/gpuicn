@@ -78,7 +78,7 @@ impl RenderOnce for CardHeader {
             .gap_2()
             .px_6()
             .refine_style(&self.style)
-            .child(div().flex().flex_col().flex_1().gap_1p5().children(self.children))
+            .child(div().flex().flex_col().flex_1().min_w_0().gap_1p5().children(self.children))
             .children(self.action.map(|action| div().flex_none().child(action)))
     }
 }
@@ -98,6 +98,7 @@ impl CardTitle {
 impl RenderOnce for CardTitle {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         div()
+            .text_base()
             .line_height(relative(1.))
             .font_weight(FontWeight::SEMIBOLD)
             .refine_style(&self.style)
@@ -120,7 +121,7 @@ impl CardDescription {
 impl RenderOnce for CardDescription {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         div()
-            .text_sm()
+            .text_sm().line_height(gpui::rems(1.25))
             .text_color(cx.theme().muted_foreground)
             .refine_style(&self.style)
             .child(self.text)

@@ -11,7 +11,7 @@ use std::rc::Rc;
 use super::button::Button;
 use super::calendar::{Calendar, CalendarMode, CalendarSelection, selection_label};
 use super::icon::IconName;
-use super::popover::Popover;
+use super::popover::{Popover, outer_layout};
 use super::theme::ActiveTheme;
 use super::utils::{Align, StyledExt};
 
@@ -81,8 +81,11 @@ impl RenderOnce for DatePicker {
         let label = selection_label(&selection);
         let muted = cx.theme().muted_foreground;
 
+        let empty = label.is_none();
         let trigger = Button::new("date-trigger")
             .outline()
+            // Empty: the whole trigger (icon too) is `text-muted-foreground`.
+            .when(empty, |this| this.text_color(muted))
             .w(px(if mode == CalendarMode::Range { 300. } else { 240. }))
             .justify_start()
             .font_weight(gpui::FontWeight::NORMAL)
@@ -95,15 +98,18 @@ impl RenderOnce for DatePicker {
 
         let (months, on_change) = (self.months, self.on_change);
         Popover::new(self.id)
+            .wrapper_style(outer_layout(&self.style))
             .align(Align::Start)
             .w_auto()
             .p_0()
             .trigger(trigger)
-            .content_with_handle(move |popover, _, _| {
+            .content_with_handle(move |popover, _, cx| {
+                let popover_bg = cx.theme().popover;
                 let popover = popover.clone();
                 let state = state.clone();
                 let on_change = on_change.clone();
                 Calendar::new("date-calendar")
+                    .bg(popover_bg)
                     .mode(mode)
                     .months(months)
                     .selection(selection.clone())

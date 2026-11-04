@@ -17,7 +17,7 @@ use std::rc::Rc;
 use super::button::Button;
 use super::command::{Command, CommandGroup, CommandItem};
 use super::icon::IconName;
-use super::popover::Popover;
+use super::popover::{Popover, outer_layout};
 use super::theme::ActiveTheme;
 use super::utils::{Align, StyledExt};
 
@@ -97,7 +97,6 @@ impl RenderOnce for Combobox {
             .as_ref()
             .and_then(|v| self.items.iter().find(|(value, _)| value == v))
             .map(|(_, label)| label.clone());
-        let muted = cx.theme().muted_foreground;
 
         let trigger = Button::new("combobox-trigger")
             .outline()
@@ -105,7 +104,7 @@ impl RenderOnce for Combobox {
             .justify_between()
             .child(match label {
                 Some(label) => div().child(label),
-                None => div().text_color(muted).child(self.placeholder.clone()),
+                None => div().child(self.placeholder.clone()),
             })
             .icon_end(super::icon::Icon::new(IconName::ChevronsUpDown).opacity(0.5))
             .refine_style(&self.style);
@@ -113,6 +112,7 @@ impl RenderOnce for Combobox {
         let items = Rc::new(self.items);
         let (search_placeholder, empty, on_change) = (self.search_placeholder, self.empty, self.on_change);
         Popover::new(self.id)
+            .wrapper_style(outer_layout(&self.style))
             .unstyled()
             .align(Align::Start)
             .trigger(trigger)

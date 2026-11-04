@@ -11,8 +11,8 @@
 //! [`tooltip`]: `div().id("x").tooltip(tooltip("Add to library"))`.
 
 use gpui::{
-    AnyElement, AnyView, App, Context, ElementId, IntoElement, Render, RenderOnce, SharedString,
-    StyleRefinement, Window, div, prelude::*,
+    AnyElement, AnyView, App, Context, ElementId, IntoElement, PathBuilder, Render, RenderOnce, SharedString,
+    StyleRefinement, Window, canvas, div, point, prelude::*, px,
 };
 
 use super::popover::{Popover, PopoverTrigger};
@@ -78,22 +78,63 @@ fn bubble(text: SharedString, style: &StyleRefinement, cx: &App) -> gpui::Div {
         .px_3()
         .py_1p5()
         .rounded(theme.radius_md())
-        .bg(theme.foreground)
-        .text_color(theme.background)
-        .text_xs()
+        .bg(theme.primary)
+        .text_color(theme.primary_foreground)
+        .text_xs().line_height(gpui::rems(1.))
         .refine_style(style)
         .child(text)
 }
 
+/// The `TooltipArrow`: a small triangle pointing from the bubble at the trigger.
+fn arrow(side: Side, color: gpui::Hsla) -> impl IntoElement {
+    let (w, h) = match side {
+        Side::Top | Side::Bottom => (px(10.), px(5.)),
+        Side::Left | Side::Right => (px(5.), px(10.)),
+    };
+    canvas(
+        |_, _, _| {},
+        move |bounds, _, window, _| {
+            let (o, s) = (bounds.origin, bounds.size);
+            let points = match side {
+                // Bubble above the trigger: arrow points down.
+                Side::Top => [o, point(o.x + s.width, o.y), point(o.x + s.width / 2., o.y + s.height)],
+                Side::Bottom => [point(o.x, o.y + s.height), point(o.x + s.width, o.y + s.height), point(o.x + s.width / 2., o.y)],
+                Side::Left => [o, point(o.x, o.y + s.height), point(o.x + s.width, o.y + s.height / 2.)],
+                Side::Right => [point(o.x + s.width, o.y), point(o.x + s.width, o.y + s.height), point(o.x, o.y + s.height / 2.)],
+            };
+            let mut builder = PathBuilder::fill();
+            builder.add_polygon(&points, true);
+            if let Ok(path) = builder.build() {
+                window.paint_path(path, color);
+            }
+        },
+    )
+    .w(w)
+    .h(h)
+    .flex_none()
+}
+
 impl RenderOnce for Tooltip {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let (content, style) = (self.content, self.style);
+        let (content, style, side) = (self.content, self.style, self.side);
         let mut popover = Popover::new(self.id)
             .unstyled()
             .mode(PopoverTrigger::Hover { open_delay_ms: self.delay_ms, close_delay_ms: 0 })
             .side(self.side)
             .align(self.align)
-            .content(move |_, cx| bubble(content.clone(), &style, cx));
+            .side_offset(px(4.))
+            .content(move |_, cx| {
+                let color = cx.theme().primary;
+                let bubble = bubble(content.clone(), &style, cx);
+                let arrow = arrow(side, color);
+                let wrapper = div().flex().items_center();
+                match side {
+                    Side::Top => wrapper.flex_col().child(bubble).child(arrow),
+                    Side::Bottom => wrapper.flex_col().child(arrow).child(bubble),
+                    Side::Left => wrapper.child(bubble).child(arrow),
+                    Side::Right => wrapper.child(arrow).child(bubble),
+                }
+            });
         if let Some(trigger) = self.trigger {
             popover = popover.trigger(trigger);
         }

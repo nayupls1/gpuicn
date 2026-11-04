@@ -16,7 +16,7 @@ use std::rc::Rc;
 
 use super::icon::{Icon, IconName};
 use super::theme::ActiveTheme;
-use super::utils::StyledExt;
+use super::utils::{HoverState, StyledExt, use_hover};
 
 pub struct BreadcrumbItem {
     label: SharedString,
@@ -86,7 +86,11 @@ impl Breadcrumb {
 }
 
 impl RenderOnce for Breadcrumb {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        // Links brighten on hover; text hover needs tracked state (`use_hover`).
+        let hovers: Vec<HoverState> =
+            (0..self.entries.len()).map(|ix| use_hover(gpui::ElementId::NamedInteger("breadcrumb-hover".into(), ix as u64), window, cx)).collect();
+        let hovered: Vec<bool> = hovers.iter().map(|h| h.get(cx)).collect();
         let theme = cx.theme();
         let muted = theme.muted_foreground;
         let foreground = theme.foreground;
@@ -101,7 +105,8 @@ impl RenderOnce for Breadcrumb {
                         el.text_color(foreground).into_any_element()
                     } else if let Some(handler) = item.on_click {
                         el.cursor_pointer()
-                            .hover(move |s| s.text_color(foreground))
+                            .on_hover(hovers[ix].listener())
+                            .when(hovered[ix], |this| this.text_color(foreground))
                             .on_click(move |e, w, cx| handler(e, w, cx))
                             .into_any_element()
                     } else {
@@ -110,7 +115,8 @@ impl RenderOnce for Breadcrumb {
                 }
                 Entry::Ellipsis => div()
                     .flex()
-                    .size_9()
+                    .h_9()
+                    .w_5()
                     .items_center()
                     .justify_center()
                     .child(Icon::new(IconName::Ellipsis))
@@ -130,7 +136,7 @@ impl RenderOnce for Breadcrumb {
             .flex_wrap()
             .items_center()
             .gap_2p5()
-            .text_sm()
+            .text_sm().line_height(gpui::rems(1.25))
             .text_color(muted)
             .refine_style(&self.style)
             .children(children)

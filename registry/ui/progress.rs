@@ -36,9 +36,12 @@ impl RenderOnce for Progress {
             .bg(theme.primary.opacity(0.2))
             .refine_style(&self.style)
             .child(
+                // gpui clips overflow to a rectangle, not the rounded track,
+                // so the indicator carries its own rounding.
                 div()
                     .h_full()
                     .w(relative(self.value.clamp(0.0, 100.0) / 100.0))
+                    .rounded_full()
                     .bg(theme.primary),
             )
     }

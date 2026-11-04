@@ -12,12 +12,14 @@ use gpui::{
 use std::rc::Rc;
 
 use super::theme::ActiveTheme;
-use super::utils::{InvisibleDrag, Orientation, StyledExt, ring_shadow};
+use super::utils::{InvisibleDrag, Orientation, StyledExt, ring, use_hover};
 
 struct SliderState {
     values: Vec<f32>,
     track: Bounds<Pixels>,
     active_thumb: usize,
+    /// A thumb is held down (pressed or being dragged).
+    pressed: bool,
 }
 
 /// Drag payload identifying which slider is being dragged.
@@ -104,11 +106,14 @@ impl RenderOnce for Slider {
             values: default,
             track: Bounds::default(),
             active_thumb: 0,
+            pressed: false,
         });
         if let Some(value) = &self.value {
             state.update(cx, |s, _| s.values = value.clone());
         }
         let values = state.read(cx).values.clone();
+        let hover = use_hover(ElementId::Name(format!("{}-hover", self.id).into()), window, cx);
+        let hovered = hover.get(cx);
         let theme = cx.theme();
         let (min, max, step) = (self.min, self.max, self.step);
         let vertical = self.orientation == Orientation::Vertical;
@@ -188,8 +193,16 @@ impl RenderOnce for Slider {
                     .size_full()
             });
 
+        let (pressed, active_thumb) = {
+            let s = state.read(cx);
+            // `hover:ring-4`: the active thumb is ringed while the pointer is on
+            // the slider, and while it's held or dragged.
+            (s.pressed || cx.has_active_drag() || hovered, s.active_thumb)
+        };
         let thumbs = values.iter().enumerate().map(|(ix, value)| {
             let f = fraction(*value);
+            // Keep the `ring-4` while this thumb is being dragged.
+            let dragging = pressed && active_thumb == ix;
             let entity_id = state.entity_id();
             let pick = state.clone();
             div()
@@ -199,8 +212,9 @@ impl RenderOnce for Slider {
                 .rounded_full()
                 .border_1()
                 .border_color(theme.primary)
-                .bg(gpui::white())
+                .bg(theme.background)
                 .when(theme.shadows, |this| this.shadow_sm())
+                .when(dragging && !self.disabled, |this| this.child(ring(theme.ring.opacity(0.5), px(4.), px(8.), px(1.))))
                 .map(|this| {
                     if vertical {
                         this.bottom(relative(f)).mb(px(-8.)).left(px(-5.))
@@ -210,10 +224,13 @@ impl RenderOnce for Slider {
                 })
                 .when(!self.disabled, |this| {
                     this.cursor_grab()
-                        .hover(|s| s.shadow(vec![ring_shadow(theme.ring.opacity(0.5), px(4.))]))
                         .on_mouse_down(MouseButton::Left, move |_, _, cx| {
                             cx.stop_propagation();
-                            pick.update(cx, |s, _| s.active_thumb = ix);
+                            pick.update(cx, |s, cx| {
+                                s.active_thumb = ix;
+                                s.pressed = true;
+                                cx.notify();
+                            });
                         })
                         .on_drag(SliderDrag(entity_id), |_, _, _, cx| cx.new(|_| InvisibleDrag))
                 })
@@ -236,6 +253,34 @@ impl RenderOnce for Slider {
                 this.on_mouse_down(MouseButton::Left, move |event: &gpui::MouseDownEvent, window: &mut Window, cx: &mut App| {
                     click_set(event.position, true, window, cx)
                 })
+                    // The active thumb keeps its ring after a drag while the
+                    // pointer stays on the slider (`hover:ring-4` in shadcn).
+                    .on_hover({
+                        let state = state.clone();
+                        let set_hover = hover.listener();
+                        move |hovered, window, cx| {
+                            if !cx.has_active_drag() {
+                                set_hover(hovered, window, cx);
+                            }
+                            if !hovered && !cx.has_active_drag() {
+                                state.update(cx, |s, cx| {
+                                    if s.pressed {
+                                        s.pressed = false;
+                                        cx.notify();
+                                    }
+                                })
+                            }
+                        }
+                    })
+                    .on_mouse_up_out(MouseButton::Left, {
+                        let state = state.clone();
+                        move |_, _, cx| state.update(cx, |s, cx| {
+                            if s.pressed {
+                                s.pressed = false;
+                                cx.notify();
+                            }
+                        })
+                    })
                     .on_drag_move(move |event: &gpui::DragMoveEvent<SliderDrag>, window: &mut Window, cx: &mut App| {
                         if event.drag(cx).0 == entity_id {
                             drag_set(event.event.position, false, window, cx);

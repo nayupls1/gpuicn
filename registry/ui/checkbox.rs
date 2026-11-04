@@ -18,7 +18,7 @@ use std::rc::Rc;
 use super::icon::{Icon, IconName};
 use super::label::Label;
 use super::theme::ActiveTheme;
-use super::utils::StyledExt;
+use super::utils::{StyledExt, control_border};
 
 #[derive(IntoElement)]
 pub struct Checkbox {
@@ -101,11 +101,9 @@ impl RenderOnce for Checkbox {
                 if on {
                     this.bg(theme.primary).border_color(theme.primary).text_color(theme.primary_foreground)
                 } else {
-                    this.border_color(theme.input)
-                        .when(theme.is_dark(), |this| this.bg(theme.input.opacity(0.3)))
+                    this.border_color(control_border(theme)).control_surface(theme)
                 }
             })
-            .when(theme.shadows, |this| this.shadow_xs())
             .refine_style(&self.style)
             .when(on, |this| {
                 this.child(

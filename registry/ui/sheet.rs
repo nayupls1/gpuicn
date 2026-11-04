@@ -133,7 +133,7 @@ impl RenderOnce for Sheet {
                 })
                 .refine_style(&style)
                 .children(header.map(|header| header.gap_1p5().p_4()))
-                .children(content.map(|content| div().flex_1().px_4().child(content)))
+                .children(content.map(|content| div().flex_1().min_w_0().px_4().child(content)))
                 .children(footer.map(|footer| div().mt_auto().flex().flex_col().gap_2().p_4().child(footer)))
                 .child(close_button(handle))
                 .into_any_element()

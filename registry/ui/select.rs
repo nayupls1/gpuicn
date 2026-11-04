@@ -16,9 +16,9 @@ use gpui::{
 use std::rc::Rc;
 
 use super::icon::{Icon, IconName};
-use super::popover::{Popover, PopoverHandle};
+use super::popover::{outer_layout, Popover, PopoverHandle};
 use super::theme::ActiveTheme;
-use super::utils::{Align, StyledExt, ring_shadow};
+use super::utils::{Align, StyledExt, focus_ring, invalid_ring, is_focus_visible, keyboard_focus_mode as keyboard_opened, pointer_pressed, use_tab_stop};
 
 #[derive(Clone)]
 pub struct SelectItem {
@@ -181,6 +181,7 @@ pub struct SelectList {
     groups: Rc<Vec<SelectGroup>>,
     selected: Option<SharedString>,
     min_width: gpui::Pixels,
+    max_height: gpui::Pixels,
     on_pick: Rc<dyn Fn(&SharedString, &mut Window, &mut App)>,
 }
 
@@ -191,7 +192,13 @@ impl SelectList {
         min_width: gpui::Pixels,
         on_pick: Rc<dyn Fn(&SharedString, &mut Window, &mut App)>,
     ) -> Self {
-        Self { groups, selected, min_width, on_pick }
+        Self { groups, selected, min_width, max_height: px(384.), on_pick }
+    }
+
+    /// Cap the list's height (default 384px, shadcn's `max-h-96`); it scrolls past that.
+    pub fn max_height(mut self, max: gpui::Pixels) -> Self {
+        self.max_height = max.min(px(384.));
+        self
     }
 }
 
@@ -223,7 +230,7 @@ impl RenderOnce for SelectList {
                 rows.push(div().h_px().mx_neg_1().my_1().bg(theme.border).into_any_element());
             }
             if let Some(label) = &group.label {
-                rows.push(div().px_2().py_1p5().text_xs().text_color(muted_fg).child(label.clone()).into_any_element());
+                rows.push(div().px_2().py_1p5().text_xs().line_height(gpui::rems(1.)).text_color(muted_fg).child(label.clone()).into_any_element());
             }
             for item in &group.items {
                 let item_ix = ix;
@@ -245,7 +252,7 @@ impl RenderOnce for SelectList {
                         .pl_2()
                         .pr_8()
                         .rounded(radius)
-                        .text_sm()
+                        .text_sm().line_height(gpui::rems(1.25))
                         .when(disabled, |this| this.opacity(0.5))
                         .when(is_highlighted && !disabled, |this| this.bg(accent).text_color(accent_fg))
                         .children(item.icon.map(|icon| Icon::new(icon).text_color(muted_fg)))
@@ -280,7 +287,7 @@ impl RenderOnce for SelectList {
             .flex()
             .flex_col()
             .min_w(self.min_width.max(px(128.)))
-            .max_h(px(384.))
+            .max_h(self.max_height)
             .overflow_y_scroll()
             .p_1()
             .rounded(theme.radius_md())
@@ -324,11 +331,20 @@ impl RenderOnce for Select {
         let selected_label = selected.as_ref().and_then(|value| {
             self.groups.iter().flat_map(|g| &g.items).find(|i| &i.value == value).map(|i| i.label.clone())
         });
+        let focus = use_tab_stop(ElementId::Name(format!("{}-focus", self.id).into()), window, cx);
+        // While the list is open the trigger keeps its focus styling.
+        let open_state = window.use_keyed_state(ElementId::Name(format!("{}-open", self.id).into()), cx, |_, _| false);
+        let open = *open_state.read(cx);
+        let focus_visible = is_focus_visible(&focus, window, cx) || (open && keyboard_opened(cx));
         let theme = cx.theme();
         let (disabled, invalid) = (self.disabled, self.invalid);
 
         let trigger = div()
             .id("select-trigger")
+            .when(!disabled, |this| {
+                this.track_focus(&focus).on_mouse_down(gpui::MouseButton::Left, |_, _, cx| pointer_pressed(cx))
+            })
+            .when(focus_visible && !invalid, |this| this.border_color(theme.ring).child(focus_ring(theme, theme.radius_md())))
             .flex()
             .items_center()
             .justify_between()
@@ -339,16 +355,19 @@ impl RenderOnce for Select {
                 SelectSize::Default => this.h_9(),
                 SelectSize::Sm => this.h_8(),
             })
+            .relative()
             .rounded(theme.radius_md())
             .border_1()
             .border_color(if invalid { theme.destructive } else { theme.input })
-            .when(theme.is_dark(), |this| this.bg(theme.input.opacity(0.3)))
-            .when(theme.shadows, |this| this.shadow_xs())
-            .text_sm()
+            .control_surface(theme)
+            .text_sm().line_height(gpui::rems(1.25))
             .whitespace_nowrap()
-            .when(invalid, |this| this.shadow(vec![ring_shadow(theme.destructive.opacity(0.2), px(3.))]))
+            .when(invalid, |this| this.child(invalid_ring(theme, theme.radius_md())))
             .when(disabled, |this| this.opacity(0.5).cursor_not_allowed())
-            .when(!disabled, |this| this.cursor_pointer())
+            .when(!disabled, |this| {
+                let hover = if theme.is_dark() { theme.input.opacity(0.5) } else { theme.accent.opacity(0.5) };
+                this.cursor_pointer().hover(move |s| s.bg(hover))
+            })
             .refine_style(&self.style)
             .child(match selected_label {
                 Some(label) => div().text_color(theme.foreground).child(label),
@@ -363,6 +382,13 @@ impl RenderOnce for Select {
         let groups = Rc::new(self.groups);
         let on_change = self.on_change;
         Popover::new(self.id)
+            .wrapper_style(outer_layout(&self.style))
+            .on_open_change(move |open, _, cx| {
+                open_state.update(cx, |s, cx| {
+                    *s = *open;
+                    cx.notify();
+                })
+            })
             .unstyled()
             .align(Align::Start)
             .trigger(trigger)
@@ -380,7 +406,9 @@ impl RenderOnce for Select {
                         handler(value, window, cx);
                     }
                 });
+                let room = popover.available_height(cx).unwrap_or(px(384.));
                 SelectList::new(groups.clone(), selected.clone(), popover.trigger_bounds(cx).size.width, on_pick)
+                    .max_height(room)
             })
             .into_any_element()
     }
