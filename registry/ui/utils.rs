@@ -69,7 +69,18 @@ pub trait StyledExt: Styled + Sized {
     /// This is what `cn(defaults, className)` does in shadcn: anything the
     /// caller set through the component's `Styled` impl wins over the defaults.
     fn refine_style(mut self, style: &StyleRefinement) -> Self {
+        // gpui replaces the whole text block when refining (it isn't marked
+        // `#[refineable]`), so `.text_center()` from a caller would drop the
+        // component's font size, weight and color. Merge it field by field,
+        // the way CSS classes combine.
+        let base_text = self.style().text.take();
         self.style().refine(style);
+        if let Some(mut text) = base_text {
+            if let Some(overrides) = &style.text {
+                text.refine(overrides);
+            }
+            self.style().text = Some(text);
+        }
         self
     }
 

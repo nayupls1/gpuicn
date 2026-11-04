@@ -36,6 +36,91 @@ impl ThemeMode {
     }
 }
 
+/// shadcn's base colors: the gray scale behind backgrounds, borders and text.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum BaseColor {
+    #[default]
+    Neutral,
+    Zinc,
+    Slate,
+    Stone,
+    Gray,
+}
+
+impl BaseColor {
+    pub const ALL: [BaseColor; 5] = [BaseColor::Neutral, BaseColor::Zinc, BaseColor::Slate, BaseColor::Stone, BaseColor::Gray];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            BaseColor::Neutral => "Neutral",
+            BaseColor::Zinc => "Zinc",
+            BaseColor::Slate => "Slate",
+            BaseColor::Stone => "Stone",
+            BaseColor::Gray => "Gray",
+        }
+    }
+}
+
+/// shadcn's color themes: a colored `primary` (and ring) on top of a base color.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum AccentColor {
+    /// The base color's own near-black / near-white primary.
+    #[default]
+    Default,
+    Blue,
+    Green,
+    Rose,
+    Orange,
+    Violet,
+    Red,
+    Yellow,
+}
+
+impl AccentColor {
+    pub const ALL: [AccentColor; 8] = [
+        AccentColor::Default,
+        AccentColor::Blue,
+        AccentColor::Green,
+        AccentColor::Rose,
+        AccentColor::Orange,
+        AccentColor::Violet,
+        AccentColor::Red,
+        AccentColor::Yellow,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            AccentColor::Default => "Default",
+            AccentColor::Blue => "Blue",
+            AccentColor::Green => "Green",
+            AccentColor::Rose => "Rose",
+            AccentColor::Orange => "Orange",
+            AccentColor::Violet => "Violet",
+            AccentColor::Red => "Red",
+            AccentColor::Yellow => "Yellow",
+        }
+    }
+
+    /// `(primary, primary_foreground)` for `mode`, or `None` for `Default`.
+    pub fn colors(self, mode: ThemeMode) -> Option<(Hsla, Hsla)> {
+        let dark = mode.is_dark();
+        Some(match self {
+            AccentColor::Default => return None,
+            AccentColor::Blue if dark => (oklch(0.546, 0.245, 262.881), oklch(0.97, 0.014, 254.604)),
+            AccentColor::Blue => (oklch(0.546, 0.245, 262.881), oklch(0.97, 0.014, 254.604)),
+            AccentColor::Green if dark => (oklch(0.696, 0.17, 162.48), oklch(0.393, 0.095, 152.535)),
+            AccentColor::Green => (oklch(0.723, 0.219, 149.579), oklch(0.982, 0.018, 155.826)),
+            AccentColor::Rose => (oklch(0.645, 0.246, 16.439), oklch(0.969, 0.015, 12.422)),
+            AccentColor::Orange if dark => (oklch(0.646, 0.222, 41.116), oklch(0.98, 0.016, 73.684)),
+            AccentColor::Orange => (oklch(0.705, 0.213, 47.604), oklch(0.98, 0.016, 73.684)),
+            AccentColor::Violet if dark => (oklch(0.541, 0.281, 293.009), oklch(0.969, 0.016, 293.756)),
+            AccentColor::Violet => (oklch(0.606, 0.25, 292.717), oklch(0.969, 0.016, 293.756)),
+            AccentColor::Red => (oklch(0.637, 0.237, 25.331), oklch(0.971, 0.013, 17.38)),
+            AccentColor::Yellow => (oklch(0.795, 0.184, 86.047), oklch(0.421, 0.095, 57.708)),
+        })
+    }
+}
+
 /// The design tokens. Field names mirror shadcn's CSS variables
 /// (`--card-foreground` → `card_foreground`).
 #[derive(Clone, Debug)]
@@ -162,6 +247,118 @@ impl ThemeColors {
         }
     }
 
+    /// The palette for a base color and accent (shadcn's `--*` variables for
+    /// `:root` / `.dark`, e.g. the "zinc" base color with the "blue" theme).
+    pub fn build(mode: ThemeMode, base: BaseColor, accent: AccentColor) -> Self {
+        let mut colors = Self::for_mode(mode);
+        if base != BaseColor::Neutral {
+            colors.apply_base(mode, base);
+        }
+        if let Some((primary, primary_foreground)) = accent.colors(mode) {
+            colors.primary = primary;
+            colors.primary_foreground = primary_foreground;
+            colors.ring = primary;
+            colors.sidebar_primary = primary;
+            colors.sidebar_primary_foreground = primary_foreground;
+            colors.sidebar_ring = primary;
+        }
+        colors
+    }
+
+    /// Swap the neutral grays for another base color's tinted grays.
+    fn apply_base(&mut self, mode: ThemeMode, base: BaseColor) {
+        // (foreground/darkest, primary-ish, secondary/muted, muted fg, border, ring, secondary dark)
+        let (h, darkest, dark2, light2, muted_fg, border, ring, dark3) = match base {
+            BaseColor::Neutral => return,
+            BaseColor::Zinc => (
+                285.9,
+                oklch(0.141, 0.005, 285.823),
+                oklch(0.21, 0.006, 285.885),
+                oklch(0.967, 0.001, 286.375),
+                oklch(0.552, 0.016, 285.938),
+                oklch(0.92, 0.004, 286.32),
+                oklch(0.705, 0.015, 286.067),
+                oklch(0.274, 0.006, 286.033),
+            ),
+            BaseColor::Slate => (
+                264.7,
+                oklch(0.129, 0.042, 264.695),
+                oklch(0.208, 0.042, 265.755),
+                oklch(0.968, 0.007, 247.896),
+                oklch(0.554, 0.046, 257.417),
+                oklch(0.929, 0.013, 255.508),
+                oklch(0.704, 0.04, 256.788),
+                oklch(0.279, 0.041, 260.031),
+            ),
+            BaseColor::Stone => (
+                49.3,
+                oklch(0.147, 0.004, 49.25),
+                oklch(0.216, 0.006, 56.043),
+                oklch(0.97, 0.001, 106.424),
+                oklch(0.553, 0.013, 58.071),
+                oklch(0.923, 0.003, 48.717),
+                oklch(0.709, 0.01, 56.259),
+                oklch(0.268, 0.007, 34.298),
+            ),
+            BaseColor::Gray => (
+                261.7,
+                oklch(0.13, 0.028, 261.692),
+                oklch(0.21, 0.034, 264.665),
+                oklch(0.967, 0.003, 264.542),
+                oklch(0.551, 0.027, 264.364),
+                oklch(0.928, 0.006, 264.531),
+                oklch(0.707, 0.022, 261.325),
+                oklch(0.278, 0.033, 256.848),
+            ),
+        };
+        let near_white = oklch(0.985, 0.002, h);
+        if mode.is_dark() {
+            self.background = darkest;
+            self.foreground = near_white;
+            self.card = dark2;
+            self.card_foreground = near_white;
+            self.popover = dark2;
+            self.popover_foreground = near_white;
+            self.primary = border;
+            self.primary_foreground = dark2;
+            self.secondary = dark3;
+            self.secondary_foreground = near_white;
+            self.muted = dark3;
+            self.muted_foreground = ring;
+            self.accent = dark3;
+            self.accent_foreground = near_white;
+            self.ring = muted_fg;
+            self.sidebar = dark2;
+            self.sidebar_foreground = near_white;
+            self.sidebar_accent = dark3;
+            self.sidebar_accent_foreground = near_white;
+            self.sidebar_ring = muted_fg;
+        } else {
+            self.foreground = darkest;
+            self.card_foreground = darkest;
+            self.popover_foreground = darkest;
+            self.primary = dark2;
+            self.primary_foreground = near_white;
+            self.secondary = light2;
+            self.secondary_foreground = dark2;
+            self.muted = light2;
+            self.muted_foreground = muted_fg;
+            self.accent = light2;
+            self.accent_foreground = dark2;
+            self.border = border;
+            self.input = border;
+            self.ring = ring;
+            self.sidebar = near_white;
+            self.sidebar_foreground = darkest;
+            self.sidebar_primary = dark2;
+            self.sidebar_primary_foreground = near_white;
+            self.sidebar_accent = light2;
+            self.sidebar_accent_foreground = dark2;
+            self.sidebar_border = border;
+            self.sidebar_ring = ring;
+        }
+    }
+
     /// The five chart colors as a slice-friendly array.
     pub fn charts(&self) -> [Hsla; 5] {
         [self.chart_1, self.chart_2, self.chart_3, self.chart_4, self.chart_5]
@@ -172,6 +369,10 @@ impl ThemeColors {
 #[derive(Clone, Debug)]
 pub struct Theme {
     pub mode: ThemeMode,
+    /// The gray scale (`neutral`, `zinc`, ...). Kept when switching modes.
+    pub base_color: BaseColor,
+    /// The colored primary, if any. Kept when switching modes.
+    pub accent_color: AccentColor,
     pub colors: ThemeColors,
     /// `--radius`. The other radii are derived from it, like in shadcn:
     /// `sm = radius - 4`, `md = radius - 2`, `lg = radius`, `xl = radius + 4`.
@@ -202,6 +403,8 @@ impl Theme {
     pub fn new(mode: ThemeMode) -> Self {
         Self {
             mode,
+            base_color: BaseColor::default(),
+            accent_color: AccentColor::default(),
             colors: ThemeColors::for_mode(mode),
             radius: px(10.0), // 0.625rem
             font_family: ".SystemUIFont".into(),
@@ -250,11 +453,40 @@ impl Theme {
         cx.global_mut::<Theme>()
     }
 
-    /// Switch between light and dark, keeping radius/fonts, and re-render.
+    /// Recompute the colors from `mode`, `base` and `accent`. Call after
+    /// changing `mode`, `base_color` or `accent_color` directly; overrides made to `colors` are reset.
+    pub fn rebuild(&mut self) {
+        self.colors = ThemeColors::build(self.mode, self.base_color, self.accent_color);
+    }
+
+    /// Switch between light and dark, keeping base color, accent, radius and
+    /// fonts, and re-render.
     pub fn change(mode: ThemeMode, cx: &mut App) {
         let theme = cx.global_mut::<Theme>();
         theme.mode = mode;
-        theme.colors = ThemeColors::for_mode(mode);
+        theme.rebuild();
+        cx.refresh_windows();
+    }
+
+    /// Use another base color (`Theme::set_base(BaseColor::Zinc, cx)`).
+    pub fn set_base(base: BaseColor, cx: &mut App) {
+        let theme = cx.global_mut::<Theme>();
+        theme.base_color = base;
+        theme.rebuild();
+        cx.refresh_windows();
+    }
+
+    /// Use a colored primary (`Theme::set_accent(AccentColor::Blue, cx)`).
+    pub fn set_accent(accent: AccentColor, cx: &mut App) {
+        let theme = cx.global_mut::<Theme>();
+        theme.accent_color = accent;
+        theme.rebuild();
+        cx.refresh_windows();
+    }
+
+    /// Change `--radius` (the other radii derive from it).
+    pub fn set_radius(radius: Pixels, cx: &mut App) {
+        cx.global_mut::<Theme>().radius = radius;
         cx.refresh_windows();
     }
 

@@ -6,19 +6,21 @@ mod ui;
 mod demos;
 
 use gpui::{
-    App, Application, Bounds, Context, FontWeight, Window, WindowBounds, WindowOptions, div, prelude::*, px, relative,
+    App, Application, Bounds, Context, FontWeight, SharedString, Window, WindowBounds, WindowOptions, div, prelude::*, px, relative,
     rems, size,
 };
 use ui::{
     breadcrumb::{Breadcrumb, BreadcrumbItem},
     button::{Button, ButtonSize},
     icon::{Icon, IconName},
+    popover::Popover,
     separator::Separator,
     portal::PortalHost,
     scroll_area::ScrollArea,
     sidebar::{Sidebar, SidebarCollapsible, SidebarGroup, SidebarInset, SidebarMenuItem},
     sonner::Toaster,
-    theme::{ActiveTheme, Theme, ThemeMode},
+    theme::{AccentColor, ActiveTheme, BaseColor, Theme, ThemeColors, ThemeMode},
+    utils::Align,
 };
 
 pub struct Gallery {
@@ -103,6 +105,7 @@ impl Render for Gallery {
                     .child(nav("prev", IconName::ChevronLeft, "Previous component", (self.page + count - 1) % count))
                     .child(nav("next", IconName::ChevronRight, "Next component", (self.page + 1) % count))
                     .child(Separator::vertical().h_4().mx_1())
+                    .child(customizer())
                     .child(
                         Button::new("theme-toggle")
                             .ghost()
@@ -178,6 +181,82 @@ impl Render for Gallery {
     }
 }
 
+/// The theme customizer popover: accent color, base color, radius and mode,
+/// all driven through `Theme`'s setters.
+fn customizer() -> impl IntoElement {
+    Popover::new("customizer")
+        .align(Align::End)
+        .w(px(340.))
+        .trigger(Button::new("customize").outline().size(ButtonSize::Sm).icon(IconName::Palette).label("Customize"))
+        .content(|_, cx| {
+            let theme = cx.theme();
+            let (accent, base, radius, mode) = (theme.accent_color, theme.base_color, theme.radius, theme.mode);
+            let muted = theme.muted_foreground;
+            let section = |title: &'static str| {
+                div().text_xs().line_height(rems(1.)).font_weight(FontWeight::MEDIUM).text_color(muted).child(title)
+            };
+            let grid = || div().grid().grid_cols(3).gap_2();
+
+            let accents = AccentColor::ALL.map(|a| {
+                let swatch = ThemeColors::build(mode, base, a).primary;
+                Button::new(SharedString::from(format!("accent-{}", a.name())))
+                    .outline()
+                    .size(ButtonSize::Sm)
+                    .justify_start()
+                    .selected(a == accent)
+                    .when(a == accent, |this| this.border_color(swatch))
+                    .child(div().size_3p5().flex_none().rounded_full().bg(swatch))
+                    .child(a.name())
+                    .on_click(move |_, _, cx| Theme::set_accent(a, cx))
+            });
+            let bases = BaseColor::ALL.map(|b| {
+                let swatch = ThemeColors::build(ThemeMode::Light, b, AccentColor::Default).muted_foreground;
+                Button::new(SharedString::from(format!("base-{}", b.name())))
+                    .outline()
+                    .size(ButtonSize::Sm)
+                    .justify_start()
+                    .selected(b == base)
+                    .child(div().size_3p5().flex_none().rounded_full().bg(swatch))
+                    .child(b.name())
+                    .on_click(move |_, _, cx| Theme::set_base(b, cx))
+            });
+            let radii = [("0", 0.), ("0.3", 4.8), ("0.5", 8.), ("0.625", 10.), ("0.75", 12.), ("1.0", 16.)].map(|(label, value)| {
+                Button::new(SharedString::from(format!("radius-{label}")))
+                    .outline()
+                    .size(ButtonSize::Sm)
+                    .selected(radius == px(value))
+                    .label(label)
+                    .on_click(move |_, _, cx| Theme::set_radius(px(value), cx))
+            });
+            let modes = [(ThemeMode::Light, "Light", IconName::Sun), (ThemeMode::Dark, "Dark", IconName::Moon)].map(|(m, label, icon)| {
+                Button::new(SharedString::from(format!("mode-{label}")))
+                    .outline()
+                    .size(ButtonSize::Sm)
+                    .selected(m == mode)
+                    .icon(icon)
+                    .label(label)
+                    .on_click(move |_, _, cx| Theme::change(m, cx))
+            });
+
+            div()
+                .flex()
+                .flex_col()
+                .gap_4()
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_1()
+                        .child(div().font_weight(FontWeight::SEMIBOLD).line_height(rems(1.25)).child("Customize"))
+                        .child(div().text_color(muted).line_height(rems(1.25)).child("Pick a color, base and radius for every component.")),
+                )
+                .child(div().flex().flex_col().gap_2().child(section("Color")).child(grid().children(accents)))
+                .child(div().flex().flex_col().gap_2().child(section("Base color")).child(grid().children(bases)))
+                .child(div().flex().flex_col().gap_2().child(section("Radius")).child(grid().children(radii)))
+                .child(div().flex().flex_col().gap_2().child(section("Mode")).child(grid().children(modes)))
+        })
+}
+
 /// `GALLERY_PAGE` (a demo name or index), `GALLERY_THEME` (`light`/`dark`)
 /// and `GALLERY_SIZE` (`1280x800`) pick the initial state, which makes the
 /// gallery scriptable for screenshots.
@@ -198,6 +277,8 @@ fn load_fonts(cx: &mut App) {
         Cow::Borrowed(include_bytes!("../fonts/Geist-Medium.ttf")),
         Cow::Borrowed(include_bytes!("../fonts/Geist-SemiBold.ttf")),
         Cow::Borrowed(include_bytes!("../fonts/Geist-Bold.ttf")),
+        Cow::Borrowed(include_bytes!("../fonts/Geist-Italic.ttf")),
+        Cow::Borrowed(include_bytes!("../fonts/Geist-MediumItalic.ttf")),
         Cow::Borrowed(include_bytes!("../fonts/GeistMono-Regular.ttf")),
         Cow::Borrowed(include_bytes!("../fonts/GeistMono-Medium.ttf")),
     ];
@@ -214,6 +295,16 @@ fn main() {
         load_fonts(cx);
         if std::env::var("GALLERY_THEME").is_ok_and(|t| t == "dark") {
             Theme::change(ThemeMode::Dark, cx);
+        }
+        if let Ok(name) = std::env::var("GALLERY_ACCENT")
+            && let Some(accent) = AccentColor::ALL.into_iter().find(|a| a.name().eq_ignore_ascii_case(&name))
+        {
+            Theme::set_accent(accent, cx);
+        }
+        if let Ok(name) = std::env::var("GALLERY_BASE")
+            && let Some(base) = BaseColor::ALL.into_iter().find(|b| b.name().eq_ignore_ascii_case(&name))
+        {
+            Theme::set_base(base, cx);
         }
         let (w, h) = std::env::var("GALLERY_SIZE")
             .ok()

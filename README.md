@@ -101,13 +101,38 @@ primary: oklch(0.205, 0.0, 0.0),       // theme.rs
 border: oklcha(1.0, 0.0, 0.0, 0.1),
 ```
 
-At runtime:
+shadcn's base colors and color themes are built in, and survive switching
+between light and dark:
 
 ```rust
 Theme::change(ThemeMode::Dark, cx);          // switch the color scheme
 Theme::sync_system_appearance(window, cx);   // follow the OS
-Theme::global_mut(cx).radius = px(6.);       // tweak any token
+Theme::set_base(BaseColor::Zinc, cx);        // neutral, zinc, slate, stone, gray
+Theme::set_accent(AccentColor::Blue, cx);    // blue, green, rose, orange, violet, red, yellow
+Theme::set_radius(px(6.), cx);               // --radius; sm/md/lg/xl derive from it
+Theme::global_mut(cx).primary = oklch(0.6, 0.2, 30.0); // or tweak any single token
 ```
+
+The gallery's **Customize** button drives exactly these setters.
+
+### Fonts and line height
+
+`theme.font_family` defaults to the platform UI font. shadcn uses
+[Geist](https://vercel.com/font); the gallery bundles it (see `load_fonts` in
+`crates/gallery/src/main.rs`) and you can do the same with
+`cx.text_system().add_fonts(..)`. Components set Tailwind's line heights for
+every text size; for loose text in your own views, put
+`.line_height(relative(1.43))` on your root (gpui's default is 1.618).
+
+### Helpers for your own components
+
+`utils.rs` has the pieces the components are built from:
+`control_surface(theme)` (input-like background and shadow),
+`focus_ring` / `invalid_ring` / `ring` (rings drawn outside an element),
+`use_tab_stop` + `is_focus_visible` (keyboard focus), and `refine_style`
+(layers a caller's `Styled` overrides over your defaults, merging text styles
+field by field). `Theme::faded` fades a color the way CSS `opacity` fades a
+whole element.
 
 ## CLI
 
@@ -136,6 +161,8 @@ company's design system in a repo and install from it just like from the
 built-in registry.
 
 ## Components
+
+Every component from ui.shadcn.com:
 
 Accordion, Alert, Alert Dialog, Aspect Ratio, Avatar, Badge, Breadcrumb, Button,
 Button Group, Calendar, Card, Carousel, Chart (bar, line, area, pie), Checkbox,
@@ -170,10 +197,31 @@ your root view.
 `Application::new().with_assets(ui::icon::IconAssets)`. If you already have an
 `AssetSource`, chain them with `IconAssets.with_fallback(yours)`.
 
-## Known limitations
+## Keyboard
 
-- Buttons can't be focused with the keyboard yet. Menus, selects, the command palette and inputs can.
-- Menubar doesn't switch between open menus on hover. You have to click each one.
+Tab / Shift-Tab move focus between buttons, inputs and select triggers (with a
+focus-visible ring, like the web). Enter / Space activate buttons; Enter, Space
+or ↓ open menus, selects and popovers from their trigger; arrows move through
+menus, lists and the command palette; Escape closes and returns focus to the
+trigger.
+
+## Notes on gpui
+
+A few gpui behaviors that the components work around, useful if you write
+your own:
+
+- **Box shadows are painted under the element, not just outside it**, so a
+  shadow on a transparent element tints its interior. Give it a background, or
+  draw rings with `utils::ring`.
+- **`overflow_hidden` clips to a rectangle**, not to rounded corners: round the
+  children too (see `Progress`, `Avatar`).
+- **`cx.notify()` during prepaint/paint is dropped**: if a `canvas` measurement
+  changes what you render, call `window.request_animation_frame()`.
+- **Element opacity fades each primitive separately**: text on a 50%-opaque
+  fill looks washed out twice. Fade colors with `Theme::faded` instead.
+- **Keyed state is namespaced by the surrounding element ids**: if a parent
+  needs an `Input`'s state, resolve it with `Input::state(&mut self, ..)`,
+  which pins it for the input's own render.
 
 ## License
 
