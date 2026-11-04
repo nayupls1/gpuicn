@@ -656,15 +656,25 @@ fn carousel(_: &mut Window, _: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-fn chart(_: &mut Window, _: &mut App) -> AnyElement {
+fn chart(_: &mut Window, cx: &mut App) -> AnyElement {
     let months = ["January", "February", "March", "April", "May", "June"];
     let desktop = [186., 305., 237., 73., 209., 214.];
     let mobile = [80., 200., 120., 190., 130., 140.];
-    let card = |title: &'static str, chart: AnyElement| {
+    let muted = cx.theme().muted_foreground;
+    let card = move |title: &'static str, chart: AnyElement| {
         Card::new()
             .w(px(400.))
             .child(CardHeader::new().child(CardTitle::new(title)).child(CardDescription::new("January - June 2024")))
             .child(CardContent::new().child(chart))
+            .child(
+                CardFooter::new().flex_col().items_start().gap_1().text_sm().line_height(px(20.)).child(
+                    row()
+                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .child("Trending up by 5.2% this month")
+                        .child(Icon::new(IconName::ArrowUpRight)),
+                )
+                .child(div().text_color(muted).child("Showing total visitors for the last 6 months")),
+            )
     };
     div()
         .w(px(816.))
@@ -1125,7 +1135,16 @@ fn hover_card(_: &mut Window, cx: &mut App) -> AnyElement {
                         .gap_1()
                         .child(div().text_sm().font_weight(gpui::FontWeight::SEMIBOLD).child("@nextjs"))
                         .child(div().text_sm().child("The React Framework – created and maintained by @vercel."))
-                        .child(div().text_xs().text_color(muted).child("Joined December 2021")),
+                        .child(
+                            row()
+                                .gap_1p5()
+                                .pt_1()
+                                .text_xs()
+                                .line_height(px(16.))
+                                .text_color(muted)
+                                .child(Icon::new(IconName::Calendar).size_3p5())
+                                .child("Joined December 2021"),
+                        ),
                 )
         })
         .into_any_element()
@@ -1795,10 +1814,10 @@ fn typography(_: &mut Window, cx: &mut App) -> AnyElement {
         .w(px(640.))
         .child(h1("Taxing Laughter: The Joke Tax Chronicles").text_center())
         .child(lead("Once upon a time, in a far-off land, there was a very lazy king who spent all day lounging on his throne."))
-        .child(h2("The King's Plan"))
+        .child(h2("The King's Plan").mt_6())
         .child(p("The king thought long and hard, and finally came up with a brilliant plan: he would tax the jokes in the kingdom."))
         .child(blockquote("\"After all,\" he said, \"everyone enjoys a good joke, so it's only fair that they should pay for the privilege.\""))
-        .child(h3("The Joke Tax"))
+        .child(h3("The Joke Tax").mt_4())
         .child(List::new().item("1st level of puns: 5 gold coins").item("2nd level of jokes: 10 gold coins").item("3rd level of one-liners: 20 gold coins"))
         .child(h3("The People of the Kingdom"))
         .child(

@@ -208,6 +208,7 @@ impl Cartesian {
         let series: Vec<Vec<f64>> = self.series.iter().map(|s| (0..points).map(|i| s.data.get(i).copied().unwrap_or(0.)).collect()).collect();
         let (kind, stacked, grid, dots) = (self.kind, self.stacked, self.grid, self.dots);
         let grid_color = theme.border;
+        let fill_opacity = if theme.is_dark() { 0.3 } else { 0.4 };
         let hover_bg = theme.muted.opacity(0.5);
 
         let plot = {
@@ -295,7 +296,9 @@ impl Cartesian {
                                     smooth(&mut builder, &back);
                                     builder.close();
                                     if let Ok(path) = builder.build() {
-                                        window.paint_path(path, colors[s].opacity(0.4));
+                                        // `fillOpacity={0.4}`; a touch lighter on dark backgrounds,
+                                        // where saturated fills read heavier.
+                                        window.paint_path(path, colors[s].opacity(fill_opacity));
                                     }
                                 }
                                 let mut builder = PathBuilder::stroke(px(2.));

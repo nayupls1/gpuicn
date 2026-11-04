@@ -140,7 +140,7 @@ impl Render for Gallery {
         let preview = div()
             .flex()
             .flex_none()
-            .min_h(px(470.))
+            .min_h(px(440.))
             .items_center()
             .justify_center()
             .p_10()

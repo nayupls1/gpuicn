@@ -323,6 +323,34 @@ pub fn floating_position(
     }
 }
 
+/// Radix's `avoidCollisions`: flip to the opposite side when the content
+/// doesn't fit on the preferred one but does on the other, instead of letting
+/// window snapping slide it over the trigger.
+fn avoid_collisions(side: Side, trigger: Bounds<Pixels>, content: Size<Pixels>, offset: Pixels, window: &Window) -> Side {
+    if content.width <= px(0.) || content.height <= px(0.) {
+        return side;
+    }
+    let viewport = window.viewport_size();
+    let margin = px(8.);
+    let room = |side: Side| match side {
+        Side::Bottom => viewport.height - trigger.bottom() - offset - margin,
+        Side::Top => trigger.top() - offset - margin,
+        Side::Right => viewport.width - trigger.right() - offset - margin,
+        Side::Left => trigger.left() - offset - margin,
+    };
+    let need = match side {
+        Side::Top | Side::Bottom => content.height,
+        Side::Left | Side::Right => content.width,
+    };
+    let opposite = match side {
+        Side::Bottom => Side::Top,
+        Side::Top => Side::Bottom,
+        Side::Left => Side::Right,
+        Side::Right => Side::Left,
+    };
+    if room(side) < need && room(opposite) >= need { opposite } else { side }
+}
+
 fn schedule_hover(state: &Entity<PopoverState>, handle: PopoverHandle, delays: (u64, u64), window: &mut Window, cx: &mut App) {
     let (hovered, open) = {
         let s = state.read(cx);
@@ -430,7 +458,10 @@ impl RenderOnce for Popover {
         if open && let Some(content) = self.content.clone() {
             let (position, corner) = match self.anchor_position {
                 Some(position) => (position, Corner::TopLeft),
-                None => floating_position(trigger_bounds, content_size, self.side, self.align, self.side_offset),
+                None => {
+                    let side = avoid_collisions(self.side, trigger_bounds, content_size, self.side_offset, window);
+                    floating_position(trigger_bounds, content_size, side, self.align, self.side_offset)
+                }
             };
             let layer = FloatingLayer {
                 content,
