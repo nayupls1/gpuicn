@@ -4,22 +4,46 @@
 //! Each page is `demos/<name>.rsx` with `pub fn demo() -> Element`.
 #![allow(dead_code, unused_imports)]
 
+rsx::module!(pub aspect_ratio = "demos/aspect_ratio");
+rsx::module!(pub avatar = "demos/avatar");
+rsx::module!(pub badge = "demos/badge");
 rsx::module!(pub button = "demos/button");
+rsx::module!(pub checkbox = "demos/checkbox");
+rsx::module!(pub kbd = "demos/kbd");
 rsx::module!(pub label = "demos/label");
 rsx::module!(pub popover = "demos/popover");
+rsx::module!(pub progress = "demos/progress");
+rsx::module!(pub radio_group = "demos/radio_group");
 rsx::module!(pub separator = "demos/separator");
+rsx::module!(pub skeleton = "demos/skeleton");
+rsx::module!(pub slider = "demos/slider");
 rsx::module!(pub spinner = "demos/spinner");
+rsx::module!(pub switch = "demos/switch");
+rsx::module!(pub toggle = "demos/toggle");
+rsx::module!(pub toggle_group = "demos/toggle_group");
 rsx::module!(pub tooltip = "demos/tooltip");
 
 pub type Demo = fn() -> rsx::Element;
 
 /// Every page, in sidebar order.
 pub const DEMOS: &[(&str, Demo)] = &[
+    ("Aspect Ratio", aspect_ratio::demo),
+    ("Avatar", avatar::demo),
+    ("Badge", badge::demo),
     ("Button", button::demo),
+    ("Checkbox", checkbox::demo),
+    ("Kbd", kbd::demo),
     ("Label", label::demo),
     ("Popover", popover::demo),
+    ("Progress", progress::demo),
+    ("Radio Group", radio_group::demo),
     ("Separator", separator::demo),
+    ("Skeleton", skeleton::demo),
+    ("Slider", slider::demo),
     ("Spinner", spinner::demo),
+    ("Switch", switch::demo),
+    ("Toggle", toggle::demo),
+    ("Toggle Group", toggle_group::demo),
     ("Tooltip", tooltip::demo),
 ];
 
