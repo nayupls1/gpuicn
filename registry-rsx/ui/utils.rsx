@@ -169,3 +169,28 @@ pub fn ease_in_out(t: f32) -> f32 {
     let t = t.clamp(0.0, 1.0);
     if t < 0.5 { 4.0 * t * t * t } else { 1.0 - (-2.0 * t + 2.0).powi(3) / 2.0 }
 }
+
+/// A one-shot transition (gpui's `with_animation`): returns a signal that
+/// goes from 0 to 1 over `ms` milliseconds after the call, then stops
+/// ticking. Create it where the animated element is created, so it replays
+/// each time the element appears; shape it with [`ease_in_out`].
+pub fn use_transition(ms: u64) -> ReadSignal<f32> {
+    let progress = signal(if ms == 0 { 1.0f32 } else { 0.0 });
+    if ms > 0 {
+        let start = std::time::Instant::now();
+        spawn_local(async move {
+            loop {
+                if !progress.is_alive() {
+                    break;
+                }
+                let t = (start.elapsed().as_secs_f32() * 1000.0 / ms as f32).min(1.0);
+                progress.set(t);
+                if t >= 1.0 {
+                    break;
+                }
+                sleep(std::time::Duration::from_millis(16)).await;
+            }
+        });
+    }
+    progress.read_only()
+}

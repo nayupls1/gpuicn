@@ -3,6 +3,7 @@
 use rsx::prelude::*;
 
 use crate::demos::{self, DEMOS};
+use crate::ui::sonner::Toaster;
 use crate::ui::theme::{theme, AccentColor, BaseColor, Theme, ThemeMode};
 
 fn env_page() -> usize {
@@ -53,5 +54,6 @@ pub fn App(
                 </div>
             }}
         </div>
+        <Toaster />
     </div>
 }

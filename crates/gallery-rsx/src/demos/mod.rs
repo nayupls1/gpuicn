@@ -50,8 +50,8 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Slider", slider::demo),
     ("Spinner", spinner::demo),
     ("Switch", switch::demo),
-    ("Toggle Group", toggle_group::demo),
     ("Toggle", toggle::demo),
+    ("Toggle Group", toggle_group::demo),
     ("Tooltip", tooltip::demo),
 ];
 
