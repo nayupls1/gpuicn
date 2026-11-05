@@ -116,7 +116,10 @@ pub fn Button(
     let (disabled, loading, selected) = (flag(disabled), flag(loading), flag(selected));
     let interactive = move || !disabled() && !loading();
 
-    let button = move || {
+    let attrs = StoredValue::new(attrs);
+    // The root element is built once (rebuilding it would drop its focus);
+    // everything that changes is applied by bindings.
+    let style = move |el: rsx::Div| {
         let theme = t.get();
         let (bg, hover_bg, fg, border) = variant_colors(variant, &theme);
         let accent_fg = match variant {
@@ -125,7 +128,6 @@ pub fn Button(
         };
         let interactive = interactive();
         let has_icon = icon.is_some() || loading();
-        let radius = theme.radius - 2.0;
         // `disabled:opacity-50`, applied to the colors (see `Theme::faded`).
         let (bg, fg, border) = if interactive {
             (bg, fg, border)
@@ -133,7 +135,7 @@ pub fn Button(
             (theme.faded(bg, 0.5), theme.faded(fg, 0.5), border.map(|b| theme.faded(b, 0.5)))
         };
         let hover = interactive && (hovered.get() || selected());
-        let (h, px_) = match size {
+        let (h, pad) = match size {
             ButtonSize::Default => (9.0, if has_icon { 12.0 } else { 16.0 }),
             ButtonSize::Sm => (8.0, if has_icon { 10.0 } else { 12.0 }),
             ButtonSize::Lg => (10.0, if has_icon { 16.0 } else { 24.0 }),
@@ -142,48 +144,59 @@ pub fn Button(
             ButtonSize::IconLg => (10.0, 0.0),
         };
         let height = rsx::rems(h * 0.25);
-        let width = if size.is_icon() { height } else { rsx::auto() };
-        let focus_visible = interactive && is_focus_visible(node);
-        let border_width = if border.is_some() { 1.0 } else { 0.0 };
-
-        <button
-            ref={node}
-            class="relative flex shrink-0 items-center justify-center gap-2 text-sm leading-[1.25rem] font-medium"
-            class:gap-1.5={size == ButtonSize::Sm}
-            class:cursor-pointer={interactive}
-            class:underline={hover && variant == ButtonVariant::Link}
-            h={height}
-            w={width}
-            px={px(px_)}
-            corner_radius={px(radius)}
-            bg={if hover { hover_bg } else { bg }}
-            text_color={if hover { accent_fg } else { fg }}
-            border_width={px(border_width)}
-            border_color={border.unwrap_or(Color::TRANSPARENT)}
-            type="button"
-            onMouseDown={move |_| pointer_pressed()}
-            onKeyDown={on_tab_key}
-            onHover={move |h: &bool| hovered.set(*h)}
-            onClick={move |e: &ClickEvent| {
-                if interactive {
-                    e.stop_propagation();
-                    if let Some(f) = on_click {
-                        f.call(e)
-                    }
-                }
-            }}
-            {...&attrs}
-        >
-            {if loading() { <Spinner /> } else { icon.map(|i| <Icon name={i} />).into_element() }}
-            {label.map(|l| l.get())}
-            {children}
-            {icon_end.map(|i| <Icon name={i} />)}
-            {focus_visible.then(|| ring(theme.ring.opacity(0.5), 3.0, radius, border_width))}
-        </button>
+        let mut el = el
+            .h(height)
+            .w(if size.is_icon() { height } else { rsx::auto() })
+            .px(px(pad))
+            .corner_radius(px(theme.radius - 2.0))
+            .bg(if hover { hover_bg } else { bg })
+            .text_color(if hover { accent_fg } else { fg })
+            .border_width(px(if border.is_some() { 1.0 } else { 0.0 }))
+            .border_color(border.unwrap_or(Color::TRANSPARENT));
+        if size == ButtonSize::Sm {
+            el = el.class("gap-1.5");
+        }
+        el = el.class(if interactive { "cursor-pointer" } else { "cursor-default" });
+        if hover && variant == ButtonVariant::Link {
+            el = el.class("underline");
+        }
+        // The caller's overrides win over the defaults above (rsx#10).
+        el.spread(attrs.with_value(|a| a.clone()))
     };
+    let ring = move || {
+        let theme = t.get();
+        let border = variant_colors(variant, &theme).3;
+        (interactive() && is_focus_visible(node))
+            .then(|| ring(theme.ring.opacity(0.5), 3.0, theme.radius - 2.0, if border.is_some() { 1.0 } else { 0.0 }))
+    };
+
+    let button = move || <button
+        ref={node}
+        class="relative flex flex-shrink-0 items-center justify-center gap-2 text-sm leading-[1.25rem] font-medium"
+        type="button"
+        bind={style}
+        onMouseDown={move |_| pointer_pressed()}
+        onKeyDown={on_tab_key}
+        onHover={move |h: &bool| hovered.set(*h)}
+        onClick={move |e: &ClickEvent| {
+            // Like gpuicn: only a button with its own handler keeps the click
+            // from its ancestors (a bare Button inside a Popover trigger opens it).
+            if let Some(f) = on_click.filter(|_| interactive()) {
+                e.stop_propagation();
+                f.call(e)
+            }
+        }}
+        {...attrs.with_value(|a| a.clone())}
+    >
+        {move || if loading() { <Spinner /> } else { icon.map(|i| <Icon name={i} />).into_element() }}
+        {label.map(|l| l.get())}
+        {children}
+        {icon_end.map(|i| <Icon name={i} />)}
+        {ring}
+    </button>;
     match tooltip {
         // A real `Tooltip`, centered above the button like shadcn's.
-        Some(text) => <Tooltip content={text}>{button}</Tooltip>,
-        None => button.into_element(),
+        Some(text) => <Tooltip content={text}>{button()}</Tooltip>,
+        None => button(),
     }
 }
