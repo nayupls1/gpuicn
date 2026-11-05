@@ -33,7 +33,7 @@ pub fn HoverCard(
         mode={PopoverTrigger::Hover { open_delay_ms: open_delay, close_delay_ms: close_delay }}
         side={side}
         align={align}
-        trigger={move || trigger.map(|t| t.render())}
+        trigger={trigger}
         class="w-64"
         {...attrs}
         content={move |_| content.map(|c| c.render())}

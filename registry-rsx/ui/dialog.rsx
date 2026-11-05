@@ -22,7 +22,7 @@ use rsx::prelude::*;
 
 use super::icon::{Icon, IconName};
 use super::theme::theme;
-use super::utils::{ease_in_out, pointer_pressed, use_transition};
+use super::utils::{pointer_pressed, reduced_motion};
 
 /// Open/close a dialog (or sheet, drawer…) from callbacks. `Copy`: content
 /// and footer render functions receive it; create one with
@@ -31,7 +31,8 @@ use super::utils::{ease_in_out, pointer_pressed, use_transition};
 pub struct DialogHandle {
     open: Signal<bool>,
     on_open_change: StoredValue<Option<Callback<bool>>>,
-    /// The backdrop: takes focus while open, so Escape reaches it.
+    /// The full-window layer holding the panel: takes focus while open, so
+    /// Escape reaches it.
     layer: NodeRef,
     /// The trigger wrapper: focus returns here on close.
     trigger: NodeRef,
@@ -79,7 +80,7 @@ impl DialogHandle {
         self.trigger
     }
 
-    /// The full-window backdrop of the open dialog.
+    /// The full-window layer of the open dialog (it holds the focus).
     pub fn layer_ref(&self) -> NodeRef {
         self.layer
     }
@@ -90,17 +91,33 @@ impl DialogHandle {
             return false;
         }
         self.open.set(open);
-        if !open {
+        if !open && self.trigger.bounds().is_some() {
             // Return focus to the trigger, if there is one.
-            let trigger = self.trigger;
-            spawn_local(async move {
-                if trigger.bounds().is_some() {
-                    trigger.focus();
-                }
-            });
+            self.trigger.focus();
         }
         true
     }
+}
+
+/// For enter animations with rsx's transitions: `false` while the element
+/// is first drawn, `true` from the frame after, so a `transition` on a style
+/// that depends on it runs from the first value to the second (gpui's
+/// `with_animation`). Call it where the animated element is built, so it
+/// replays each time the element appears. Already `true` under
+/// `prefers-reduced-motion` ([`super::utils::set_reduced_motion`]).
+pub fn use_entered() -> ReadSignal<bool> {
+    let entered = signal(reduced_motion());
+    if !entered.get_untracked() {
+        // Two frames: the element may be built while a frame is starting.
+        rsx::request_animation_frame(move |_| {
+            rsx::request_animation_frame(move |_| {
+                if entered.is_alive() {
+                    entered.set(true);
+                }
+            })
+        });
+    }
+    entered.read_only()
 }
 
 /// Shared open-state bookkeeping for every modal component: the handle
@@ -131,7 +148,8 @@ pub enum ModalPlacement {
 /// The backdrop + panel layer of an open modal (gpui's `render_modal`):
 /// a full-window `<Portal>` dimmed with `theme.overlay`, the panel placed by
 /// `placement`, Escape closes, and so does a press on the backdrop when
-/// `dismissible` (false for alert dialogs). Fades in and slides 24px.
+/// `dismissible` (false for alert dialogs). Fades in and slides 24px in from
+/// its edge (12px up when centered).
 #[component]
 pub fn Modal(
     handle: DialogHandle,
@@ -146,11 +164,11 @@ pub fn Modal(
     let wrapper_class = StoredValue::new(wrapper_class.unwrap_or_default());
     let layer = move || {
         let t = theme();
-        let fade = use_transition(150);
-        let slide = use_transition(200);
-        // Focus the backdrop when it appears (applied when it's first drawn).
+        let entered = use_entered();
+        // Focus the layer when it appears (applied when it's first drawn;
+        // a field inside that asks for focus too wins, being innermost).
         handle.layer.focus();
-        let backdrop = match placement {
+        let align = match placement {
             ModalPlacement::Center => "items-center justify-center px-4",
             ModalPlacement::Top => "flex-col justify-start",
             ModalPlacement::Bottom => "flex-col justify-end",
@@ -162,43 +180,48 @@ pub fn Modal(
             ModalPlacement::Top | ModalPlacement::Bottom => "w-full",
             ModalPlacement::Left | ModalPlacement::Right => "h-full",
         };
+        // The backdrop is a sibling under the panel, not its ancestor, so
+        // presses on the panel (and on popovers opened from it, which bubble
+        // through it) never reach it. The panel's box ignores the pointer
+        // except for the panel itself, letting presses around it through.
         <Portal>
             <div
                 ref={handle.layer}
-                class={format!("absolute inset-0 flex {backdrop}")}
-                bg={t.get().overlay}
-                opacity={fade.get()}
+                class="absolute inset-0 transition-opacity duration-150 ease-linear"
+                opacity={move || if entered.get() { 1.0 } else { 0.0 }}
                 onKeyDown={move |e: &KeyboardEvent| {
                     if e.key == "Escape" {
                         e.stop_propagation();
                         handle.close();
                     }
                 }}
-                onMouseDown={move |e: &MouseEvent| {
-                    e.stop_propagation();
-                    if dismissible {
-                        pointer_pressed();
-                        handle.close();
-                    }
-                }}
             >
                 <div
-                    class={format!("flex {fit} {}", wrapper_class.get_value())}
-                    // A press inside the panel doesn't reach the backdrop.
-                    onMouseDown={move |e: &MouseEvent| e.stop_propagation()}
-                    bind={move |el: rsx::Div| {
-                        // rsx#16: no transforms; slide with margins like gpuicn does.
-                        let offset = 24.0 * (1.0 - ease_in_out(slide.get()));
-                        match placement {
-                            ModalPlacement::Center => el.mt(px(offset / 2.0)),
-                            ModalPlacement::Top => el.mt(px(-offset)),
-                            ModalPlacement::Bottom => el.mb(px(-offset)),
-                            ModalPlacement::Left => el.ml(px(-offset)),
-                            ModalPlacement::Right => el.mr(px(-offset)),
+                    class="absolute inset-0"
+                    bg={t.get().overlay}
+                    onMouseDown={move |_| {
+                        if dismissible {
+                            pointer_pressed();
+                            handle.close();
                         }
                     }}
-                >
-                    {panel.render(handle)}
+                />
+                <div class={format!("absolute inset-0 flex {align} pointer-events-none")}>
+                    <div
+                        class={format!("flex {fit} {} pointer-events-auto transition-transform duration-200 ease-in-out", wrapper_class.get_value())}
+                        bind={move |el: rsx::Div| {
+                            let offset = if entered.get() { 0.0 } else { 24.0 };
+                            match placement {
+                                ModalPlacement::Center => el.translate_y(px(offset / 2.0)),
+                                ModalPlacement::Top => el.translate_y(px(-offset)),
+                                ModalPlacement::Bottom => el.translate_y(px(offset)),
+                                ModalPlacement::Left => el.translate_x(px(-offset)),
+                                ModalPlacement::Right => el.translate_x(px(offset)),
+                            }
+                        }}
+                    >
+                        {panel.render(handle)}
+                    </div>
                 </div>
             </div>
         </Portal>
@@ -208,15 +231,9 @@ pub fn Modal(
 
 /// The small "×" in the top-right corner of dialogs and sheets.
 pub fn close_button(handle: DialogHandle) -> Element {
-    let hovered = signal(false);
     <div
-        class="absolute top-4 right-4 rounded-[2px] cursor-pointer"
-        opacity={if hovered.get() { 1.0 } else { 0.7 }}
-        onHover={move |h: &bool| hovered.set(*h)}
-        onClick={move |e: &ClickEvent| {
-            e.stop_propagation();
-            handle.close();
-        }}
+        class="absolute top-4 right-4 rounded-[2px] cursor-pointer opacity-70 hover:opacity-100"
+        onClick={move |_| handle.close()}
     >
         <Icon name={IconName::X} />
     </div>
@@ -276,14 +293,15 @@ pub fn Dialog(
     let t = theme();
     let attrs = StoredValue::new(attrs);
     let panel = move |handle: DialogHandle| {
-        // rsx#7: no `shadow-lg`. Colors are bindings so the content isn't
-        // rebuilt on theme changes (rsx#10: static classes can't override them).
+        // Colors are bindings so the content isn't rebuilt on theme changes;
+        // the caller's classes come after them and win.
         <div
             class="relative flex flex-col gap-4 w-[512px] max-w-full p-6 border"
             corner_radius={t.get().radius_lg()}
             border_color={t.get().border}
             bg={t.get().background}
             text_color={t.get().foreground}
+            class:shadow-lg={t.get().shadows}
             {...attrs.with_value(|a| a.clone())}
         >
             {header(title, description, "")}

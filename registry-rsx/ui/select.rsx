@@ -102,10 +102,19 @@ pub fn SelectList(
     let items: Vec<SelectItem> = groups.iter().flat_map(|g| g.items.clone()).collect();
     let initial = items.iter().position(|i| Some(&i.value) == selected.as_ref());
     let highlighted = signal(initial);
-    if let Some(p) = popover {
-        p.focus_on_open(node);
+    // Take focus so the arrow keys reach the list (the popover's panel asks
+    // too, but the innermost request wins).
+    match popover {
+        Some(p) => p.focus_on_open(node),
+        None => node.focus(),
     }
-    on_mount(move || spawn_local(async move { node.focus() }));
+    // One handle per item, to keep the highlighted one scrolled into view;
+    // the list opens scrolled to the selected item.
+    let row_refs: Vec<NodeRef> = items.iter().map(|_| NodeRef::new()).collect();
+    if let Some(row) = initial.and_then(|i| row_refs.get(i)) {
+        row.scroll_into_view();
+    }
+    let row_refs = StoredValue::new(row_refs);
     let pick = move |value: &SharedString| {
         if let Some(f) = on_pick {
             f.call(value)
@@ -120,7 +129,7 @@ pub fn SelectList(
         let selected = selected_value.get_value();
         groups.with_value(|groups| for (group_ix, group) in groups.iter().enumerate() {
             if group_ix > 0 {
-                rows.push(<div class="h-px my-1" mx={px(-4.0)} bg={t.get().border} />);
+                rows.push(<div class="h-px -mx-1 my-1" bg={t.get().border} />);
             }
             if let Some(label) = group.label.clone() {
                 rows.push(<div class="px-2 py-1.5 text-xs leading-[1rem]" text_color={t.get().muted_foreground}>{label}</div>);
@@ -130,16 +139,18 @@ pub fn SelectList(
                 ix += 1;
                 let is_selected = Some(&item.value) == selected.as_ref();
                 let (value, disabled, icon, label) = (item.value.clone(), item.disabled, item.icon, item.label.clone());
+                let row_ref = row_refs.with_value(|r| r[item_ix]);
                 let row = move || {
                     let theme = t.get();
                     let lit = highlighted.get() == Some(item_ix) && !disabled;
                     let value = value.clone();
                     <div
+                        ref={row_ref}
                         class="relative flex items-center gap-2 py-1.5 pl-2 pr-8 text-sm leading-[1.25rem]"
+                        class:opacity-50={disabled}
                         corner_radius={theme.radius_sm()}
                         bg={if lit { theme.accent } else { Color::TRANSPARENT }}
                         text_color={if lit { theme.accent_foreground } else { theme.popover_foreground }}
-                        opacity={if disabled { 0.5f32 } else { 1.0f32 }}
                         onMouseMove={move |_| {
                             if !disabled && highlighted.get_untracked() != Some(item_ix) {
                                 highlighted.set(Some(item_ix));
@@ -180,6 +191,7 @@ pub fn SelectList(
         if let Some(next) = next.and_then(|p| enabled.get(p).copied()) {
             e.stop_propagation();
             highlighted.set(Some(next));
+            row_refs.with_value(|r| r[next].scroll_into_view());
         }
     };
 
@@ -190,19 +202,16 @@ pub fn SelectList(
     };
     move || {
         let theme = t.get();
-        // rsx#7: no `shadow-md`.
         <div
             ref={node}
             class="flex flex-col overflow-y-scroll p-1 border"
+            class:shadow-md={theme.shadows}
             corner_radius={theme.radius_md()}
             border_color={theme.border}
             bg={theme.popover}
             text_color={theme.popover_foreground}
             bind={size}
             onKeyDown={on_key}
-            // rsx-gpui focuses every focusable ancestor of a click, outermost
-            // last: keep the popover panel from taking focus from the list.
-            onClick={move |e: &ClickEvent| e.stop_propagation()}
         >
             {rows}
         </div>
@@ -276,18 +285,19 @@ pub fn Select(
         } else {
             theme.input
         };
-        // rsx#9: no `whitespace-nowrap`.
         <div
             ref={node}
-            class="relative flex items-center justify-between gap-2 px-3 py-2 border text-sm leading-[1.25rem]"
+            class="relative flex items-center justify-between gap-2 px-3 py-2 border text-sm leading-[1.25rem] whitespace-nowrap"
             class:flex-1={fill}
             class:cursor-pointer={!disabled}
             class:cursor-not-allowed={disabled}
+            class:opacity-50={disabled}
+            // `shadow-xs`: light mode only, like gpuicn's `control_surface`.
+            class:shadow-xs={theme.shadows && !theme.is_dark()}
             h={rsx::rems(if size == SelectSize::Sm { 2.0 } else { 2.25 })}
             corner_radius={theme.radius_md()}
             border_color={border}
             bg={if hovered.get() && !disabled { hover_bg } else { surface }}
-            opacity={if disabled { 0.5f32 } else { 1.0f32 }}
             onHover={move |h: &bool| hovered.set(*h)}
             onMouseDown={move |_| if !disabled { pointer_pressed() }}
             onKeyDown={move |e: &KeyboardEvent| {

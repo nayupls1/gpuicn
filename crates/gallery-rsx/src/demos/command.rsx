@@ -8,11 +8,11 @@ use crate::ui::theme::theme;
 pub fn demo() -> Element {
     let t = theme();
     // Fixed height, anchored to the top: filtering shouldn't move the input.
-    // rsx#7: no `shadow-md`.
     <div class="h-[340px]">
         <Command
             class="w-[450px] rounded-lg border"
-            {...Attributes::new().with(move |el: rsx::Div| el.border_color(t.get().border))}
+            bind={move |el: rsx::Div| if t.get().shadows { el.class("shadow-md") } else { el }}
+            border_color={t.get().border}
             groups={vec![
                 CommandGroup::new("Suggestions")
                     .item(CommandItem::new("Calendar").icon(IconName::Calendar))

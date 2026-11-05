@@ -33,14 +33,8 @@ fn goal_picker() -> Element {
             {data.map(|v| <div
                 class="flex-1"
                 h={px(v as f32 * 0.3)}
+                class="rounded-t-[4px]"
                 bg={t.get().foreground.opacity(0.9)}
-                bind={move |mut el: rsx::Div| {
-                    // rsx#9: no `rounded-t-*` class.
-                    let radii = &mut rsx::Styled::style(&mut el).corner_radii;
-                    radii.top_left = Some(px(4.0));
-                    radii.top_right = Some(px(4.0));
-                    el
-                }}
             />)}
         </div>
     </div>

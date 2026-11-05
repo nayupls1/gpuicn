@@ -48,8 +48,8 @@ pub fn Tooltip(
         mode={PopoverTrigger::Hover { open_delay_ms: delay, close_delay_ms: 0 }}
         side={side}
         align={align}
-        side_offset={4.0f32}
-        trigger={move || children.render()}
+        side_offset={4}
+        trigger={children}
         content={move |_| {
             let bubble = move || {
                 let theme = t.get();

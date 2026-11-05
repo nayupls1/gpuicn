@@ -45,7 +45,7 @@ pub fn ContextMenu(
                 popover.open();
             }}
         >
-            {trigger.map(|t| t.render())}
+            {trigger}
         </div>}
         content={move |p: PopoverHandle| <MenuList entries={menu} popover={p} {...attrs.with_value(|a| a.clone())} />}
     />

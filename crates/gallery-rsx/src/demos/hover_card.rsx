@@ -1,5 +1,7 @@
 use rsx::prelude::*;
 
+use crate::demos::avatar_image;
+use crate::ui::avatar::Avatar;
 use crate::ui::button::Button;
 use crate::ui::hover_card::HoverCard;
 use crate::ui::icon::{Icon, IconName};
@@ -11,8 +13,7 @@ pub fn demo() -> Element {
         class="w-[320px]"
         trigger={<Button link label="@nextjs" />}
         content={move || <div class="flex items-start gap-4 flex-nowrap">
-            {/* TODO(avatar): `<Avatar src={avatar_image(2)} fallback="VC" />` once `avatar` is ported. */}
-            <div class="size-8 flex-none rounded-full flex items-center justify-center text-sm" bg={t.get().muted}>VC</div>
+            <Avatar src={avatar_image(2)} fallback="VC" />
             <div class="flex flex-col flex-1 min-w-0 gap-1">
                 <div class="text-sm font-semibold">@nextjs</div>
                 <div class="text-sm">The React Framework – created and maintained by @vercel.</div>
