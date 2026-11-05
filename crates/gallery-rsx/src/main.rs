@@ -11,6 +11,7 @@ mod demos;
 rsx::module!(app);
 rsx::module!(tests);
 rsx::module!(tests_data);
+rsx::module!(tests_toggles);
 
 fn main() {
     if std::env::args().any(|a| a == "--html") {
