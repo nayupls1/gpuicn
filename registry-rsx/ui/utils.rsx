@@ -131,6 +131,73 @@ pub enum Orientation {
     Vertical,
 }
 
+/// The order of the parts registered with a parent (accordion items, table
+/// rows, breadcrumb entries, ...), for styles that depend on position, like
+/// Tailwind's `first:` / `last:`. The parent creates one and hands it to its
+/// parts through context; each part calls [`Siblings::register`] once.
+///
+/// Parts are ordered by creation, so a part inserted later in the middle of
+/// a list counts as the last one.
+#[derive(Clone, Copy)]
+pub struct Siblings {
+    ids: Signal<Vec<u64>>,
+    next: StoredValue<u64>,
+}
+
+impl Default for Siblings {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Siblings {
+    pub fn new() -> Self {
+        Siblings { ids: signal(Vec::new()), next: StoredValue::new(0) }
+    }
+
+    /// Adds a part at the end and returns its id. The part is removed (on the
+    /// next tick) when the scope that registered it is disposed.
+    pub fn register(self) -> u64 {
+        let id = self.next.get_value();
+        self.next.set_value(id + 1);
+        self.ids.update(|ids| ids.push(id));
+        // Removed a tick later: when the whole parent is being disposed, the
+        // parent's readers must not re-run against parts already gone.
+        on_cleanup(move || {
+            spawn_local(async move {
+                if self.ids.is_alive() {
+                    self.ids.update(|ids| ids.retain(|i| *i != id));
+                }
+            })
+        });
+        id
+    }
+
+    /// The part's position (tracked).
+    pub fn index(self, id: u64) -> Option<usize> {
+        self.ids.with(|ids| ids.iter().position(|i| *i == id))
+    }
+
+    /// How many parts are registered (tracked).
+    pub fn len(self) -> usize {
+        self.ids.with(|ids| ids.len())
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    /// Whether `id` is the first part (tracked).
+    pub fn is_first(self, id: u64) -> bool {
+        self.ids.with(|ids| ids.first() == Some(&id))
+    }
+
+    /// Whether `id` is the last part (tracked).
+    pub fn is_last(self, id: u64) -> bool {
+        self.ids.with(|ids| ids.last() == Some(&id))
+    }
+}
+
 thread_local! {
     /// Seconds since the clock started, ticking ~60 times a second while
     /// anything uses [`use_animation_clock`].

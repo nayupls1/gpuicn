@@ -69,6 +69,12 @@ pub fn variant_colors(variant: ButtonVariant, theme: &Theme) -> (Color, Color, C
     }
 }
 
+/// Context for containers that join buttons into one control (`ButtonGroup`):
+/// each `Button` created inside calls it once, and spreads the attributes it
+/// returns on its root, before the caller's own.
+#[derive(Clone)]
+pub struct ButtonJoin(pub std::rc::Rc<dyn Fn() -> Attributes>);
+
 #[component]
 pub fn Button(
     /// Text shown after the icon.
@@ -110,6 +116,7 @@ pub fn Button(
         variant
     };
     let t = theme();
+    let join = use_context::<ButtonJoin>().map(|j| (j.0)()).unwrap_or_default();
     let node = NodeRef::new();
     let hovered = signal(false);
     let flag = |a: Option<Accessor<bool>>| move || a.map(|a| a.get()).unwrap_or(false);
@@ -143,7 +150,6 @@ pub fn Button(
         };
         let height = rsx::rems(h * 0.25);
         let width = if size.is_icon() { height } else { rsx::auto() };
-        let focus_visible = interactive && is_focus_visible(node);
         let border_width = if border.is_some() { 1.0 } else { 0.0 };
 
         <button
@@ -165,20 +171,22 @@ pub fn Button(
             onKeyDown={on_tab_key}
             onHover={move |h: &bool| hovered.set(*h)}
             onClick={move |e: &ClickEvent| {
-                if interactive {
+                // Like gpuicn: only a button with a handler stops the click.
+                if let Some(f) = on_click.filter(|_| interactive) {
                     e.stop_propagation();
-                    if let Some(f) = on_click {
-                        f.call(e)
-                    }
+                    f.call(e)
                 }
             }}
+            {...&join}
             {...&attrs}
         >
             {if loading() { <Spinner /> } else { icon.map(|i| <Icon name={i} />).into_element() }}
             {label.map(|l| l.get())}
             {children}
             {icon_end.map(|i| <Icon name={i} />)}
-            {focus_visible.then(|| ring(theme.ring.opacity(0.5), 3.0, radius, border_width))}
+            {/* Its own hole: re-creating the root on focus (which GPUI moves on
+                mouse down) would give it a new element id and lose the click. */}
+            {move || (interactive && is_focus_visible(node)).then(|| ring(t.get().ring.opacity(0.5), 3.0, radius, border_width))}
         </button>
     };
     match tooltip {

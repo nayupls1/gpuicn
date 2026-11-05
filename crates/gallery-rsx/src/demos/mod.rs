@@ -4,23 +4,51 @@
 //! Each page is `demos/<name>.rsx` with `pub fn demo() -> Element`.
 #![allow(dead_code, unused_imports)]
 
+rsx::module!(pub accordion = "demos/accordion");
+rsx::module!(pub alert = "demos/alert");
+rsx::module!(pub breadcrumb = "demos/breadcrumb");
 rsx::module!(pub button = "demos/button");
+rsx::module!(pub button_group = "demos/button_group");
+rsx::module!(pub card = "demos/card");
+rsx::module!(pub collapsible = "demos/collapsible");
+rsx::module!(pub empty = "demos/empty");
+rsx::module!(pub item = "demos/item");
 rsx::module!(pub label = "demos/label");
+rsx::module!(pub pagination = "demos/pagination");
 rsx::module!(pub popover = "demos/popover");
+rsx::module!(pub resizable = "demos/resizable");
+rsx::module!(pub scroll_area = "demos/scroll_area");
 rsx::module!(pub separator = "demos/separator");
 rsx::module!(pub spinner = "demos/spinner");
+rsx::module!(pub table = "demos/table");
+rsx::module!(pub tabs = "demos/tabs");
 rsx::module!(pub tooltip = "demos/tooltip");
+rsx::module!(pub typography = "demos/typography");
 
 pub type Demo = fn() -> rsx::Element;
 
 /// Every page, in sidebar order.
 pub const DEMOS: &[(&str, Demo)] = &[
+    ("Accordion", accordion::demo),
+    ("Alert", alert::demo),
+    ("Breadcrumb", breadcrumb::demo),
     ("Button", button::demo),
+    ("Button Group", button_group::demo),
+    ("Card", card::demo),
+    ("Collapsible", collapsible::demo),
+    ("Empty", empty::demo),
+    ("Item", item::demo),
     ("Label", label::demo),
+    ("Pagination", pagination::demo),
     ("Popover", popover::demo),
+    ("Resizable", resizable::demo),
+    ("Scroll Area", scroll_area::demo),
     ("Separator", separator::demo),
     ("Spinner", spinner::demo),
+    ("Table", table::demo),
+    ("Tabs", tabs::demo),
     ("Tooltip", tooltip::demo),
+    ("Typography", typography::demo),
 ];
 
 /// One-line summary shown under each page title (from the shadcn docs).
