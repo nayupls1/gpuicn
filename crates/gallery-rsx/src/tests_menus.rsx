@@ -227,8 +227,8 @@ fn navigation_menu_opens_on_hover(cx: &mut TestAppContext) {
     let n = nav.bounds().unwrap();
     cx.simulate_mouse_move(pt(n.origin.x + 30.0, n.origin.y + 18.0), None, Modifiers::default());
     settle(cx);
-    // The hover delays run on rsx's real-time `sleep`.
-    std::thread::sleep(std::time::Duration::from_millis(300));
+    // The hover delays run on rsx's `sleep`, i.e. GPUI's (test) clock.
+    cx.executor().advance_clock(std::time::Duration::from_millis(300));
     settle(cx);
     assert!(shown.get_untracked(), "hovering the trigger opens its panel");
     let p = panel.bounds().unwrap();
@@ -236,7 +236,7 @@ fn navigation_menu_opens_on_hover(cx: &mut TestAppContext) {
     // Moving away closes it after the delay.
     cx.simulate_mouse_move(pt(n.origin.x + 600.0, n.origin.y + 400.0), None, Modifiers::default());
     settle(cx);
-    std::thread::sleep(std::time::Duration::from_millis(400));
+    cx.executor().advance_clock(std::time::Duration::from_millis(400));
     settle(cx);
     assert!(!shown.get_untracked(), "leaving closes the panel");
     // "Docs" is a plain link.

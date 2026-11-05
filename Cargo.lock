@@ -4595,33 +4595,33 @@ checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "rsxui"
-version = "0.0.2"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a66dd3bc7d77ea35a854c70c094446f0f99e30d08b5414d1fb4967bdc4e684f"
+checksum = "7aabb74ff74f88c7437be226291702851fafbb4b2086acbaece1e6c046fa5ca7"
 dependencies = [
  "rsxui-macros",
 ]
 
 [[package]]
 name = "rsxui-build"
-version = "0.0.1"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c55a68a8c285b80715813c8215ea81cf3197737b23701d318eaaa8560bfd4526"
+checksum = "4e2f21e4acf1fd6804275201a07541953a292cc2d156a0f0ab3244993052a04d"
 dependencies = [
  "rsxui-core",
 ]
 
 [[package]]
 name = "rsxui-core"
-version = "0.0.1"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5495026148515c8c4852dff11f22a85fe77df81f144f881470cd2daa99b49a55"
+checksum = "22a5ccfe2269967973181ed499a3af35c82bdd0c37c1040f58e143b5f66c7cbd"
 
 [[package]]
 name = "rsxui-gpui"
-version = "0.0.2"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4c423ca1e79d7cf6a612c35bdfddd13e8524e83a3e2dbd49a462b02706916d0"
+checksum = "abddc3d93528b7f6074141bebb2be73e91691cc9eeb82d4c72a3860d0e06cbce"
 dependencies = [
  "futures",
  "gpui",
@@ -4631,18 +4631,18 @@ dependencies = [
 
 [[package]]
 name = "rsxui-html"
-version = "0.0.2"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d5af9e2c992af98585e3383119bc16278cb67f7007b403da759d3df84e8537d"
+checksum = "e8f9d750cf495bc7058a97a73bf1e58cdbd09934045a8d1143a9f61c70070cb7"
 dependencies = [
  "rsxui",
 ]
 
 [[package]]
 name = "rsxui-macros"
-version = "0.0.2"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d93787e7912a5f1dc0dc03a6b9c7ac9fc40a2c33f37c52403d65d46265773a3d"
+checksum = "540677e30b2223a8a220e2ad3b0b9c6e398f28069d1dfe659177cde0b6034fc9"
 dependencies = [
  "proc-macro2",
  "quote",

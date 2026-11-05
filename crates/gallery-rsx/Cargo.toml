@@ -9,13 +9,13 @@ publish = false
 [dependencies]
 # Only main.rs uses gpui directly: to bundle the Geist font (rsx#8).
 gpui = "0.2.2"
-rsx = { version = "0.0.2", package = "rsxui" }
-rsx-gpui = { version = "0.0.2", package = "rsxui-gpui" }
-rsx-html = { version = "0.0.2", package = "rsxui-html" }
+rsx = { version = "0.0.3", package = "rsxui" }
+rsx-gpui = { version = "0.0.3", package = "rsxui-gpui" }
+rsx-html = { version = "0.0.3", package = "rsxui-html" }
 
 [build-dependencies]
-rsx-build = { version = "0.0.1", package = "rsxui-build" }
-rsx-core = { version = "0.0.1", package = "rsxui-core" }
+rsx-build = { version = "0.0.3", package = "rsxui-build" }
+rsx-core = { version = "0.0.3", package = "rsxui-core" }
 
 [dev-dependencies]
 gpui = { version = "0.2.2", features = ["test-support"] }

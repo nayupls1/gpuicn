@@ -193,9 +193,9 @@ fn init(project: &mut Project, path: &str, no_install: bool, force: bool, regist
 
     // The crates are published as `rsxui*` and imported under their `rsx` names.
     for (name, args) in [
-        ("rsx", &["rsxui@0.0.2", "--rename", "rsx"][..]),
-        ("rsx-gpui", &["rsxui-gpui@0.0.2", "--rename", "rsx-gpui"][..]),
-        ("rsx-build", &["--build", "rsxui-build@0.0.1", "--rename", "rsx-build"][..]),
+        ("rsx", &["rsxui@0.0.3", "--rename", "rsx"][..]),
+        ("rsx-gpui", &["rsxui-gpui@0.0.3", "--rename", "rsx-gpui"][..]),
+        ("rsx-build", &["--build", "rsxui-build@0.0.3", "--rename", "rsx-build"][..]),
     ] {
         if project.has_dependency(name)? {
             continue;

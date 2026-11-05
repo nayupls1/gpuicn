@@ -22,9 +22,9 @@ fn click(cx: &mut gpui::VisualTestContext, at: gpui::Point<gpui::Pixels>) {
     settle(cx);
 }
 
-/// Lets real time pass (rsx's `sleep` runs on threads), then draws.
+/// Advances the test clock (rsx's `sleep` runs on GPUI's timer), then draws.
 fn wait(cx: &mut gpui::VisualTestContext, ms: u64) {
-    std::thread::sleep(Duration::from_millis(ms));
+    cx.executor().advance_clock(Duration::from_millis(ms));
     settle(cx);
 }
 
@@ -318,7 +318,7 @@ fn carousel_moves_and_clamps_or_loops(cx: &mut TestAppContext) {
 // 1), so a popover, select or tooltip opened from a dialog is hidden under
 // the dialog and can't be clicked.
 #[gpui::test]
-#[ignore = "rsx: nested portals are drawn below their parent portal"]
+
 fn popover_inside_dialog_is_drawn_above_it(cx: &mut TestAppContext) {
     use crate::ui::dialog::{Dialog, DialogHandle};
     use crate::ui::popover::{Popover, PopoverHandle};
