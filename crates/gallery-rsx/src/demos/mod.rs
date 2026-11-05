@@ -11,7 +11,9 @@ rsx::module!(pub button = "demos/button");
 rsx::module!(pub calendar = "demos/calendar");
 rsx::module!(pub chart = "demos/chart");
 rsx::module!(pub checkbox = "demos/checkbox");
+rsx::module!(pub context_menu = "demos/context_menu");
 rsx::module!(pub date_picker = "demos/date_picker");
+rsx::module!(pub dropdown_menu = "demos/dropdown_menu");
 rsx::module!(pub field = "demos/field");
 rsx::module!(pub form = "demos/form");
 rsx::module!(pub input = "demos/input");
@@ -19,9 +21,13 @@ rsx::module!(pub input_group = "demos/input_group");
 rsx::module!(pub input_otp = "demos/input_otp");
 rsx::module!(pub kbd = "demos/kbd");
 rsx::module!(pub label = "demos/label");
+rsx::module!(pub menubar = "demos/menubar");
+rsx::module!(pub native_select = "demos/native_select");
+rsx::module!(pub navigation_menu = "demos/navigation_menu");
 rsx::module!(pub popover = "demos/popover");
 rsx::module!(pub progress = "demos/progress");
 rsx::module!(pub radio_group = "demos/radio_group");
+rsx::module!(pub select = "demos/select");
 rsx::module!(pub separator = "demos/separator");
 rsx::module!(pub sidebar = "demos/sidebar");
 rsx::module!(pub skeleton = "demos/skeleton");
@@ -44,7 +50,9 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Calendar", calendar::demo),
     ("Chart", chart::demo),
     ("Checkbox", checkbox::demo),
+    ("Context Menu", context_menu::demo),
     ("Date Picker", date_picker::demo),
+    ("Dropdown Menu", dropdown_menu::demo),
     ("Field", field::demo),
     ("Form", form::demo),
     ("Input", input::demo),
@@ -52,9 +60,13 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Input OTP", input_otp::demo),
     ("Kbd", kbd::demo),
     ("Label", label::demo),
+    ("Menubar", menubar::demo),
+    ("Native Select", native_select::demo),
+    ("Navigation Menu", navigation_menu::demo),
     ("Popover", popover::demo),
     ("Progress", progress::demo),
     ("Radio Group", radio_group::demo),
+    ("Select", select::demo),
     ("Separator", separator::demo),
     ("Sidebar", sidebar::demo),
     ("Skeleton", skeleton::demo),

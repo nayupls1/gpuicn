@@ -52,6 +52,8 @@ pub struct PopoverHandle {
     hover_generation: Signal<u64>,
     /// Vertical room on the chosen side (Radix's `--radix-popper-available-height`).
     available_height: Signal<Option<f32>>,
+    /// What takes focus when the popover opens, if not the content panel.
+    focus_target: StoredValue<Option<NodeRef>>,
 }
 
 impl Default for PopoverHandle {
@@ -72,6 +74,7 @@ impl PopoverHandle {
             hovered_content: signal(false),
             hover_generation: signal(0),
             available_height: signal(None),
+            focus_target: StoredValue::new(None),
         }
     }
 
@@ -84,9 +87,9 @@ impl PopoverHandle {
             f.call(&open);
         }
         if open {
-            let content = self.content;
+            let (content, target) = (self.content, self.focus_target);
             // Take focus once the content exists, so Escape and arrow keys reach it.
-            spawn_local(async move { content.focus() });
+            spawn_local(async move { target.get_value().unwrap_or(content).focus() });
         } else {
             // Return focus to the trigger.
             let trigger = self.trigger;
@@ -134,6 +137,25 @@ impl PopoverHandle {
     /// The trigger wrapper.
     pub fn trigger_ref(&self) -> NodeRef {
         self.trigger
+    }
+
+    /// The window's size while the popover is open (tracked), for content
+    /// that places floating parts of its own (submenus).
+    pub fn viewport_size(&self) -> Option<Size<f32>> {
+        self.viewport.bounds().map(|b| b.size).filter(|s| s.width > 0.0)
+    }
+
+    /// Focus `node` instead of the content panel when the popover opens:
+    /// for content that handles its own keys (menus, lists). Call it from
+    /// the content; it's forgotten when that content goes away.
+    pub fn focus_on_open(&self, node: NodeRef) {
+        let target = self.focus_target;
+        target.set_value(Some(node));
+        on_cleanup(move || {
+            if target.get_value() == Some(node) {
+                target.set_value(None);
+            }
+        });
     }
 
     fn schedule_hover(self, delays: (u64, u64)) {
@@ -367,6 +389,9 @@ pub fn Popover(
                     handle.close();
                 }
             }}
+            // Moves over the panel don't reach the backdrop's `on_backdrop_move`
+            // either (gpui's `occlude()`).
+            onMouseMove={move |e: &rsx::MouseMoveEvent| e.stop_propagation()}
             onHover={move |h: &bool| {
                 if let Some(delays) = hover_delays {
                     handle.hovered_content.set(*h);
