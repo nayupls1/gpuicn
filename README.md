@@ -6,11 +6,20 @@ component into your crate**, where it belongs to you. You can read it, edit it
 or delete it, and one file (`theme.rs`) restyles all of it.
 
 ```
-crates/gpuicn    the CLI
-crates/gallery   a gpui app that renders every component (`cargo run -p gallery`)
-registry/        the component sources (`ui/*.rs`) and their manifest (`registry.toml`)
-site/            a static website with an overview of every component
+crates/gpuicn        the CLI
+crates/gallery       a gpui app that renders every component (`cargo run -p gallery`)
+registry/            the component sources (`ui/*.rs`) and their manifest (`registry.toml`)
+site/                a static website with an overview of every component
+
+crates/gpuicn-rsx    the same CLI for gpuicn-rsx
+crates/gallery-rsx   the gallery, written in rsx (`cargo run -p gallery-rsx`)
+registry-rsx/        the same components written in rsx (`ui/*.rsx`)
 ```
+
+Every component also exists as **gpuicn-rsx**, written in
+[rsx](https://github.com/nayupls1/rsx) (JSX for Rust, SolidJS-style signals,
+rendered with GPUI). It's a separate package next to the gpui one, with the
+same components, options and look; see [gpuicn-rsx](#gpuicn-rsx).
 
 ## Quick start
 
@@ -233,6 +242,91 @@ your own:
 - **Keyed state is namespaced by the surrounding element ids**: if a parent
   needs an `Input`'s state, resolve it with `Input::state(&mut self, ..)`,
   which pins it for the input's own render.
+
+## gpuicn-rsx
+
+The same components written as `.rsx` files for [rsx](https://github.com/nayupls1/rsx)
+(crates.io: `rsxui*`). Components run once, state lives in signals, and
+markup that reads a signal updates by itself. You install them the same way,
+with their own CLI:
+
+```sh
+cargo install --path crates/gpuicn-rsx
+
+cd my-app
+gpuicn-rsx init                  # gpuicn-rsx.toml, theme.rsx + utils.rsx, rsxui crates, build.rs, `mod components;`
+gpuicn-rsx add button dialog select
+```
+
+`init` adds `rsxui`, `rsxui-gpui` and the `rsxui-build` build dependency (as
+`rsx`, `rsx-gpui`, `rsx-build`), and makes `build.rs` call
+`rsx_build::compile()`. The generated `components/ui/mod.rs` declares each
+file with `rsx::module!`. `list`, `view`, `diff`, `remove` and custom
+registries work as in `gpuicn`.
+
+```rust
+// src/app.rsx
+use rsx::prelude::*;
+use crate::components::ui::{self, button::{Button, ButtonSize}, icon::IconName, switch::Switch, sonner::{toast, Toaster}, theme::theme};
+
+#[component]
+pub fn App() -> impl IntoElement {
+    ui::init();
+    let t = theme();
+    let airplane = signal(false);
+
+    <div class="size-full flex flex-col gap-4 p-8" bg={t.get().background} text_color={t.get().foreground}>
+        <Button label="Save" onClick={move |_| { toast("Saved"); }} />
+        <Button outline size={ButtonSize::Sm} icon={IconName::ArrowRight} label="Continue" class="w-full" />
+        <Switch label="Airplane mode" checked={airplane} onChange={move |on: &bool| airplane.set(*on)} />
+        <Toaster />
+    </div>
+}
+```
+
+```rust
+// src/main.rs
+mod components;
+rsx::module!(app);
+
+fn main() {
+    rsx_gpui::run(rsx::WindowOptions::new("My app"), app::App::new);
+}
+```
+
+How the gpui API maps to rsx:
+
+- **Builders are props**: `Button::new("x").outline().label("Go")` is
+  `<Button outline label="Go" />`. Item lists are child components
+  (`<Tabs><Tab .../></Tabs>`) or `items={vec![..]}` props, as each file's doc
+  comment shows.
+- **`Styled` overrides** are `class`/style attributes on the component, layered
+  over its defaults like `cn()`: `<Card class="w-[350px]">`.
+- **Uncontrolled by default**: state is a signal inside the component. To control
+  it, pass a value (or signal) and a change callback:
+  `checked={on} onChange={move |v: &bool| on.set(*v)}`.
+- **Theme**: `theme()` is a global signal (`t.get().primary`); `Theme::change(ThemeMode::Dark)`,
+  `Theme::set_base(..)`, `Theme::set_accent(..)`, `Theme::set_radius(6.0)` and
+  `Theme::update(|t| ..)` replace the `cx` setters.
+- **No `PortalHost` needed**: rsx draws `<Portal>` content above the window
+  (`PortalHost` still exists and renders nothing). `toast(..)` needs no `cx`.
+
+`cargo run -p gallery-rsx` shows every component (same `GALLERY_PAGE`,
+`GALLERY_THEME`, `GALLERY_ACCENT`, `GALLERY_BASE` variables), and
+`cargo run -p gallery-rsx -- --html` prints the current page as HTML.
+`cargo test -p gallery-rsx` renders every page in light and dark mode and
+drives the interactive components on GPUI's test platform.
+`registry-rsx/PORTING.md` has the conventions the port follows.
+
+The port drove a round of rsx fixes ([rsx#7–#36](https://github.com/nayupls1/rsx/issues?q=is%3Aissue));
+gpuicn-rsx needs rsx 0.0.3 or newer.
+
+## Releases
+
+`.github/workflows/release.yml` builds both galleries and both CLIs on every
+push to `master`: an AppImage per gallery and a CLI tarball for Linux, and a
+zip for Windows, uploaded as workflow artifacts. Pushing a `v*` tag also
+attaches them to a GitHub release.
 
 ## License
 
