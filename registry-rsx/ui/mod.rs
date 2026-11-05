@@ -5,11 +5,15 @@
 
 // gpuicn:begin — managed by `gpuicn-rsx add`; edits inside this block are overwritten.
 rsx::module!(pub button = "components/ui/button");
+rsx::module!(pub calendar = "components/ui/calendar");
+rsx::module!(pub chart = "components/ui/chart");
+rsx::module!(pub date_picker = "components/ui/date_picker");
 rsx::module!(pub icon = "components/ui/icon");
 rsx::module!(pub label = "components/ui/label");
 rsx::module!(pub popover = "components/ui/popover");
 rsx::module!(pub portal = "components/ui/portal");
 rsx::module!(pub separator = "components/ui/separator");
+rsx::module!(pub sidebar = "components/ui/sidebar");
 rsx::module!(pub spinner = "components/ui/spinner");
 rsx::module!(pub theme = "components/ui/theme");
 rsx::module!(pub tooltip = "components/ui/tooltip");

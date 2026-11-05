@@ -5,9 +5,13 @@
 #![allow(dead_code, unused_imports)]
 
 rsx::module!(pub button = "demos/button");
+rsx::module!(pub calendar = "demos/calendar");
+rsx::module!(pub chart = "demos/chart");
+rsx::module!(pub date_picker = "demos/date_picker");
 rsx::module!(pub label = "demos/label");
 rsx::module!(pub popover = "demos/popover");
 rsx::module!(pub separator = "demos/separator");
+rsx::module!(pub sidebar = "demos/sidebar");
 rsx::module!(pub spinner = "demos/spinner");
 rsx::module!(pub tooltip = "demos/tooltip");
 
@@ -16,9 +20,13 @@ pub type Demo = fn() -> rsx::Element;
 /// Every page, in sidebar order.
 pub const DEMOS: &[(&str, Demo)] = &[
     ("Button", button::demo),
+    ("Calendar", calendar::demo),
+    ("Chart", chart::demo),
+    ("Date Picker", date_picker::demo),
     ("Label", label::demo),
     ("Popover", popover::demo),
     ("Separator", separator::demo),
+    ("Sidebar", sidebar::demo),
     ("Spinner", spinner::demo),
     ("Tooltip", tooltip::demo),
 ];
