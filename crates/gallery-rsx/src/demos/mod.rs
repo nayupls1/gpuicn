@@ -11,6 +11,8 @@ rsx::module!(pub button = "demos/button");
 rsx::module!(pub calendar = "demos/calendar");
 rsx::module!(pub chart = "demos/chart");
 rsx::module!(pub checkbox = "demos/checkbox");
+rsx::module!(pub combobox = "demos/combobox");
+rsx::module!(pub command = "demos/command");
 rsx::module!(pub date_picker = "demos/date_picker");
 rsx::module!(pub field = "demos/field");
 rsx::module!(pub form = "demos/form");
@@ -44,6 +46,8 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Calendar", calendar::demo),
     ("Chart", chart::demo),
     ("Checkbox", checkbox::demo),
+    ("Combobox", combobox::demo),
+    ("Command", command::demo),
     ("Date Picker", date_picker::demo),
     ("Field", field::demo),
     ("Form", form::demo),
