@@ -12,6 +12,11 @@ rsx::module!(pub calendar = "demos/calendar");
 rsx::module!(pub chart = "demos/chart");
 rsx::module!(pub checkbox = "demos/checkbox");
 rsx::module!(pub date_picker = "demos/date_picker");
+rsx::module!(pub field = "demos/field");
+rsx::module!(pub form = "demos/form");
+rsx::module!(pub input = "demos/input");
+rsx::module!(pub input_group = "demos/input_group");
+rsx::module!(pub input_otp = "demos/input_otp");
 rsx::module!(pub kbd = "demos/kbd");
 rsx::module!(pub label = "demos/label");
 rsx::module!(pub popover = "demos/popover");
@@ -23,6 +28,7 @@ rsx::module!(pub skeleton = "demos/skeleton");
 rsx::module!(pub slider = "demos/slider");
 rsx::module!(pub spinner = "demos/spinner");
 rsx::module!(pub switch = "demos/switch");
+rsx::module!(pub textarea = "demos/textarea");
 rsx::module!(pub toggle = "demos/toggle");
 rsx::module!(pub toggle_group = "demos/toggle_group");
 rsx::module!(pub tooltip = "demos/tooltip");
@@ -39,6 +45,11 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Chart", chart::demo),
     ("Checkbox", checkbox::demo),
     ("Date Picker", date_picker::demo),
+    ("Field", field::demo),
+    ("Form", form::demo),
+    ("Input", input::demo),
+    ("Input Group", input_group::demo),
+    ("Input OTP", input_otp::demo),
     ("Kbd", kbd::demo),
     ("Label", label::demo),
     ("Popover", popover::demo),
@@ -50,6 +61,7 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Slider", slider::demo),
     ("Spinner", spinner::demo),
     ("Switch", switch::demo),
+    ("Textarea", textarea::demo),
     ("Toggle", toggle::demo),
     ("Toggle Group", toggle_group::demo),
     ("Tooltip", tooltip::demo),

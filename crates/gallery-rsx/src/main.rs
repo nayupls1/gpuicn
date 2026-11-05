@@ -11,6 +11,7 @@ mod demos;
 rsx::module!(app);
 rsx::module!(tests);
 rsx::module!(tests_data);
+rsx::module!(tests_forms);
 rsx::module!(tests_overlays);
 rsx::module!(tests_toggles);
 
