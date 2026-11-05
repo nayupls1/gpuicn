@@ -6,10 +6,8 @@
 //! <ScrollArea horizontal>{images}</ScrollArea>
 //! ```
 //!
-//! rsx has no scroll-offset API for `overflow-*-scroll` elements yet, so the
-//! area scrolls its content itself: it clips it (`overflow-hidden`), moves it
-//! by the wheel deltas from `onScroll`, and measures viewport and content
-//! with `NodeRef`s to size the thumb.
+//! The viewport is a native scroll container (`overflow-*-scroll`); the
+//! thumb follows its `NodeRef` scroll offset and drags it with `scroll_to`.
 
 use rsx::prelude::*;
 use rsx::{MouseMoveEvent, Point, Size};
@@ -19,12 +17,9 @@ use super::utils::Orientation;
 
 /// A `Copy` handle to a scroll area's position: read or set it, e.g. to
 /// scroll programmatically. Pass it as `track_scroll={handle}`.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct ScrollHandle {
-    /// How far the content is scrolled, in px (positive).
-    scrolled: Signal<Point>,
     viewport: NodeRef,
-    content: NodeRef,
 }
 
 impl Default for ScrollHandle {
@@ -35,40 +30,37 @@ impl Default for ScrollHandle {
 
 impl ScrollHandle {
     pub fn new() -> Self {
-        ScrollHandle { scrolled: signal(Point::default()), viewport: NodeRef::new(), content: NodeRef::new() }
+        ScrollHandle { viewport: NodeRef::new() }
+    }
+
+    /// The scrolling element, e.g. to `scroll_into_view` something in it.
+    pub fn node(&self) -> NodeRef {
+        self.viewport
     }
 
     /// The content's offset, like gpui's `ScrollHandle::offset`: zero at the
     /// top-left, negative as it scrolls (tracked).
     pub fn offset(&self) -> Point {
-        let s = self.scrolled.get();
+        let s = self.viewport.scroll_offset();
         Point { x: -s.x, y: -s.y }
     }
 
-    /// Scrolls to `offset` (see [`offset`](Self::offset)), clamped to the content.
+    /// Scrolls to `offset` (see [`offset`](Self::offset)), clamped to the
+    /// content. Takes effect on the next frame.
     pub fn set_offset(&self, offset: Point) {
         let max = untrack(|| self.max_offset());
-        self.scrolled.set(Point { x: (-offset.x).clamp(0.0, max.width), y: (-offset.y).clamp(0.0, max.height) });
+        self.viewport.scroll_to(Point { x: (-offset.x).clamp(0.0, max.width), y: (-offset.y).clamp(0.0, max.height) });
     }
 
     /// How far the content can scroll on each axis (tracked).
     pub fn max_offset(&self) -> Size<f32> {
-        let (Some(view), Some(content)) = (self.viewport.bounds(), self.content.bounds()) else { return Size::default() };
-        Size {
-            width: (content.size.width - view.size.width).max(0.0),
-            height: (content.size.height - view.size.height).max(0.0),
-        }
+        let max = self.viewport.max_scroll_offset();
+        Size { width: max.x, height: max.y }
     }
 
     /// The viewport's size (tracked).
     pub fn viewport_size(&self) -> Size<f32> {
         self.viewport.bounds().map(|b| b.size).unwrap_or_default()
-    }
-
-    /// Scrolls by a wheel delta (positive: towards the start).
-    fn scroll_by(&self, dx: f32, dy: f32) {
-        let s = self.scrolled.get_untracked();
-        self.set_offset(Point { x: -s.x + dx, y: -s.y + dy });
     }
 }
 
@@ -93,7 +85,7 @@ pub fn ScrollArea(
     let thumb = move || {
         let view = handle.viewport_size();
         let max = handle.max_offset();
-        let off = handle.scrolled.get();
+        let off = handle.viewport.scroll_offset();
         let (view_len, max_len, off) = if vertical { (view.height, max.height, off.y) } else { (view.width, max.width, off.x) };
         let content_len = view_len + max_len;
         if max_len <= 0.5 || view_len <= 0.0 {
@@ -104,15 +96,6 @@ pub fn ScrollArea(
         Some((len, pos, view_len, max_len))
     };
 
-    let on_wheel = move |e: &ScrollEvent| {
-        let (dx, dy) = (e.delta.x, e.delta.y);
-        if vertical {
-            handle.scroll_by(0.0, dy);
-        } else {
-            // A plain wheel scrolls a horizontal area sideways.
-            handle.scroll_by(if dx != 0.0 { dx } else { dy }, 0.0);
-        }
-    };
     let on_drag_move = move |e: &MouseMoveEvent| {
         let Some((start, start_scrolled)) = drag.get_untracked() else { return };
         if e.pressed_button.is_none() {
@@ -123,7 +106,7 @@ pub fn ScrollArea(
         let ratio = max_len / (view_len - len).max(1.0);
         let pointer = if vertical { e.position.y } else { e.position.x };
         let next = if vertical { start_scrolled.y } else { start_scrolled.x } + (pointer - start) * ratio;
-        let s = handle.scrolled.get_untracked();
+        let s = untrack(|| handle.viewport.scroll_offset());
         let next = if vertical { Point { x: s.x, y: next } } else { Point { x: next, y: s.y } };
         handle.set_offset(Point { x: -next.x, y: -next.y });
     };
@@ -131,19 +114,12 @@ pub fn ScrollArea(
     <div class="relative overflow-hidden" {...attrs}>
         <div
             ref={handle.viewport}
-            class="size-full flex overflow-hidden"
-            class:flex-col={vertical}
-            onScroll={on_wheel}
+            class="size-full"
+            class:overflow-y-scroll={vertical}
+            class:overflow-x-scroll={!vertical}
+            class:flex={!vertical}
         >
-            <div
-                ref={handle.content}
-                class="flex-none"
-                class:flex={!vertical}
-                mt={px(if vertical { -handle.scrolled.get().y } else { 0.0 })}
-                ml={px(if vertical { 0.0 } else { -handle.scrolled.get().x })}
-            >
-                {children}
-            </div>
+            {children}
         </div>
         {move || thumb().map(|(len, pos, _, _)| {
             // `p-px`: keep the thumb inside the container's border and corners.
@@ -159,7 +135,7 @@ pub fn ScrollArea(
                     onMouseDown={move |e: &MouseEvent| {
                         e.stop_propagation();
                         let pointer = if vertical { e.position.y } else { e.position.x };
-                        drag.set(Some((pointer, handle.scrolled.get_untracked())));
+                        drag.set(Some((pointer, untrack(|| handle.viewport.scroll_offset()))));
                     }}
                 />
             </div>

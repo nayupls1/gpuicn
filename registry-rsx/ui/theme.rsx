@@ -378,9 +378,13 @@ pub struct Theme {
     /// `--radius`, in pixels. The other radii are derived from it, like in
     /// shadcn: `sm = radius - 4`, `md = radius - 2`, `lg = radius`, `xl = radius + 4`.
     pub radius: f32,
-    /// UI font. `.SystemUIFont` resolves to the platform's UI font.
+    /// UI font: a family or a CSS-style list (`"Geist, sans-serif"`), set on
+    /// the app's root (`font_family={t.get().font_family.clone()}`). The
+    /// generic `system-ui` / `sans-serif` resolve to the platform's UI font
+    /// on every target.
     pub font_family: SharedString,
-    /// Font used by `Kbd`, `InlineCode` and other monospaced text.
+    /// Font used by `Kbd`, `InlineCode` and other monospaced text
+    /// (`ui-monospace` / `monospace` resolve to the platform's).
     pub mono_font_family: SharedString,
     /// Whether popovers, menus and cards cast shadows.
     pub shadows: bool,
@@ -424,8 +428,8 @@ impl Theme {
             accent_color: AccentColor::default(),
             colors: ThemeColors::for_mode(mode),
             radius: 10.0, // 0.625rem
-            font_family: ".SystemUIFont".into(),
-            mono_font_family: default_mono_font().into(),
+            font_family: "system-ui, sans-serif".into(),
+            mono_font_family: "ui-monospace, monospace".into(),
             shadows: true,
         }
     }
@@ -507,10 +511,21 @@ impl Theme {
         Self::update(|t| t.radius = radius);
     }
 
-    /// Follow the OS light/dark appearance. rsx doesn't expose the window
-    /// appearance to components yet, so the app passes it in.
-    pub fn sync_system_appearance(dark: bool) {
+    /// Switch to the window's (the OS's) light/dark appearance, once
+    /// (gpuicn's `sync_system_appearance(window, cx)`).
+    pub fn sync_system_appearance() {
+        let dark = untrack(rsx::prefers_dark);
         Self::change(if dark { ThemeMode::Dark } else { ThemeMode::Light });
+    }
+
+    /// Keep following the OS appearance while the calling component lives:
+    /// call it in your root component, and the theme switches whenever the
+    /// OS does.
+    pub fn follow_system_appearance() {
+        effect(move || {
+            let dark = rsx::prefers_dark();
+            untrack(|| Self::change(if dark { ThemeMode::Dark } else { ThemeMode::Light }));
+        });
     }
 }
 
@@ -532,17 +547,6 @@ impl std::ops::DerefMut for Theme {
 /// this only exists for symmetry with `ui::init`.
 pub fn init() {
     let _ = theme();
-}
-
-/// A monospaced family that ships with the OS.
-fn default_mono_font() -> &'static str {
-    if cfg!(target_os = "macos") {
-        "Menlo"
-    } else if cfg!(target_os = "windows") {
-        "Consolas"
-    } else {
-        "DejaVu Sans Mono"
-    }
 }
 
 /// `color.opacity(0.5)`: multiplies the alpha, like GPUI's `Hsla::opacity`

@@ -2,7 +2,8 @@ use rsx::prelude::*;
 
 use crate::ui::button::Button;
 use crate::ui::card::{Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle};
-use crate::ui::label::Label;
+use crate::ui::field::Field;
+use crate::ui::input::Input;
 use crate::ui::tabs::{Tab, Tabs};
 
 pub fn demo() -> Element {
@@ -16,10 +17,8 @@ pub fn demo() -> Element {
                         <CardDescription text="Make changes to your account here. Click save when you're done." />
                     </CardHeader>
                     <CardContent>
-                        {/* TODO(field): `<Field label="Name"><Input default_value="Pedro Duarte" /></Field>` once `field` and `input` are ported. */}
-                        <div class="flex flex-col gap-3">
-                            <Label text="Name" />
-                            <input value="Pedro Duarte" />
+                        <div class="flex flex-col gap-4">
+                            <Field label="Name"><Input default_value="Pedro Duarte" /></Field>
                         </div>
                     </CardContent>
                     <CardFooter><Button label="Save changes" /></CardFooter>
@@ -32,16 +31,9 @@ pub fn demo() -> Element {
                         <CardDescription text="Change your password here." />
                     </CardHeader>
                     <CardContent>
-                        {/* TODO(field): `<Field label="Current password"><Input masked /></Field>` (and "New password") once `field` and `input` are ported. */}
                         <div class="flex flex-col gap-4">
-                            <div class="flex flex-col gap-3">
-                                <Label text="Current password" />
-                                <input type="password" />
-                            </div>
-                            <div class="flex flex-col gap-3">
-                                <Label text="New password" />
-                                <input type="password" />
-                            </div>
+                            <Field label="Current password"><Input masked={true} /></Field>
+                            <Field label="New password"><Input masked={true} /></Field>
                         </div>
                     </CardContent>
                     <CardFooter><Button label="Save password" /></CardFooter>

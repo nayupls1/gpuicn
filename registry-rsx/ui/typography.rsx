@@ -50,18 +50,15 @@ pub fn Typography(
             TypographyVariant::H4 => div().class("text-xl leading-[1.75rem] font-semibold"),
             TypographyVariant::P => div().class("text-base leading-[1.75rem]"),
             TypographyVariant::Blockquote => {
-                let mut el = div().class("text-base leading-[1.75rem] pl-6 italic").border_color(theme.border);
-                // `border-l-2`
-                el.style().border_widths.left = Some(px(2.0));
-                el
+                div().class("text-base leading-[1.75rem] pl-6 italic border-l-2").border_color(theme.border)
             }
             TypographyVariant::Lead => div().class("text-xl leading-[1.75rem]").text_color(theme.muted_foreground),
             TypographyVariant::Large => div().class("text-lg leading-[1.75rem] font-semibold"),
             TypographyVariant::Small => div().class("text-sm leading-none font-medium"),
             TypographyVariant::Muted => div().class("text-sm leading-[1.25rem]").text_color(theme.muted_foreground),
-            // rsx#8: no `font-family` (the theme's mono font).
             TypographyVariant::InlineCode => div()
                 .class("flex-none px-[0.3rem] py-[0.2rem] rounded-[4px] text-[0.875rem] leading-[1.25rem] font-semibold")
+                .font_family(theme.mono_font_family.clone())
                 .bg(theme.muted),
         };
         el.spread(&attrs).child(text).child(children)
@@ -102,15 +99,11 @@ struct ListContext {
 pub fn List(
     /// Number items instead of bulleting them.
     ordered: bool,
-    children: Option<ChildrenFn>,
+    children: Option<Children>,
     attrs: Attributes,
 ) -> impl IntoElement {
-    let context = ListContext { ordered, items: Siblings::new() };
-    // rsx gap: a context doesn't reach `Children` (built in the caller's scope), so the
-    // parts come in as `ChildrenFn`, rendered inside the `Provider`.
-    <div class="flex flex-col gap-2 ml-6 text-base leading-[1.75rem]" {...attrs}>
-        <Provider value={context}>{children}</Provider>
-    </div>
+    provide_context(ListContext { ordered, items: Siblings::new() });
+    <div class="flex flex-col gap-2 ml-6 text-base leading-[1.75rem]" {...attrs}>{children}</div>
 }
 
 /// One entry of a [`List`]: a bullet (or its number) and the content.

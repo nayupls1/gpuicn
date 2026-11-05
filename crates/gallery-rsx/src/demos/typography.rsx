@@ -6,7 +6,6 @@ use crate::ui::typography::{blockquote, h1, h2, h3, h4, inline_code, large, lead
 
 pub fn demo() -> Element {
     let t = theme();
-    let border = Attributes::new().with(move |el| el.border_color(t.get().border));
     <div class="flex flex-col gap-4 w-[640px]">
         {h1("Taxing Laughter: The Joke Tax Chronicles").class("text-center")}
         {lead("Once upon a time, in a far-off land, there was a very lazy king who spent all day lounging on his throne.")}
@@ -20,7 +19,7 @@ pub fn demo() -> Element {
             <ListItem>3rd level of one-liners: 20 gold coins</ListItem>
         </List>
         {h3("The People of the Kingdom")}
-        <Table class="rounded-md border" {...border}>
+        <Table class="rounded-md border" border_color={t.get().border}>
             <TableHeader>
                 <TableRow>
                     <TableHead text="King's Treasury" />

@@ -22,6 +22,7 @@ rsx::module!(pub collapsible = "demos/collapsible");
 rsx::module!(pub combobox = "demos/combobox");
 rsx::module!(pub command = "demos/command");
 rsx::module!(pub context_menu = "demos/context_menu");
+rsx::module!(pub data_table = "demos/data_table");
 rsx::module!(pub date_picker = "demos/date_picker");
 rsx::module!(pub dialog = "demos/dialog");
 rsx::module!(pub drawer = "demos/drawer");
@@ -39,6 +40,7 @@ rsx::module!(pub label = "demos/label");
 rsx::module!(pub menubar = "demos/menubar");
 rsx::module!(pub native_select = "demos/native_select");
 rsx::module!(pub navigation_menu = "demos/navigation_menu");
+rsx::module!(pub overview = "demos/overview");
 rsx::module!(pub pagination = "demos/pagination");
 rsx::module!(pub popover = "demos/popover");
 rsx::module!(pub progress = "demos/progress");
@@ -66,13 +68,53 @@ rsx::module!(pub typography = "demos/typography");
 pub type Demo = fn() -> rsx::Element;
 
 /// The avatar photos the gpui gallery uses (`crates/gallery/assets/avatar-N.png`,
-/// N = 1..=3), as an absolute path: rsx loads `<img src>` from disk.
+/// N = 1..=3), bundled into the binary.
+pub const AVATARS: [&[u8]; 3] = [
+    include_bytes!("../../../gallery/assets/avatar-1.png"),
+    include_bytes!("../../../gallery/assets/avatar-2.png"),
+    include_bytes!("../../../gallery/assets/avatar-3.png"),
+];
+
+static HTML_IMAGES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Make [`avatar_image`] return self-contained `data:` URIs (for `--html`,
+/// where there's no asset source).
+pub fn inline_images(inline: bool) {
+    HTML_IMAGES.store(inline, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// The asset name of avatar photo `n` (`avatar-1.png`…), served from
+/// [`AVATARS`] by the app's asset source (see `main.rs`), so packaged builds
+/// show them too. With [`inline_images`], a `data:` URI instead.
 pub fn avatar_image(n: usize) -> String {
-    format!("{}/../gallery/assets/avatar-{}.png", env!("CARGO_MANIFEST_DIR"), n % 3 + 1)
+    let ix = n % 3;
+    if HTML_IMAGES.load(std::sync::atomic::Ordering::Relaxed) {
+        format!("data:image/png;base64,{}", base64(AVATARS[ix]))
+    } else {
+        format!("avatar-{}.png", ix + 1)
+    }
+}
+
+fn base64(bytes: &[u8]) -> String {
+    const ABC: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let n = (b[0] as u32) << 16 | (b[1] as u32) << 8 | b[2] as u32;
+        for i in 0..4 {
+            if i <= chunk.len() {
+                out.push(ABC[(n >> (18 - 6 * i) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
 }
 
 /// Every page, in sidebar order.
 pub const DEMOS: &[(&str, Demo)] = &[
+    ("Overview", overview::demo),
     ("Accordion", accordion::demo),
     ("Alert", alert::demo),
     ("Alert Dialog", alert_dialog::demo),
@@ -91,6 +133,7 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Combobox", combobox::demo),
     ("Command", command::demo),
     ("Context Menu", context_menu::demo),
+    ("Data Table", data_table::demo),
     ("Date Picker", date_picker::demo),
     ("Dialog", dialog::demo),
     ("Drawer", drawer::demo),

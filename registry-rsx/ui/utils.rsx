@@ -17,8 +17,12 @@ thread_local! {
     };
 }
 
-/// Called by `ui::init`. Nothing to install: rsx has no global key bindings
-/// yet, so components switch to keyboard-focus mode from their own Tab
+/// Called by `ui::init`. Nothing to install: rsx moves focus on Tab /
+/// Shift-Tab itself (between buttons, fields, links and `tabIndex >= 0`
+/// elements; `rsx::focus_next()` / `focus_prev()` do it from code) and styles
+/// `focus-visible:` classes. The keyboard-focus flag here is only for rings
+/// drawn as overlay children (see [`ring`]), which a `focus-visible:` class
+/// on the focused element can't reach; components set it from their key
 /// handlers (see [`on_tab_key`]).
 pub fn init() {}
 
@@ -38,7 +42,9 @@ pub fn pointer_pressed() {
 }
 
 /// Put on a focusable element's `onKeyDown`: Tab / Shift-Tab switch to
-/// keyboard-focus mode so `focus-visible` rings show.
+/// keyboard-focus mode so [`is_focus_visible`] rings show. It only observes
+/// the key: rsx still moves focus to the next tab stop (don't call
+/// `prevent_default`).
 pub fn on_tab_key(e: &KeyboardEvent) {
     if e.key == "Tab" {
         keyboard_focus();
@@ -52,10 +58,15 @@ pub fn is_focus_visible(node: NodeRef) -> bool {
 
 /// The surface of a form control (`bg-transparent dark:bg-input/30 shadow-xs`).
 ///
-/// rsx has no box shadows yet, so light mode just gets the page background.
+/// GPUI paints box shadows as a filled shape *under* the element, so a
+/// shadow only looks right on an opaque background: in light mode controls
+/// get the page background and `shadow-xs`; in dark mode they stay
+/// translucent and skip the (invisible anyway) shadow.
 pub fn control_surface(theme: &Theme, el: Div) -> Div {
     if theme.is_dark() {
         el.bg(theme.input.opacity(0.3))
+    } else if theme.shadows {
+        el.bg(theme.background).class("shadow-xs")
     } else {
         el.bg(theme.background)
     }
@@ -199,8 +210,8 @@ impl Siblings {
 }
 
 thread_local! {
-    /// Seconds since the clock started, ticking ~60 times a second while
-    /// anything uses [`use_animation_clock`].
+    /// Seconds since the clock started, and how many components use it
+    /// (see [`use_animation_clock`]).
     static CLOCK: (Signal<f32>, std::cell::Cell<usize>) = {
         let scope = Scope::root();
         let s = scope.run(|| signal(0.0f32));
@@ -225,17 +236,23 @@ pub fn reduced_motion() -> bool {
     REDUCED_MOTION.with(|r| r.get())
 }
 
-/// A clock for animations (spinners, skeleton pulses, transitions): returns a
-/// signal holding seconds since start, which ticks every frame while at least
-/// one component that called this is alive. rsx has no animation frames
-/// yet, so it's driven by `sleep`.
+/// A clock for animations (spinners, skeleton pulses): returns a signal
+/// holding seconds since start, which ticks every ~16ms while at least one
+/// component that called this is alive. Prefer rsx's own `animate-spin` /
+/// `animate-pulse` classes where they fit.
+///
+/// It runs on a timer (`sleep`, GPUI's executor timer) rather than
+/// [`rsx::animation_frame`]: an endless animation driven by frames keeps
+/// GPUI's test executor busy forever (`run_until_parked` never returns),
+/// while a timer only fires when a test advances the clock.
 pub fn use_animation_clock() -> ReadSignal<f32> {
+    let time = CLOCK.with(|(s, _)| *s);
     if reduced_motion() {
-        return CLOCK.with(|(s, _)| s.read_only());
+        return time.read_only();
     }
-    let (time, users) = CLOCK.with(|(s, users)| {
+    let users = CLOCK.with(|(_, users)| {
         users.set(users.get() + 1);
-        (*s, users.get())
+        users.get()
     });
     if users == 1 {
         let start = std::time::Instant::now();
@@ -250,7 +267,7 @@ pub fn use_animation_clock() -> ReadSignal<f32> {
     time.read_only()
 }
 
-/// Ease in-out (cubic), for transitions driven by [`use_animation_clock`].
+/// Ease in-out (cubic), for transitions driven by [`use_transition`].
 pub fn ease_in_out(t: f32) -> f32 {
     let t = t.clamp(0.0, 1.0);
     if t < 0.5 { 4.0 * t * t * t } else { 1.0 - (-2.0 * t + 2.0).powi(3) / 2.0 }
@@ -260,23 +277,23 @@ pub fn ease_in_out(t: f32) -> f32 {
 /// goes from 0 to 1 over `ms` milliseconds after the call, then stops
 /// ticking. Create it where the animated element is created, so it replays
 /// each time the element appears; shape it with [`ease_in_out`].
+///
+/// Driven by [`rsx::animation_frame`]. For opacity, colors and translation,
+/// rsx's `transition duration-* ease-*` classes animate a changed value by
+/// themselves; this is for everything else (sizes, custom drawing).
 pub fn use_transition(ms: u64) -> ReadSignal<f32> {
     let ms = if reduced_motion() { 0 } else { ms };
     let progress = signal(if ms == 0 { 1.0f32 } else { 0.0 });
     if ms > 0 {
         let start = std::time::Instant::now();
-        spawn_local(async move {
-            loop {
-                if !progress.is_alive() {
-                    break;
-                }
-                let t = (start.elapsed().as_secs_f32() * 1000.0 / ms as f32).min(1.0);
-                progress.set(t);
-                if t >= 1.0 {
-                    break;
-                }
-                sleep(std::time::Duration::from_millis(16)).await;
+        effect(move || {
+            if progress.get_untracked() >= 1.0 {
+                return;
             }
+            // Re-runs every frame until done (then it reads nothing and stops).
+            rsx::animation_frame();
+            let t = (start.elapsed().as_secs_f32() * 1000.0 / ms as f32).min(1.0);
+            progress.set(t);
         });
     }
     progress.read_only()

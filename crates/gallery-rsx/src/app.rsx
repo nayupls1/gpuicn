@@ -1,6 +1,8 @@
 //! The gallery shell: a sidebar listing every page, a header (breadcrumb,
 //! previous/next, the theme customizer, light/dark), and the current page in
-//! a preview box, like `crates/gallery/src/main.rs`.
+//! a preview box, like `crates/gallery/src/main.rs`. The sidebar keeps the
+//! current page in view (its active item scrolls itself into view, like the
+//! gpui gallery's `reveal_active`).
 
 use rsx::prelude::*;
 
@@ -10,7 +12,7 @@ use crate::ui::button::{Button, ButtonSize};
 use crate::ui::icon::{Icon, IconName};
 use crate::ui::popover::Popover;
 use crate::ui::portal::PortalHost;
-use crate::ui::scroll_area::ScrollArea;
+use crate::ui::scroll_area::{ScrollArea, ScrollHandle};
 use crate::ui::separator::Separator;
 use crate::ui::sidebar::{Sidebar, SidebarCollapsible, SidebarGroup, SidebarInset, SidebarMenuItem};
 use crate::ui::sonner::Toaster;
@@ -44,6 +46,8 @@ fn env_theme() {
 pub fn App(
     /// The current page (tests drive it); defaults to `GALLERY_PAGE`.
     page: Option<Signal<usize>>,
+    /// The sidebar's scroll position (tests read it).
+    nav_scroll: Option<ScrollHandle>,
 ) -> impl IntoElement {
     crate::ui::init();
     env_theme();
@@ -120,8 +124,14 @@ pub fn App(
         </div>
     };
 
-    <div class="flex size-full text-sm" bg={t.get().background} text_color={t.get().foreground}>
-        <Sidebar id="gallery-nav" collapsible={SidebarCollapsible::None} header={brand}>
+    // The theme's font, and Tailwind-like leading for text that doesn't set its own.
+    <div
+        class="flex size-full text-sm leading-[1.43]"
+        bg={t.get().background}
+        text_color={t.get().foreground}
+        font_family={t.get().font_family.clone()}
+    >
+        <Sidebar id="gallery-nav" collapsible={SidebarCollapsible::None} header={brand} track_scroll={nav_scroll}>
             <SidebarGroup label={format!("Components · {count}")}>
                 {DEMOS
                     .iter()
@@ -149,58 +159,44 @@ fn customizer() -> Element {
         trigger={<Button outline size={ButtonSize::Sm} icon={IconName::Palette} label="Customize" />}
         content={move |_| {
             let section = move |title: &'static str| <div class="text-xs leading-[1rem] font-medium" text_color={t.get().muted_foreground}>{title}</div>;
-            // One selected treatment for every group: a primary border.
-            let mark = move |selected: bool| {
-                rsx::Attributes::new().with(move |el: rsx::Div| if selected { el.class("border-2").border_color(t.get().primary) } else { el })
-            };
             let swatch = |color: Color| <div class="size-3.5 flex-none rounded-full" bg={color} />;
-            // rsx#19: no CSS grid, so rows of equal-width cells.
-            let grid = |cells: Vec<Element>, columns: usize| {
-                let mut rows = Vec::new();
-                let mut cells = cells.into_iter().peekable();
-                while cells.peek().is_some() {
-                    let mut row: Vec<Element> = cells.by_ref().take(columns).map(|c| <div class="flex flex-1 min-w-0">{c}</div>).collect();
-                    while row.len() < columns {
-                        row.push(<div class="flex-1" />);
-                    }
-                    rows.push(<div class="flex gap-2">{row}</div>);
-                }
-                <div class="flex flex-col gap-2">{rows}</div>
-            };
             move || {
                 let theme = t.get();
+                // One selected treatment for every group: a primary border.
+                let primary = theme.primary;
+                let mark = move |selected: bool| move |el: rsx::Div| if selected { el.class("border-2").border_color(primary) } else { el };
                 let (accent, base, radius, mode) = (theme.accent_color, theme.base_color, theme.radius, theme.mode);
-                let accents = AccentColor::ALL
+                let accents: Vec<Element> = AccentColor::ALL
                     .iter()
-                    .map(|&a| <Button outline size={ButtonSize::Sm} class="w-full justify-start" onClick={move |_| Theme::set_accent(a)} {...mark(a == accent)}>
+                    .map(|&a| <Button outline size={ButtonSize::Sm} class="w-full justify-start" onClick={move |_| Theme::set_accent(a)} bind={mark(a == accent)}>
                         {swatch(ThemeColors::build(mode, base, a).primary)}
                         {a.name()}
                     </Button>)
                     .collect();
-                let bases = BaseColor::ALL
+                let bases: Vec<Element> = BaseColor::ALL
                     .iter()
-                    .map(|&b| <Button outline size={ButtonSize::Sm} class="w-full justify-start" onClick={move |_| Theme::set_base(b)} {...mark(b == base)}>
+                    .map(|&b| <Button outline size={ButtonSize::Sm} class="w-full justify-start" onClick={move |_| Theme::set_base(b)} bind={mark(b == base)}>
                         {swatch(ThemeColors::build(ThemeMode::Light, b, AccentColor::Default).muted_foreground)}
                         {b.name()}
                     </Button>)
                     .collect();
-                let radii = [("0", 0.0f32), ("0.3", 4.8), ("0.5", 8.0), ("0.625", 10.0), ("0.75", 12.0), ("1.0", 16.0)]
+                let radii: Vec<Element> = [("0", 0.0), ("0.3", 4.8), ("0.5", 8.0), ("0.625", 10.0), ("0.75", 12.0), ("1.0", 16.0)]
                     .iter()
-                    .map(|&(label, value)| <Button outline size={ButtonSize::Sm} class="w-full" label={label} onClick={move |_| Theme::set_radius(value)} {...mark(radius == value)} />)
+                    .map(|&(label, value)| <Button outline size={ButtonSize::Sm} class="w-full" label={label} onClick={move |_| Theme::set_radius(value)} bind={mark(radius == value)} />)
                     .collect();
-                let modes = [(ThemeMode::Light, "Light", IconName::Sun), (ThemeMode::Dark, "Dark", IconName::Moon)]
+                let modes: Vec<Element> = [(ThemeMode::Light, "Light", IconName::Sun), (ThemeMode::Dark, "Dark", IconName::Moon)]
                     .iter()
-                    .map(|&(m, label, icon)| <Button outline size={ButtonSize::Sm} class="w-full" icon={icon} label={label} onClick={move |_| Theme::change(m)} {...mark(m == mode)} />)
+                    .map(|&(m, label, icon)| <Button outline size={ButtonSize::Sm} class="w-full" icon={icon} label={label} onClick={move |_| Theme::change(m)} bind={mark(m == mode)} />)
                     .collect();
                 <div class="flex flex-col gap-4">
                     <div class="flex flex-col gap-1">
                         <div class="font-semibold leading-[1.25rem]">Customize</div>
                         <div class="leading-[1.25rem]" text_color={theme.muted_foreground}>Pick a color, base and radius for every component.</div>
                     </div>
-                    <div class="flex flex-col gap-2">{section("Color")}{grid(accents, 3)}</div>
-                    <div class="flex flex-col gap-2">{section("Base color")}{grid(bases, 3)}</div>
-                    <div class="flex flex-col gap-2">{section("Radius")}{grid(radii, 3)}</div>
-                    <div class="flex flex-col gap-2">{section("Mode")}{grid(modes, 2)}</div>
+                    <div class="flex flex-col gap-2">{section("Color")}<div class="grid grid-cols-3 gap-2">{accents}</div></div>
+                    <div class="flex flex-col gap-2">{section("Base color")}<div class="grid grid-cols-3 gap-2">{bases}</div></div>
+                    <div class="flex flex-col gap-2">{section("Radius")}<div class="grid grid-cols-3 gap-2">{radii}</div></div>
+                    <div class="flex flex-col gap-2">{section("Mode")}<div class="grid grid-cols-2 gap-2">{modes}</div></div>
                 </div>
             }
         }}

@@ -7,8 +7,7 @@ use crate::ui::theme::theme;
 
 fn repo(name: &'static str) -> Element {
     let t = theme();
-    // rsx#8: no `font-mono`.
-    <div class="rounded-md border px-4 py-2 text-sm" border_color={t.get().border}>{name}</div>
+    <div class="rounded-md border px-4 py-2 text-sm" border_color={t.get().border} font_family={t.get().mono_font_family.clone()}>{name}</div>
 }
 
 pub fn demo() -> Element {
