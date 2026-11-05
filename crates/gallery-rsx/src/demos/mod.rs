@@ -65,6 +65,12 @@ rsx::module!(pub typography = "demos/typography");
 
 pub type Demo = fn() -> rsx::Element;
 
+/// The avatar photos the gpui gallery uses (`crates/gallery/assets/avatar-N.png`,
+/// N = 1..=3), as an absolute path: rsx loads `<img src>` from disk.
+pub fn avatar_image(n: usize) -> String {
+    format!("{}/../gallery/assets/avatar-{}.png", env!("CARGO_MANIFEST_DIR"), n % 3 + 1)
+}
+
 /// Every page, in sidebar order.
 pub const DEMOS: &[(&str, Demo)] = &[
     ("Accordion", accordion::demo),
