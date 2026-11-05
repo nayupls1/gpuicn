@@ -14,7 +14,6 @@ use super::icon::{Icon, IconName};
 use super::theme::{mix, theme, ColorExt, Theme};
 use super::utils::{is_focus_visible, on_tab_key, pointer_pressed, ring};
 
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ToggleVariant {
     #[default]
@@ -110,19 +109,33 @@ pub fn ToggleButton(
     let look = memo(move || toggle_look(pressed.get(), hovered.get(), disabled.get(), variant, &t.get()));
     let (h, pad) = size.metrics();
     let outline = variant == ToggleVariant::Outline;
-    let border_left = if group.is_some_and(|g| !g.first) { 0.0 } else { 1.0 };
-    let border = if outline { 1.0 } else { 0.0 };
+    let joined = group.is_some_and(|g| !g.first);
 
     <div
         ref={node}
-        class="relative flex flex-none items-center justify-center gap-2 text-sm leading-[1.25rem] font-medium"
+        class="relative flex flex-none items-center justify-center gap-2 whitespace-nowrap text-sm leading-[1.25rem] font-medium"
         class:flex-1={group.is_some()}
+        class:border={outline}
+        // A group item after the first shares its neighbour's border.
+        class:border-l-0={outline && joined}
         class:cursor-pointer={!disabled.get()}
         h={px(h)}
         min_w={px(h)}
         px={px(pad)}
-        bind={move |el: Div| radii(el, group, t.get().radius - 2.0)}
-        bind={move |el: Div| border_sides(el, border, border_left)}
+        // `rounded-md`, or only the group's outer corners (`rounded-l-md` / `rounded-r-md`).
+        bind={move |el: Div| {
+            let r = t.get().radius_md();
+            match group {
+                None => el.corner_radius(r),
+                Some(g) => {
+                    let el = el.class("rounded-none");
+                    let el = if g.first { el.rounded_l_radius(r) } else { el };
+                    if g.last { el.rounded_r_radius(r) } else { el }
+                }
+            }
+        }}
+        // An outline toggle's `shadow-xs` (light mode; not inside a group).
+        class:shadow-xs={move || outline && group.is_none() && t.with(|theme| theme.shadows && !theme.is_dark())}
         bg={look.get().bg}
         border_color={look.get().border.unwrap_or(Color::TRANSPARENT)}
         bind={move |el: Div| match look.get().fg { Some(fg) => el.text_color(fg), None => el }}
@@ -136,43 +149,18 @@ pub fn ToggleButton(
                 on_toggle.run();
             }
         }}
-        {...&attrs}
+        {...attrs}
     >
         {children}
         {move || {
             let theme = t.get();
             (is_focus_visible(node) && !disabled.get()).then(|| {
-                // rsx#9: no `z-*`, so a group item's ring may sit under its right neighbour.
-                ring(theme.ring.opacity(0.5), 3.0, theme.radius - 2.0, border)
+                let ring = ring(theme.ring.opacity(0.5), 3.0, theme.radius - 2.0, if outline { 1.0 } else { 0.0 });
+                // Over the group's next item, which is drawn later.
+                if group.is_some() { ring.class("z-10") } else { ring }
             })
         }}
     </div>
-}
-
-/// `rounded-md`, or only the outer corners inside a group.
-fn radii(mut el: Div, group: Option<GroupPosition>, r: f32) -> Div {
-    let r = px(r.max(0.0));
-    let zero = px(0.0);
-    let (left, right) = match group {
-        None => (r, r),
-        Some(g) => (if g.first { r } else { zero }, if g.last { r } else { zero }),
-    };
-    let c = &mut el.style().corner_radii;
-    c.top_left = Some(left);
-    c.bottom_left = Some(left);
-    c.top_right = Some(right);
-    c.bottom_right = Some(right);
-    el
-}
-
-/// `border` (or `border border-l-0` for a group item after the first).
-fn border_sides(mut el: Div, width: f32, left: f32) -> Div {
-    let b = &mut el.style().border_widths;
-    b.top = Some(px(width));
-    b.right = Some(px(width));
-    b.bottom = Some(px(width));
-    b.left = Some(px(width * left));
-    el
 }
 
 #[component]
@@ -212,6 +200,6 @@ pub fn Toggle(
     >
         {icon.map(|i| <Icon name={i} />)}
         {label}
-        {children.map(|c| c.render())}
+        {children}
     </ToggleButton>
 }

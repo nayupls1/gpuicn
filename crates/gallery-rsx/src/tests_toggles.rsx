@@ -189,7 +189,7 @@ fn slider_follows_press_and_drag(cx: &mut TestAppContext) {
     let cx = mount(cx, move || {
         <div class="p-8 flex flex-col gap-8 w-[264px]">
             <div ref={one}><Slider default_value={vec![50.0]} onChange={move |v: &Vec<f32>| values.set(v.clone())} /></div>
-            <div ref={two}><Slider default_value={vec![25.0, 75.0]} step={5.0f32} onChange={move |v: &Vec<f32>| range.set(v.clone())} /></div>
+            <div ref={two}><Slider default_value={vec![25.0, 75.0]} step={5} onChange={move |v: &Vec<f32>| range.set(v.clone())} /></div>
         </div>
     });
     let none = Modifiers::default();
@@ -239,7 +239,7 @@ fn aspect_ratio_sets_height_from_width(cx: &mut TestAppContext) {
     let r = cx.update(|_| NodeRef::new());
     mount(cx, move || {
         <div class="w-[320px] flex flex-col">
-            <div ref={r}><AspectRatio ratio={16.0f32 / 9.0}><div class="size-full">16 / 9</div></AspectRatio></div>
+            <div ref={r}><AspectRatio ratio={16.0 / 9.0}><div class="size-full">16 / 9</div></AspectRatio></div>
         </div>
     });
     let b = r.bounds().unwrap();
@@ -247,14 +247,19 @@ fn aspect_ratio_sets_height_from_width(cx: &mut TestAppContext) {
     assert!((b.size.height - 180.0).abs() < 0.5, "height {} for a 16/9 box 320px wide", b.size.height);
 }
 
-/// What rsx-gpui does with an `<img src>` string: GPUI parses it as a URI
-/// (fetched through the app's HTTP client) or names an embedded asset. A
-/// local file path is never read from disk.
-#[test]
-fn img_src_paths_are_not_files_on_gpui() {
-    let path = format!("{}/../gallery/assets/avatar-1.png", env!("CARGO_MANIFEST_DIR"));
-    assert!(std::path::Path::new(&path).exists());
-    let is_file = |s: &str| matches!(gpui::ImageSource::from(s), gpui::ImageSource::Resource(gpui::Resource::Path(_)));
-    assert!(!is_file(&path));
-    assert!(!is_file(&format!("file://{path}")));
+#[gpui::test]
+fn avatar_draws_its_image_at_the_avatar_size(cx: &mut TestAppContext) {
+    use crate::ui::avatar::Avatar;
+    let (r, rounded) = cx.update(|_| (NodeRef::new(), NodeRef::new()));
+    mount(cx, move || {
+        <div class="p-8 flex items-start gap-4">
+            <div ref={r}><Avatar src={crate::demos::avatar_image(0)} fallback="CN" /></div>
+            <div ref={rounded}><Avatar src={crate::demos::avatar_image(1)} fallback="ER" class="rounded-lg size-10" /></div>
+        </div>
+    });
+    let b = r.bounds().unwrap();
+    assert_eq!((b.size.width, b.size.height), (32.0, 32.0));
+    let b = rounded.bounds().unwrap();
+    assert_eq!((b.size.width, b.size.height), (40.0, 40.0), "the caller's size wins");
+    assert!(std::path::Path::new(&crate::demos::avatar_image(0)).exists(), "rsx loads `<img src>` file paths");
 }

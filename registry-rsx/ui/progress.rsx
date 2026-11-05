@@ -1,7 +1,7 @@
 //! Displays an indicator showing the completion progress of a task.
 //!
 //! ```ignore
-//! <Progress value={66.0f32} class="w-[240px]" />
+//! <Progress value={66} class="w-[240px]" />
 //! <Progress value={progress} />   // a signal: the bar follows it
 //! ```
 

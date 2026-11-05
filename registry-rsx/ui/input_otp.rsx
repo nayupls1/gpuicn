@@ -2,7 +2,7 @@
 //!
 //! ```ignore
 //! <InputOtp
-//!     length={6usize} // rsx: an integer literal needs its suffix for a `usize` prop
+//!     length={6}
 //!     groups={[3, 3]}
 //!     onComplete={move |code: &String| println!("{code}")}
 //! />
@@ -12,11 +12,12 @@
 //! typing, pasting and IME input.
 
 use rsx::prelude::*;
-use rsx::{Cursor, Div, Length};
+use rsx::{Cursor, Div};
 
 use super::icon::{Icon, IconName};
+use super::input::control_surface;
 use super::theme::{theme, ColorExt, Theme};
-use super::utils::{control_surface, on_tab_key, pointer_pressed};
+use super::utils::{on_tab_key, pointer_pressed};
 
 /// Which characters a slot accepts.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -35,31 +36,14 @@ impl OtpPattern {
     }
 }
 
-/// Sets per-side borders and corners (rsx has no `border-y`, `rounded-l`, ...).
-fn sides(mut el: Div, left: bool, radius_left: Option<Length>, radius_right: Option<Length>) -> Div {
-    let one = Some(px(1.0));
-    let s = el.style();
-    s.border_widths.top = one;
-    s.border_widths.bottom = one;
-    s.border_widths.right = one;
-    s.border_widths.left = if left { one } else { Some(px(0.0)) };
-    if let Some(r) = radius_left {
-        s.corner_radii.top_left = Some(r);
-        s.corner_radii.bottom_left = Some(r);
-    }
-    if let Some(r) = radius_right {
-        s.corner_radii.top_right = Some(r);
-        s.corner_radii.bottom_right = Some(r);
-    }
-    el
-}
-
 fn slot(theme: &Theme, ch: Option<char>, first: bool, last: bool, active: bool, caret: bool) -> Div {
     let radius = theme.radius_md();
     let el = div()
-        .class("relative flex size-9 items-center justify-center text-sm leading-[1.25rem]")
+        .class("relative flex size-9 items-center justify-center border-y border-r text-sm leading-[1.25rem]")
         .border_color(if active { theme.ring } else { theme.input });
-    let el = sides(el, first || active, first.then_some(radius), last.then_some(radius));
+    let el = if first || active { el.class("border-l") } else { el };
+    let el = if first { el.rounded_l_radius(radius) } else { el };
+    let el = if last { el.rounded_r_radius(radius) } else { el };
     control_surface(theme, el)
         .child(ch.map(|c| c.to_string()))
         .child(caret.then(|| div().class("h-4 w-px").bg(theme.foreground)))
@@ -69,7 +53,7 @@ fn slot(theme: &Theme, ch: Option<char>, first: bool, last: bool, active: bool, 
 /// (painted later) don't cover it.
 fn slot_ring(theme: &Theme, i: usize, first: bool, last: bool) -> Div {
     let w = 3.0;
-    let radius = Some(px(theme.radius - 2.0 + w));
+    let radius = px(theme.radius - 2.0 + w);
     let el = div()
         .class("absolute")
         .top(px(-w))
@@ -77,17 +61,8 @@ fn slot_ring(theme: &Theme, i: usize, first: bool, last: bool) -> Div {
         .size(px(36.0 + w * 2.0))
         .border_width(px(w))
         .border_color(theme.ring.opacity(0.5));
-    let mut el = el;
-    let s = el.style();
-    if first {
-        s.corner_radii.top_left = radius;
-        s.corner_radii.bottom_left = radius;
-    }
-    if last {
-        s.corner_radii.top_right = radius;
-        s.corner_radii.bottom_right = radius;
-    }
-    el
+    let el = if first { el.rounded_l_radius(radius) } else { el };
+    if last { el.rounded_r_radius(radius) } else { el }
 }
 
 #[component]
@@ -160,23 +135,18 @@ pub fn InputOtp(
             _ => {}
         }
     };
-    // Rebuilt only when `disabled` changes (rsx-gpui ignores `disabled` on
-    // text fields, so a disabled OTP has no field at all).
-    let field = move || {
-        (!disabled.get()).then(|| {
-            rsx::element("input")
-                .class("absolute inset-0 min-w-0 p-0 border-0 overflow-hidden")
-                .opacity(0.0)
-                .css("outline: none")
-                .node_ref(node)
-                .attr("value", current)
-                .attr("autocomplete", "one-time-code")
-                .on_input(on_input)
-                .on_key_down(on_key)
-                .on_mouse_down(move |_| pointer_pressed())
-                .on_click(move |e: &ClickEvent| e.stop_propagation())
-        })
-    };
+    // The hidden field that takes the typing (inert while disabled).
+    let field = rsx::element("input")
+        .class("absolute inset-0 min-w-0 p-0 border-0 overflow-hidden")
+        .opacity(0.0)
+        .css("outline: none")
+        .node_ref(node)
+        .attr("value", current)
+        .attr("autocomplete", "one-time-code")
+        .attr("disabled", disabled)
+        .on_input(on_input)
+        .on_key_down(on_key)
+        .on_mouse_down(move |_| pointer_pressed());
     let slots = move || {
         let theme = t.get();
         let focused = node.is_focused() && !disabled.get();
@@ -209,15 +179,8 @@ pub fn InputOtp(
         class="relative flex items-center gap-2"
         opacity={if disabled.get() { 0.5 } else { 1.0 }}
         cursor={if disabled.get() { Cursor::Default } else { Cursor::Text }}
-        onMouseDown={move |e: &MouseEvent| {
-            e.stop_propagation();
-            if !disabled.get_untracked() {
-                node.focus()
-            }
-        }}
-        // Keep presses and clicks from a backdrop or focusable ancestor (see `Input`).
-        onClick={move |e: &ClickEvent| e.stop_propagation()}
-        {...&attrs}
+        onMouseDown={move |_| if !disabled.get_untracked() { node.focus() }}
+        {...attrs}
     >
         {field}
         {slots}

@@ -11,12 +11,10 @@ use rsx::prelude::*;
 
 use super::label::Label;
 use super::theme::{theme, ColorExt};
-use super::utils::{ease_in_out, is_focus_visible, on_tab_key, pointer_pressed, ring, use_animation_clock};
+use super::utils::{is_focus_visible, on_tab_key, pointer_pressed, reduced_motion, ring};
 
 /// How far the 16px thumb travels in the 32×18.4 track (1px border).
 const TRAVEL: f32 = 14.0;
-/// Thumb slide duration, in seconds.
-const DURATION: f32 = 0.15;
 
 #[component]
 pub fn Switch(
@@ -34,35 +32,18 @@ pub fn Switch(
     let state = signal(default_checked);
     let is_checked = memo(move || checked.map(|c| c.get()).unwrap_or_else(|| state.get()));
     let disabled = memo(move || disabled.map(|d| d.get()).unwrap_or(false));
-
-    // The thumb slides over 150ms: remember where it started and when.
-    let clock = use_animation_clock();
-    let offset_of = |on: bool| if on { TRAVEL } else { 0.0 };
-    let slide = signal((f32::NEG_INFINITY, offset_of(is_checked.get_untracked())));
-    let thumb_offset = move || {
-        let to = offset_of(is_checked.get());
-        let (start, from) = slide.get();
-        // Only subscribe to the clock while sliding, so an idle switch never redraws.
-        if from == to || clock.get_untracked() - start >= DURATION {
-            return to;
-        }
-        from + (to - from) * ease_in_out((clock.get() - start) / DURATION)
-    };
-    let last = StoredValue::new(is_checked.get_untracked());
-    effect(move || {
-        let on = is_checked.get();
-        if last.get_value() != on {
-            last.set_value(on);
-            // Start from wherever the thumb is now (it may be mid-slide).
-            let from = untrack(|| {
-                let (start, from) = slide.get();
-                let t = ((clock.get() - start) / DURATION).clamp(0.0, 1.0);
-                let prev_to = offset_of(!on);
-                if t >= 1.0 { prev_to } else { from + (prev_to - from) * ease_in_out(t) }
-            });
-            slide.set((clock.get_untracked(), from));
+    // `(track, thumb)` colors.
+    let colors = memo(move || {
+        let theme = t.get();
+        match (is_checked.get(), theme.is_dark()) {
+            (true, false) => (theme.primary, theme.background),
+            (true, true) => (theme.primary, theme.primary_foreground),
+            (false, false) => (theme.input, theme.background),
+            (false, true) => (theme.input.opacity(0.8), theme.foreground),
         }
     });
+    // The thumb slides over 150ms (gpuicn's `with_animation`).
+    let slide = if reduced_motion() { "" } else { "transition-transform duration-150 ease-in-out" };
 
     <div
         ref={node}
@@ -83,25 +64,22 @@ pub fn Switch(
             }
         }}
     >
-        {move || {
-            let theme = t.get();
-            let on = is_checked.get();
-            let (track, thumb) = match (on, theme.is_dark()) {
-                (true, false) => (theme.primary, theme.background),
-                (true, true) => (theme.primary, theme.primary_foreground),
-                (false, false) => (theme.input, theme.background),
-                (false, true) => (theme.input.opacity(0.8), theme.foreground),
-            };
-            // rsx#7: no `shadow-xs` on the light track.
+        <div
+            class="relative flex flex-none items-center w-8 h-[18.4px] rounded-full border border-transparent"
+            class:shadow-xs={move || t.with(|theme| theme.shadows && !theme.is_dark())}
+            bg={move || colors.get().0}
+            {...attrs}
+        >
             <div
-                class="relative flex flex-none items-center w-8 h-[18.4px] rounded-full border border-transparent"
-                bg={track}
-                {...&attrs}
-            >
-                <div class="size-4 rounded-full" bg={thumb} ml={px(thumb_offset())} />
-                {(is_focus_visible(node) && !disabled.get()).then(|| ring(theme.ring.opacity(0.5), 3.0, 9.2, 1.0))}
-            </div>
-        }}
+                class={format!("size-4 rounded-full {slide}")}
+                bg={move || colors.get().1}
+                translate_x={move || px(if is_checked.get() { TRAVEL } else { 0.0 })}
+            />
+            {move || {
+                let theme = t.get();
+                (is_focus_visible(node) && !disabled.get()).then(|| ring(theme.ring.opacity(0.5), 3.0, 9.2, 1.0))
+            }}
+        </div>
         {label.map(|l| <Label text={l} />)}
     </div>
 }

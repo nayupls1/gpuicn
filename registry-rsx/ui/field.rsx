@@ -40,10 +40,7 @@ pub fn Field(
             false => el,
         };
         // A label next to a checkbox reads as body text (`font-normal`).
-        // rsx: a component's `Attributes` only forward classes, HTML attributes
-        // and events, not style methods like `text_color`/`bind`; spread one.
-        let tint = Attributes::new().with(move |el| el.bind(tint));
-        <Label text={label} disabled={disabled} class={if horizontal { "font-normal" } else { "" }} {...tint} />
+        <Label text={label} disabled={disabled} class={if horizontal { "font-normal" } else { "" }} bind={tint} />
     });
     let description = description.map(|d| <div class="text-sm leading-[1.25rem]" text_color={t.get().muted_foreground}>{d}</div>);
     let error_text = move || error.get().map(|e| <div class="text-sm leading-[1.25rem]" text_color={t.get().destructive}>{e}</div>);

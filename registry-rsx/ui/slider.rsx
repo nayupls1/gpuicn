@@ -1,7 +1,7 @@
 //! An input where the user selects a value from within a given range.
 //!
 //! ```ignore
-//! <Slider default_value={vec![50.0]} max={100.0f32} step={1.0f32} class="w-[240px]" />
+//! <Slider default_value={vec![50.0]} max={100} step={1} class="w-[240px]" />
 //! <Slider default_value={vec![25.0, 75.0]} />          // two thumbs = range
 //! <Slider value={volume} onChange={move |v: &Vec<f32>| volume.set(v.clone())} />
 //! ```
@@ -142,6 +142,7 @@ pub fn Slider(
                     <div
                         ref={node}
                         class="absolute size-4 rounded-full border"
+                        class:shadow-sm={t.get().shadows}
                         class:cursor-grab={!disabled.get()}
                         border_color={t.get().primary}
                         bg={t.get().background}
@@ -192,9 +193,9 @@ pub fn Slider(
                 }).collect::<Vec<_>>()
             }}
         </div>
-        {/* rsx-gpui only sends `onMouseMove` / `onMouseUp` to the element under the
-            pointer, so while dragging a transparent layer over the whole window
-            receives them, wherever the pointer goes. */}
+        {/* rsx sends `onMouseMove` / `onMouseUp` to the element under the pointer
+            (there's no pointer capture), so while dragging a transparent layer over
+            the whole window receives them, wherever the pointer goes. */}
         {move || dragging.get().then(|| <Portal>
             <div
                 class="absolute inset-0 cursor-grabbing"
@@ -206,13 +207,7 @@ pub fn Slider(
                         dragging.set(false);
                     }
                 }}
-                onMouseUp={move |_| {
-                    dragging.set(false);
-                    // The press's click focuses the track (it has a `ref`, so rsx-gpui
-                    // makes it focusable): hand focus back to the thumb.
-                    let ix = active_thumb.get_untracked();
-                    thumbs.with_value(|t| t.get(ix).map(|n| n.focus()));
-                }}
+                onMouseUp={move |_| dragging.set(false)}
             />
         </Portal>)}
     </div>

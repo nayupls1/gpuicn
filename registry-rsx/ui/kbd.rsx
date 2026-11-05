@@ -21,8 +21,8 @@ pub fn modifier_icon(text: &str) -> Option<IconName> {
     }
 }
 
-/// A key cap. Like gpuicn's and shadcn's (`font-sans`), it uses the UI
-/// font; `Theme::mono_font_family` couldn't be applied anyway (rsx#8).
+/// A key cap. Like gpuicn's and shadcn's (`font-sans`), it uses the UI font,
+/// not `Theme::mono_font_family`.
 #[component]
 pub fn Kbd(
     #[prop(optional)] text: Accessor<String>,
@@ -44,7 +44,7 @@ pub fn Kbd(
                 Some(icon) => <Icon name={icon} class="size-3" />,
                 None => text.into_element(),
             }}
-            {children.map(|c| c.render())}
+            {children}
         </div>
     }
 }

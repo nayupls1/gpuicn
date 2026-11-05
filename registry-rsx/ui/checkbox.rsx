@@ -7,8 +7,8 @@
 //! <Checkbox checked={accepted} onChange={move |c: &bool| accepted.set(*c)} label="Accept terms" />
 //! ```
 //!
-//! Drawn with divs and an `Icon` rather than `<input type="checkbox">`, whose
-//! look is fixed on GPUI (rsx#13). Click, or focus it and press Space / Enter.
+//! Drawn with divs and an `Icon` like gpuicn's, rather than rsx's
+//! `<input type="checkbox">`. Click, or focus it and press Space / Enter.
 
 use rsx::prelude::*;
 
@@ -68,8 +68,9 @@ pub fn Checkbox(
                 (theme.background, control_border(&theme))
             };
             <div
-                class="relative flex flex-none size-4 items-center justify-center border"
-                corner_radius={px(4.0)}
+                class="relative flex flex-none size-4 items-center justify-center rounded-[4px] border"
+                // The unchecked box's `shadow-xs` (gpuicn's `control_surface`).
+                class:shadow-xs={!on && theme.shadows && !theme.is_dark()}
                 bg={bg}
                 border_color={border}
                 text_color={theme.primary_foreground}

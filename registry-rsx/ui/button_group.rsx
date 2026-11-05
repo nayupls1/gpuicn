@@ -40,62 +40,50 @@ impl GroupContext {
     }
 }
 
-/// Rounds only the given corners, `rounded-l-*` style.
-fn corners(mut el: Div, radius: Length, [tl, tr, br, bl]: [bool; 4]) -> Div {
-    let r = |on: bool| Some(if on { radius } else { px(0.0) });
-    let c = &mut el.style().corner_radii;
-    c.top_left = r(tl);
-    c.top_right = r(tr);
-    c.bottom_right = r(br);
-    c.bottom_left = r(bl);
-    el
+/// Which corners a part keeps: `rounded-l-*` / `rounded-r-*` (or `-t-` /
+/// `-b-` when vertical), all of them when it's alone, else none.
+fn corners(el: Div, radius: Length, vertical: bool, first: bool, last: bool) -> Div {
+    let el = el.class("rounded-none");
+    match (vertical, first, last) {
+        (_, true, true) => el.corner_radius(radius),
+        (false, true, false) => el.rounded_l_radius(radius),
+        (false, false, true) => el.rounded_r_radius(radius),
+        (true, true, false) => el.rounded_t_radius(radius),
+        (true, false, true) => el.rounded_b_radius(radius),
+        _ => el,
+    }
 }
 
-/// `border-l-0` (or `border-t-0` when vertical) for parts after the first.
-fn collapse_border(mut el: Div, vertical: bool, first: bool) -> Div {
-    if !first {
-        let b = &mut el.style().border_widths;
-        if vertical {
-            b.top = Some(px(0.0));
-        } else {
-            b.left = Some(px(0.0));
-        }
+/// `border-l-0` (or `border-t-0` when vertical) for parts after the first,
+/// so neighbours don't draw a double border.
+fn collapse_border(el: Div, vertical: bool, first: bool) -> Div {
+    match (first, vertical) {
+        (true, _) => el,
+        (false, false) => el.class("border-l-0"),
+        (false, true) => el.class("border-t-0"),
     }
-    el
 }
 
 #[component]
 pub fn ButtonGroup(
     vertical: bool,
     /// `Button`s, `ButtonGroupText`s, `ButtonGroupSeparator`s, or anything else.
-    children: Option<ChildrenFn>,
+    children: Option<Children>,
     attrs: Attributes,
 ) -> impl IntoElement {
     let context = GroupContext { vertical, items: Siblings::new() };
     let t = theme();
+    provide_context(context);
     // Each `Button` inside registers here and gets its corners and borders.
-    let join = ButtonJoin(Rc::new(move || {
+    provide_context(ButtonJoin(Rc::new(move || {
         let id = context.items.register();
-        Attributes::new().with(move |el| {
+        Attributes::new().bind(move |el| {
             let (first, last) = context.position(id);
-            let radius = t.get().radius_md();
-            let el = corners(el, radius, match (vertical, first, last) {
-                (_, true, true) => [true; 4],
-                (false, true, false) => [true, false, false, true],
-                (false, false, true) => [false, true, true, false],
-                (true, true, false) => [true, true, false, false],
-                (true, false, true) => [false, false, true, true],
-                _ => [false; 4],
-            });
-            collapse_border(el, vertical, first)
+            collapse_border(corners(el, t.get().radius_md(), vertical, first, last), vertical, first)
         })
-    }));
-    // rsx gap: a context doesn't reach `Children` (built in the caller's scope), so the
-    // parts come in as `ChildrenFn`, rendered inside the `Provider`.
+    })));
     <div class="flex" class:flex-col={vertical} class:items-stretch={vertical} {...attrs}>
-        <Provider value={context}>
-            <Provider value={join}>{children}</Provider>
-        </Provider>
+        {children}
     </div>
 }
 
@@ -106,24 +94,24 @@ pub fn ButtonGroupText(text: Option<Accessor<String>>, children: Option<Children
     let id = context.items.register();
     let vertical = context.vertical;
     let t = theme();
-    move || {
+    let style = move |el: Div| {
         let theme = t.get();
         let (first, last) = context.position(id);
-        let el = div()
-            .class("flex items-center gap-2 px-4 text-sm leading-[1.25rem] font-medium border")
-            .bg(theme.muted)
-            .border_color(theme.border);
-        let el = collapse_border(el, vertical, first);
-        let el = corners(el, theme.radius_md(), match (vertical, first, last) {
-            (false, true, _) => [true, false, false, true],
-            (false, _, true) => [false, true, true, false],
-            (true, true, _) => [true, true, false, false],
-            (true, _, true) => [false, false, true, true],
-            _ => [false; 4],
-        });
-        // rsx#7: no `shadow-xs`.
-        el.spread(&attrs).child(text).child(children)
-    }
+        // Only the outer edge is rounded, even when it's the only part.
+        let el = match (vertical, first, last) {
+            (false, true, _) => el.class("rounded-none").rounded_l_radius(theme.radius_md()),
+            (false, _, true) => el.class("rounded-none").rounded_r_radius(theme.radius_md()),
+            (true, true, _) => el.class("rounded-none").rounded_t_radius(theme.radius_md()),
+            (true, _, true) => el.class("rounded-none").rounded_b_radius(theme.radius_md()),
+            _ => el,
+        };
+        let el = collapse_border(el.bg(theme.muted).border_color(theme.border), vertical, first);
+        if theme.shadows { el.shadow_xs() } else { el }
+    };
+    <div class="flex items-center gap-2 px-4 text-sm leading-[1.25rem] font-medium border" bind={style} {...attrs}>
+        {text}
+        {children}
+    </div>
 }
 
 /// `ButtonGroupSeparator`.
