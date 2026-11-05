@@ -5,10 +5,16 @@
 #![allow(dead_code, unused_imports)]
 
 rsx::module!(pub button = "demos/button");
+rsx::module!(pub field = "demos/field");
+rsx::module!(pub form = "demos/form");
+rsx::module!(pub input = "demos/input");
+rsx::module!(pub input_group = "demos/input_group");
+rsx::module!(pub input_otp = "demos/input_otp");
 rsx::module!(pub label = "demos/label");
 rsx::module!(pub popover = "demos/popover");
 rsx::module!(pub separator = "demos/separator");
 rsx::module!(pub spinner = "demos/spinner");
+rsx::module!(pub textarea = "demos/textarea");
 rsx::module!(pub tooltip = "demos/tooltip");
 
 pub type Demo = fn() -> rsx::Element;
@@ -16,10 +22,16 @@ pub type Demo = fn() -> rsx::Element;
 /// Every page, in sidebar order.
 pub const DEMOS: &[(&str, Demo)] = &[
     ("Button", button::demo),
+    ("Field", field::demo),
+    ("Form", form::demo),
+    ("Input", input::demo),
+    ("Input Group", input_group::demo),
+    ("Input OTP", input_otp::demo),
     ("Label", label::demo),
     ("Popover", popover::demo),
     ("Separator", separator::demo),
     ("Spinner", spinner::demo),
+    ("Textarea", textarea::demo),
     ("Tooltip", tooltip::demo),
 ];
 

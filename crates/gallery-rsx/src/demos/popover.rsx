@@ -1,6 +1,7 @@
 use rsx::prelude::*;
 
 use crate::ui::button::Button;
+use crate::ui::input::Input;
 use crate::ui::label::Label;
 use crate::ui::popover::Popover;
 use crate::ui::theme::theme;
@@ -17,8 +18,7 @@ pub fn demo() -> Element {
             </div>
             {["Width", "Max. width", "Height", "Max. height"].map(|label| <div class="flex flex-nowrap gap-4 items-center">
                 <Label text={label} class="w-[88px] flex-none" />
-                {/* TODO(input): `<Input default_value="100%" class="h-8 flex-1" />` once `input` is ported. */}
-                <input value="100%" class="h-8 flex-1" />
+                <Input default_value="100%" class="h-8 flex-1" />
             </div>)}
         </div>}
     />
