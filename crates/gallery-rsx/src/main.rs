@@ -9,6 +9,7 @@
 mod ui;
 mod demos;
 rsx::module!(app);
+rsx::module!(tests);
 
 fn main() {
     if std::env::args().any(|a| a == "--html") {

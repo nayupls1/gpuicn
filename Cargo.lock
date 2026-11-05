@@ -2052,6 +2052,7 @@ dependencies = [
 name = "gallery-rsx"
 version = "0.1.0"
 dependencies = [
+ "gpui",
  "rsxui",
  "rsxui-build",
  "rsxui-core",

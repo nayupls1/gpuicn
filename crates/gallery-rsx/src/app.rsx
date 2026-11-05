@@ -24,11 +24,14 @@ fn env_theme() {
 }
 
 #[component]
-pub fn App() -> impl IntoElement {
+pub fn App(
+    /// The current page (tests drive it); defaults to `GALLERY_PAGE`.
+    page: Option<Signal<usize>>,
+) -> impl IntoElement {
     crate::ui::init();
     env_theme();
     let t = theme();
-    let page = signal(env_page());
+    let page = page.unwrap_or_else(|| signal(env_page()));
 
     <div class="size-full flex text-sm" bg={t.get().background} text_color={t.get().foreground}>
         <div class="flex flex-col w-[220px] p-2 gap-1 border-r overflow-y-scroll" border_color={t.get().border} bg={t.get().sidebar}>

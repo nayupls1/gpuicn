@@ -111,6 +111,11 @@ impl PopoverHandle {
         self.open.get()
     }
 
+    /// Whether the popover is open, without subscribing.
+    pub fn is_open_untracked(&self) -> bool {
+        self.open.get_untracked()
+    }
+
     /// Vertical room for the content on the side it opened on (tracked).
     pub fn available_height(&self) -> Option<f32> {
         self.available_height.get()

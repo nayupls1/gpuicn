@@ -77,3 +77,15 @@ pub fn Badge(
   style methods. See the list of shorthands in rsx's `styled.rs` build script.
 * Missing rsx features are tracked as issues in nayupls1/rsx; leave a
   `// rsx#N: ...` note where a workaround or a visual difference remains.
+
+## Checking your work
+
+* Build: `cargo build -p gallery-rsx` (it compiles every `registry-rsx/ui/*.rsx`
+  and `crates/gallery-rsx/src/**/*.rsx`; rsx compile errors point at the `.rsx` line).
+* Behavior on real GPUI layout and input: `cargo test -p gallery-rsx`
+  (`src/tests.rsx` renders every page in light and dark mode; add a test per
+  overlay/interaction: `mount`, `center(node_ref)`, `cx.simulate_click`,
+  `cx.simulate_keystrokes("escape")`, `settle(cx)`).
+* Looks: `GALLERY_PAGE=<page> gallery-rsx --html` renders a page through rsx's
+  HTML target, which you can screenshot in a browser and compare with the
+  gpui gallery (`cargo run -p gallery`, `GALLERY_PAGE=<page>`).
