@@ -69,6 +69,12 @@ pub fn variant_colors(variant: ButtonVariant, theme: &Theme) -> (Color, Color, C
     }
 }
 
+/// Context for containers that join buttons into one control (`ButtonGroup`):
+/// each `Button` created inside calls it once, and applies the attributes it
+/// returns to its root, after its own defaults and before the caller's.
+#[derive(Clone)]
+pub struct ButtonJoin(pub std::rc::Rc<dyn Fn() -> Attributes>);
+
 #[component]
 pub fn Button(
     /// Text shown after the icon.
@@ -110,6 +116,7 @@ pub fn Button(
         variant
     };
     let t = theme();
+    let join = StoredValue::new(use_context::<ButtonJoin>().map(|j| (j.0)()).unwrap_or_default());
     let node = NodeRef::new();
     let hovered = signal(false);
     let flag = |a: Option<Accessor<bool>>| move || a.map(|a| a.get()).unwrap_or(false);
@@ -160,8 +167,9 @@ pub fn Button(
         if hover && variant == ButtonVariant::Link {
             el = el.class("underline");
         }
-        // The caller's overrides win over the defaults above (rsx#10).
-        el.spread(attrs.with_value(|a| a.clone()))
+        // A group's joins, then the caller's overrides, win over the defaults
+        // above (applied here rather than statically because of rsx#10).
+        el.spread(join.with_value(|j| j.clone())).spread(attrs.with_value(|a| a.clone()))
     };
     let ring = move || {
         let theme = t.get();

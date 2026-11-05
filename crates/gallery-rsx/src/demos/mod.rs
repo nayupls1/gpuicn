@@ -4,29 +4,40 @@
 //! Each page is `demos/<name>.rsx` with `pub fn demo() -> Element`.
 #![allow(dead_code, unused_imports)]
 
+rsx::module!(pub accordion = "demos/accordion");
+rsx::module!(pub alert = "demos/alert");
 rsx::module!(pub aspect_ratio = "demos/aspect_ratio");
 rsx::module!(pub avatar = "demos/avatar");
 rsx::module!(pub badge = "demos/badge");
+rsx::module!(pub breadcrumb = "demos/breadcrumb");
 rsx::module!(pub button = "demos/button");
+rsx::module!(pub button_group = "demos/button_group");
 rsx::module!(pub calendar = "demos/calendar");
+rsx::module!(pub card = "demos/card");
 rsx::module!(pub chart = "demos/chart");
 rsx::module!(pub checkbox = "demos/checkbox");
+rsx::module!(pub collapsible = "demos/collapsible");
 rsx::module!(pub context_menu = "demos/context_menu");
 rsx::module!(pub date_picker = "demos/date_picker");
 rsx::module!(pub dropdown_menu = "demos/dropdown_menu");
+rsx::module!(pub empty = "demos/empty");
 rsx::module!(pub field = "demos/field");
 rsx::module!(pub form = "demos/form");
 rsx::module!(pub input = "demos/input");
 rsx::module!(pub input_group = "demos/input_group");
 rsx::module!(pub input_otp = "demos/input_otp");
+rsx::module!(pub item = "demos/item");
 rsx::module!(pub kbd = "demos/kbd");
 rsx::module!(pub label = "demos/label");
 rsx::module!(pub menubar = "demos/menubar");
 rsx::module!(pub native_select = "demos/native_select");
 rsx::module!(pub navigation_menu = "demos/navigation_menu");
+rsx::module!(pub pagination = "demos/pagination");
 rsx::module!(pub popover = "demos/popover");
 rsx::module!(pub progress = "demos/progress");
 rsx::module!(pub radio_group = "demos/radio_group");
+rsx::module!(pub resizable = "demos/resizable");
+rsx::module!(pub scroll_area = "demos/scroll_area");
 rsx::module!(pub select = "demos/select");
 rsx::module!(pub separator = "demos/separator");
 rsx::module!(pub sidebar = "demos/sidebar");
@@ -34,38 +45,52 @@ rsx::module!(pub skeleton = "demos/skeleton");
 rsx::module!(pub slider = "demos/slider");
 rsx::module!(pub spinner = "demos/spinner");
 rsx::module!(pub switch = "demos/switch");
+rsx::module!(pub table = "demos/table");
+rsx::module!(pub tabs = "demos/tabs");
 rsx::module!(pub textarea = "demos/textarea");
 rsx::module!(pub toggle = "demos/toggle");
 rsx::module!(pub toggle_group = "demos/toggle_group");
 rsx::module!(pub tooltip = "demos/tooltip");
+rsx::module!(pub typography = "demos/typography");
 
 pub type Demo = fn() -> rsx::Element;
 
 /// Every page, in sidebar order.
 pub const DEMOS: &[(&str, Demo)] = &[
+    ("Accordion", accordion::demo),
+    ("Alert", alert::demo),
     ("Aspect Ratio", aspect_ratio::demo),
     ("Avatar", avatar::demo),
     ("Badge", badge::demo),
+    ("Breadcrumb", breadcrumb::demo),
     ("Button", button::demo),
+    ("Button Group", button_group::demo),
     ("Calendar", calendar::demo),
+    ("Card", card::demo),
     ("Chart", chart::demo),
     ("Checkbox", checkbox::demo),
+    ("Collapsible", collapsible::demo),
     ("Context Menu", context_menu::demo),
     ("Date Picker", date_picker::demo),
     ("Dropdown Menu", dropdown_menu::demo),
+    ("Empty", empty::demo),
     ("Field", field::demo),
     ("Form", form::demo),
     ("Input", input::demo),
     ("Input Group", input_group::demo),
     ("Input OTP", input_otp::demo),
+    ("Item", item::demo),
     ("Kbd", kbd::demo),
     ("Label", label::demo),
     ("Menubar", menubar::demo),
     ("Native Select", native_select::demo),
     ("Navigation Menu", navigation_menu::demo),
+    ("Pagination", pagination::demo),
     ("Popover", popover::demo),
     ("Progress", progress::demo),
     ("Radio Group", radio_group::demo),
+    ("Resizable", resizable::demo),
+    ("Scroll Area", scroll_area::demo),
     ("Select", select::demo),
     ("Separator", separator::demo),
     ("Sidebar", sidebar::demo),
@@ -73,10 +98,13 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Slider", slider::demo),
     ("Spinner", spinner::demo),
     ("Switch", switch::demo),
+    ("Table", table::demo),
+    ("Tabs", tabs::demo),
     ("Textarea", textarea::demo),
     ("Toggle", toggle::demo),
     ("Toggle Group", toggle_group::demo),
     ("Tooltip", tooltip::demo),
+    ("Typography", typography::demo),
 ];
 
 /// One-line summary shown under each page title (from the shadcn docs).
