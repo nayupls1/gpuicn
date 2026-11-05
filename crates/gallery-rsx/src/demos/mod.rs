@@ -6,6 +6,7 @@
 
 rsx::module!(pub accordion = "demos/accordion");
 rsx::module!(pub alert = "demos/alert");
+rsx::module!(pub alert_dialog = "demos/alert_dialog");
 rsx::module!(pub aspect_ratio = "demos/aspect_ratio");
 rsx::module!(pub avatar = "demos/avatar");
 rsx::module!(pub badge = "demos/badge");
@@ -14,15 +15,19 @@ rsx::module!(pub button = "demos/button");
 rsx::module!(pub button_group = "demos/button_group");
 rsx::module!(pub calendar = "demos/calendar");
 rsx::module!(pub card = "demos/card");
+rsx::module!(pub carousel = "demos/carousel");
 rsx::module!(pub chart = "demos/chart");
 rsx::module!(pub checkbox = "demos/checkbox");
 rsx::module!(pub collapsible = "demos/collapsible");
 rsx::module!(pub context_menu = "demos/context_menu");
 rsx::module!(pub date_picker = "demos/date_picker");
+rsx::module!(pub dialog = "demos/dialog");
+rsx::module!(pub drawer = "demos/drawer");
 rsx::module!(pub dropdown_menu = "demos/dropdown_menu");
 rsx::module!(pub empty = "demos/empty");
 rsx::module!(pub field = "demos/field");
 rsx::module!(pub form = "demos/form");
+rsx::module!(pub hover_card = "demos/hover_card");
 rsx::module!(pub input = "demos/input");
 rsx::module!(pub input_group = "demos/input_group");
 rsx::module!(pub input_otp = "demos/input_otp");
@@ -40,14 +45,17 @@ rsx::module!(pub resizable = "demos/resizable");
 rsx::module!(pub scroll_area = "demos/scroll_area");
 rsx::module!(pub select = "demos/select");
 rsx::module!(pub separator = "demos/separator");
+rsx::module!(pub sheet = "demos/sheet");
 rsx::module!(pub sidebar = "demos/sidebar");
 rsx::module!(pub skeleton = "demos/skeleton");
 rsx::module!(pub slider = "demos/slider");
+rsx::module!(pub sonner = "demos/sonner");
 rsx::module!(pub spinner = "demos/spinner");
 rsx::module!(pub switch = "demos/switch");
 rsx::module!(pub table = "demos/table");
 rsx::module!(pub tabs = "demos/tabs");
 rsx::module!(pub textarea = "demos/textarea");
+rsx::module!(pub toast = "demos/toast");
 rsx::module!(pub toggle = "demos/toggle");
 rsx::module!(pub toggle_group = "demos/toggle_group");
 rsx::module!(pub tooltip = "demos/tooltip");
@@ -59,6 +67,7 @@ pub type Demo = fn() -> rsx::Element;
 pub const DEMOS: &[(&str, Demo)] = &[
     ("Accordion", accordion::demo),
     ("Alert", alert::demo),
+    ("Alert Dialog", alert_dialog::demo),
     ("Aspect Ratio", aspect_ratio::demo),
     ("Avatar", avatar::demo),
     ("Badge", badge::demo),
@@ -67,15 +76,19 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Button Group", button_group::demo),
     ("Calendar", calendar::demo),
     ("Card", card::demo),
+    ("Carousel", carousel::demo),
     ("Chart", chart::demo),
     ("Checkbox", checkbox::demo),
     ("Collapsible", collapsible::demo),
     ("Context Menu", context_menu::demo),
     ("Date Picker", date_picker::demo),
+    ("Dialog", dialog::demo),
+    ("Drawer", drawer::demo),
     ("Dropdown Menu", dropdown_menu::demo),
     ("Empty", empty::demo),
     ("Field", field::demo),
     ("Form", form::demo),
+    ("Hover Card", hover_card::demo),
     ("Input", input::demo),
     ("Input Group", input_group::demo),
     ("Input OTP", input_otp::demo),
@@ -93,14 +106,17 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Scroll Area", scroll_area::demo),
     ("Select", select::demo),
     ("Separator", separator::demo),
+    ("Sheet", sheet::demo),
     ("Sidebar", sidebar::demo),
     ("Skeleton", skeleton::demo),
     ("Slider", slider::demo),
+    ("Sonner", sonner::demo),
     ("Spinner", spinner::demo),
     ("Switch", switch::demo),
     ("Table", table::demo),
     ("Tabs", tabs::demo),
     ("Textarea", textarea::demo),
+    ("Toast", toast::demo),
     ("Toggle", toggle::demo),
     ("Toggle Group", toggle_group::demo),
     ("Tooltip", tooltip::demo),
