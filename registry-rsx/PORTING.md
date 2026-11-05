@@ -56,27 +56,31 @@ pub fn Badge(
 * Overlays: use `popover::Popover` (click/hover/manual modes, `PopoverHandle`)
   or `<Portal>` directly (full-window layers: dialogs, sheets, toasts).
   `portal::FullWindow` is a full-window portal layer.
-* Animations: `utils::use_animation_clock()` gives a ticking seconds signal; there
-  are no transforms on divs, but `<svg>` supports `transform`.
+* Animations: rsx's `transition`/`duration-*`/`animate-*` classes, or
+  `utils::use_animation_clock()` / `use_transition(ms)` for values driven from code.
 * Icons: `<Icon name={IconName::Check} class="size-3" />` or `{IconName::Check}`.
 
-## rsx gotchas
+## rsx notes
+
+The port needs rsx 0.0.3 or newer: 0.0.2 and 0.0.3 fixed everything the port
+first worked around (rsx#7–#36: shadows, fonts, grid, transitions, Tab focus,
+hit testing, nested portals, element identity, scrolling, images, ...).
 
 * `//` comments inside markup are **text** (JSX rules); use `{/* ... */}`.
-* Children can't be forwarded as `Children` directly: pass `trigger={move || children.render()}`.
-* `Callback` isn't `PartialEq`, so keep callbacks in a `StoredValue`, not a `Signal`.
-* Float literals passed to `f32` props warn (`float_literal_f32_fallback`): write `4.0f32`.
-* Unknown attributes call the `Styled`/`Div` method of the same name
-  (`corner_radius={px(6.)}`, `w={px(10.)}`, `bind={move |el| el.bg(..)}`).
-  A reactive expression (`.get()` inside) becomes a binding, and bindings are
-  layered **above** static styles, so a caller's static class can't override a
-  reactive default unless the whole root is inside a `move ||` (the pattern above).
-* Class names rsx doesn't know (e.g. `shrink-0`, `truncate`, `whitespace-nowrap`,
-  `shadow-md`, `z-10`, `font-mono`, `select-none`, `rounded-t-md`) are silently
-  ignored on GPUI. Use the known ones (`flex-shrink-0`, `flex-none`, ...) or
-  style methods. See the list of shorthands in rsx's `styled.rs` build script.
-* Missing rsx features are tracked as issues in nayupls1/rsx; leave a
-  `// rsx#N: ...` note where a workaround or a visual difference remains.
+* Unknown class names are no-ops on GPUI; debug builds print them once
+  (`RSX_QUIET_CLASSES=1` silences that).
+* Components with an `Attributes` prop accept any style method and `ref`
+  (`<Button w={px(240.)} ref={node} />`), and a caller's attributes written
+  after a reactive binding win over it.
+* An endless animation that reads `rsx::animation_frame()` keeps GPUI's test
+  executor busy (rsx#42); `utils::set_reduced_motion(true)` turns animations
+  off in tests.
+* Still missing in rsx: a clipboard API and resize cursors (rsx#43), keeping the
+  placeholder while focused (rsx#38), forwarding `Option<Callback>` props
+  (rsx#39), logical bubbling out of nested portals (rsx#40), settled
+  transitions on the HTML target (rsx#41). Pointer capture doesn't exist either,
+  so drags (slider, resizable, scroll thumbs) put a transparent portal over the
+  window while dragging.
 
 ## Checking your work
 
