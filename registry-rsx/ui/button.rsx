@@ -143,7 +143,6 @@ pub fn Button(
         };
         let height = rsx::rems(h * 0.25);
         let width = if size.is_icon() { height } else { rsx::auto() };
-        let focus_visible = interactive && is_focus_visible(node);
         let border_width = if border.is_some() { 1.0 } else { 0.0 };
 
         <button
@@ -178,7 +177,9 @@ pub fn Button(
             {label.map(|l| l.get())}
             {children}
             {icon_end.map(|i| <Icon name={i} />)}
-            {focus_visible.then(|| ring(theme.ring.opacity(0.5), 3.0, radius, border_width))}
+            {/* Its own hole: focus arrives on mouse down, and rebuilding the
+                button between press and release would lose the click. */}
+            {move || (interactive && is_focus_visible(node)).then(|| ring(t.get().ring.opacity(0.5), 3.0, radius, border_width))}
         </button>
     };
     match tooltip {

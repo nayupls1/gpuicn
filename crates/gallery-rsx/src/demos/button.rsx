@@ -2,6 +2,7 @@ use rsx::prelude::*;
 
 use crate::ui::button::{Button, ButtonSize};
 use crate::ui::icon::IconName;
+use crate::ui::sonner::toast;
 
 pub fn demo() -> Element {
     <div class="flex flex-col gap-4">
@@ -20,8 +21,9 @@ pub fn demo() -> Element {
             <Button outline icon={IconName::Mail} label="Login with Email" />
             <Button size={ButtonSize::Sm} loading={true} label="Please wait" />
             <Button disabled label="Disabled" />
-            {/* TODO(sonner): show a toast on click once `sonner` is ported. */}
-            <Button outline label="Click me" tooltip={"Shows a toast".to_string()} />
+            <Button outline label="Click me" tooltip={"Shows a toast".to_string()} onClick={move |_| {
+                toast("Button clicked");
+            }} />
         </div>
     </div>
 }
