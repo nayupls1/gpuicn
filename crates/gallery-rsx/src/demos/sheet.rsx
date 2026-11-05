@@ -2,18 +2,10 @@ use rsx::prelude::*;
 
 use crate::ui::button::Button;
 use crate::ui::dialog::DialogHandle;
-use crate::ui::label::Label;
+use crate::ui::field::Field;
+use crate::ui::input::Input;
 use crate::ui::sheet::Sheet;
 use crate::ui::utils::Side;
-
-/// A labelled text field.
-fn field(label: &'static str, value: &'static str) -> Element {
-    // TODO(field): `<Field label={label}><Input default_value={value} /></Field>` once `field` and `input` are ported.
-    <div class="flex flex-col gap-3">
-        <Label text={label} />
-        <input value={value} class="h-9 w-full" />
-    </div>
-}
 
 fn sheet(side: Side, label: &'static str) -> Element {
     <Sheet
@@ -22,8 +14,8 @@ fn sheet(side: Side, label: &'static str) -> Element {
         title="Edit profile"
         description="Make changes to your profile here. Click save when you're done."
         content={|_| <div class="flex flex-col gap-4">
-            {field("Name", "Pedro Duarte")}
-            {field("Username", "@peduarte")}
+            <Field label="Name"><Input default_value="Pedro Duarte" /></Field>
+            <Field label="Username"><Input default_value="@peduarte" /></Field>
         </div>}
         footer={|sheet: DialogHandle| <div class="flex flex-col gap-2">
             <Button label="Save changes" />

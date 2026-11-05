@@ -35,7 +35,7 @@
 use std::rc::Rc;
 
 use rsx::prelude::*;
-use rsx::{Bounds, Point, Size};
+use rsx::{window_size, Bounds, Point, Size};
 
 use super::icon::{Icon, IconName};
 use super::popover::{Popover, PopoverHandle};
@@ -272,13 +272,12 @@ pub fn MenuList(
             }
         }
     };
-    // Take focus so the arrow keys reach this list (gpui: focus on first render).
-    if let Some(p) = popover.filter(|_| !nested) {
-        p.focus_on_open(root);
-    }
-    on_mount(move || spawn_local(async move { root.focus() }));
+    // Take focus so the arrow keys reach this list (gpui: focus on first
+    // render). The popover's panel asks too, but the innermost request wins.
+    root.focus();
 
-    // One handle per row, to place an open submenu next to its row.
+    // One handle per row, to scroll the highlighted row into view and to
+    // place an open submenu next to its row.
     let row_refs = memo(move || {
         let n = entries.with(|m| m.entries.len());
         (0..n).map(|_| NodeRef::new()).collect::<Vec<_>>()
@@ -293,12 +292,13 @@ pub fn MenuList(
             .enumerate()
             .map(|(ix, entry)| {
                 let is_highlighted = move || highlighted.get() == Some(ix) || open_submenu.get() == Some(ix);
+                let row_ref = refs.get(ix).copied().unwrap_or_default();
                 match entry {
                     MenuEntry::Label(label) => <div class="relative flex flex-col">
                         <div class="px-2 py-1.5 text-sm leading-[1.25rem] font-medium" class:pl-8={any_indicator}>{label}</div>
                     </div>,
                     MenuEntry::Separator => <div class="relative flex flex-col">
-                        <div class="h-px my-1" mx={px(-4.0)} bg={t.get().border} />
+                        <div class="h-px -mx-1 my-1" bg={t.get().border} />
                     </div>,
                     MenuEntry::Item(item) => {
                         let item = Rc::new(item);
@@ -318,7 +318,7 @@ pub fn MenuList(
                                 corner_radius={theme.radius_sm()}
                                 bg={if lit { hover_bg } else { Color::TRANSPARENT }}
                                 text_color={if lit { hover_fg } else { fg }}
-                                opacity={if disabled { 0.5f32 } else { 1.0f32 }}
+                                class:opacity-50={disabled}
                                 onMouseMove={move |_| {
                                     if !disabled && (highlighted.get_untracked() != Some(ix) || open_submenu.get_untracked().is_some()) {
                                         highlighted.set(Some(ix));
@@ -343,7 +343,7 @@ pub fn MenuList(
                                 >{shortcut}</div>)}
                             </div>
                         };
-                        <div class="relative flex flex-col">{row}</div>
+                        <div ref={row_ref} class="relative flex flex-col">{row}</div>
                     }
                     MenuEntry::Submenu { label, icon, .. } => {
                         let row = move || {
@@ -367,7 +367,7 @@ pub fn MenuList(
                                 <Icon name={IconName::ChevronRight} class="ml-auto" />
                             </div>
                         };
-                        <div ref={refs.get(ix).copied().unwrap_or_default()} class="relative flex flex-col">{row}</div>
+                        <div ref={row_ref} class="relative flex flex-col">{row}</div>
                     }
                 }
             })
@@ -383,12 +383,9 @@ pub fn MenuList(
         let place = move |el: rsx::Div| {
             let (Some(row), Some(list)) = (row.bounds(), root.bounds()) else { return el.opacity(0.0) };
             let size = sub.bounds().map(|b| b.size).unwrap_or(Size { width: 0.0, height: 0.0 });
-            let mut x = row.origin.x + row.size.width + 8.0;
-            let mut y = row.origin.y - 5.0;
-            if let Some(vp) = popover.and_then(|p| p.viewport_size()) {
-                x = x.min(vp.width - 8.0 - size.width).max(8.0);
-                y = y.min(vp.height - 8.0 - size.height).max(8.0);
-            }
+            let vp = window_size();
+            let x = (row.origin.x + row.size.width + 8.0).min(vp.width - 8.0 - size.width).max(8.0);
+            let y = (row.origin.y - 5.0).min(vp.height - 8.0 - size.height).max(8.0);
             // Absolute children are placed from the list's padding box (inside its 1px border).
             el.left(px(x - list.origin.x - 1.0))
                 .top(px(y - list.origin.y - 1.0))
@@ -432,6 +429,9 @@ pub fn MenuList(
         if let Some(next) = next.filter(|_| !selectable.is_empty()) {
             e.stop_propagation();
             highlighted.set(Some(next));
+            if let Some(row) = row_refs.get_untracked().get(next) {
+                row.scroll_into_view();
+            }
             return;
         }
         match e.key.as_str() {
@@ -487,19 +487,16 @@ pub fn MenuList(
 
     move || {
         let theme = t.get();
-        // rsx#7: no `shadow-md`.
         <div
             ref={root}
             class="relative flex flex-col p-1 border"
+            class:shadow-md={theme.shadows}
             corner_radius={theme.radius_md()}
             border_color={theme.border}
             bg={theme.popover}
             text_color={theme.popover_foreground}
             bind={cap}
             onKeyDown={on_key}
-            // rsx-gpui focuses every focusable ancestor of a click, outermost
-            // last: keep the popover panel from taking focus from the list.
-            onClick={move |e: &ClickEvent| e.stop_propagation()}
             onHover={move |h: &bool| {
                 if !*h && open_submenu.get_untracked().is_none() {
                     highlighted.set(None);
@@ -546,7 +543,7 @@ pub fn DropdownMenu(
         open={open}
         on_open_change={move |o: &bool| if let Some(f) = on_open_change { f.call(o) }}
         handle={handle}
-        trigger={move || trigger.map(|t| t.render())}
+        trigger={trigger}
         content={move |popover: PopoverHandle| <MenuList entries={menu} popover={popover} {...attrs.with_value(|a| a.clone())} />}
     />
 }

@@ -43,14 +43,7 @@ pub fn Drawer(
             border_color={t.get().border}
             bg={t.get().background}
             text_color={t.get().foreground}
-            bind={move |mut el: rsx::Div| {
-                // rsx#9: no `rounded-t-*` class; set the top corners directly.
-                let r = t.get().radius_lg();
-                let radii = &mut rsx::Styled::style(&mut el).corner_radii;
-                radii.top_left = Some(r);
-                radii.top_right = Some(r);
-                el
-            }}
+            bind={move |el: rsx::Div| el.rounded_t_radius(t.get().radius_lg())}
             {...attrs.with_value(|a| a.clone())}
         >
             {/* The drag handle. */}

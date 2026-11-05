@@ -26,10 +26,10 @@ use std::time::{Duration, Instant};
 use rsx::prelude::*;
 use rsx::Scope;
 
+use super::dialog::use_entered;
 use super::icon::{Icon, IconName};
 use super::spinner::Spinner;
 use super::theme::theme;
-use super::utils::{ease_in_out, use_transition};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ToastVariant {
@@ -273,19 +273,19 @@ pub fn Toaster(
 #[component]
 fn ToastCard(toast: ReadSignal<Toast>) -> impl IntoElement {
     let t = theme();
-    let enter = use_transition(250);
+    let entered = use_entered();
     let id = toast.get_untracked().id;
-    // rsx#7: no `shadow-lg`. rsx#16: slides in with a margin, not a transform.
+    // Fades in and rises 12px (gpuicn animates a top margin; a translation
+    // doesn't push the other toasts).
     <div
-        class="flex items-center gap-1.5 w-full p-4 border text-[13px]"
+        class="flex items-center gap-1.5 w-full p-4 border text-[13px] transition duration-[250ms] ease-in-out"
         corner_radius={t.get().radius_lg()}
         border_color={t.get().border}
         bg={t.get().popover}
         text_color={t.get().popover_foreground}
-        opacity={ease_in_out(enter.get())}
-        mt={px(12.0 * (1.0 - ease_in_out(enter.get())))}
-        // Clicks on a toast don't reach what's under it.
-        onMouseDown={move |e: &MouseEvent| e.stop_propagation()}
+        class:shadow-lg={t.get().shadows}
+        opacity={move || if entered.get() { 1.0 } else { 0.0 }}
+        translate_y={move || px(if entered.get() { 0.0 } else { 12.0 })}
     >
         {move || {
             let icon = match toast.with(|t| t.variant) {
@@ -307,8 +307,7 @@ fn ToastCard(toast: ReadSignal<Toast>) -> impl IntoElement {
             corner_radius={t.get().radius_sm()}
             bg={t.get().primary}
             text_color={t.get().primary_foreground}
-            onClick={move |e: &ClickEvent| {
-                e.stop_propagation();
+            onClick={move |_| {
                 handler();
                 dismiss(id);
             }}

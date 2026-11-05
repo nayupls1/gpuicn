@@ -28,7 +28,6 @@ use super::popover::{outer_layout_class, Popover, PopoverHandle};
 use super::theme::theme;
 use super::utils::Align;
 
-
 #[component]
 pub fn Combobox(
     /// `(value, label)` pairs (gpuicn's `.item(value, label)`).
@@ -66,8 +65,7 @@ pub fn Combobox(
     let attrs = StoredValue::new(attrs);
     let popover = PopoverHandle::new();
 
-    // The button is built once (rsx#27: a click is lost if it's rebuilt
-    // between press and release); only its label is a reactive hole.
+    // The button is built once; only its label is a reactive hole.
     let trigger = move || {
         <Button outline class="w-[200px] justify-between" {...attrs.with_value(|a| a.clone())}>
             <div>{move || label().map(|l| l.to_string()).unwrap_or_else(|| placeholder.get())}</div>
@@ -89,17 +87,8 @@ pub fn Combobox(
                     .map(|(value, label)| CommandItem::new(label.clone()).value(value.clone()).checked(Some(value) == current.as_ref()))
                     .collect::<Vec<_>>()
             }));
-            // The popover focuses its panel once it's open (after the
-            // search field's own autofocus): hand the focus back.
-            let input = NodeRef::new();
-            effect(move || {
-                if popover.content_ref().is_focused() && !input.is_focused() {
-                    input.focus();
-                }
-            });
-            // rsx#28-like: a removed element's NodeRef keeps its last focus
-            // state, so the panel would still read as focused when it reopens.
-            on_cleanup(move || popover.content_ref().set_focused(false));
+            // The search field's `autofocus` wins over the popover panel's
+            // focus request (the innermost one does).
             let current = StoredValue::new(current);
             let select = move |value: &SharedString| {
                 let next = current.with_value(|c| (c.as_ref() != Some(value)).then(|| value.clone()));
@@ -111,17 +100,17 @@ pub fn Combobox(
             };
             let size = move |el: Div| {
                 let theme = t.get();
-                el.w(px(popover.trigger_bounds().size.width.max(200.0)))
+                let el = el
+                    .w(px(popover.trigger_bounds().size.width.max(200.0)))
                     .corner_radius(theme.radius_md())
-                    .border_color(theme.border)
+                    .border_color(theme.border);
+                if theme.shadows { el.class("shadow-md") } else { el }
             };
-            // rsx#7: no `shadow-md`.
             <div class="flex flex-col border" bind={size}>
                 <Command
                     placeholder={search_placeholder}
                     empty={empty}
                     groups={vec![group]}
-                    input_ref={input}
                     onSelect={select}
                 />
             </div>

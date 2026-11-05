@@ -1,6 +1,7 @@
 use rsx::prelude::*;
 
 use crate::ui::select::{Select, SelectGroup, SelectItem};
+use crate::ui::sonner::toast;
 
 pub fn demo() -> Element {
     <Select
@@ -13,8 +14,7 @@ pub fn demo() -> Element {
             .item(SelectItem::new("grapes", "Grapes"))
             .item(SelectItem::new("pineapple", "Pineapple"))]}
         onChange={|value: &SharedString| {
-            // TODO(sonner): `toast(format!("Picked {value}"))` once `sonner` is ported.
-            eprintln!("Picked {value}");
+            toast(format!("Picked {value}"));
         }}
     />
 }

@@ -8,11 +8,10 @@ pub fn demo() -> Element {
     let t = theme();
     <ContextMenu
         trigger={<div
-            class="flex h-[150px] w-[300px] items-center justify-center rounded-md text-sm"
+            class="flex h-[150px] w-[300px] items-center justify-center rounded-md border-dashed text-sm"
             border_width={px(1.5)}
             border_color={t.get().muted_foreground.opacity(0.45)}
         >
-            {/* rsx: no dashed borders (gpuicn draws this one `border_dashed()`). */}
             Right click here
         </div>}
         class="min-w-[208px]"

@@ -19,7 +19,7 @@
 use std::time::Duration;
 
 use rsx::prelude::*;
-use rsx::{Bounds, Length, Point, Size};
+use rsx::{window_size, Bounds, Length, Point, Size};
 
 use super::theme::theme;
 use super::utils::{pointer_pressed, Align, Side};
@@ -46,14 +46,11 @@ pub struct PopoverHandle {
     on_open_change: StoredValue<Option<Callback<bool>>>,
     trigger: NodeRef,
     content: NodeRef,
-    viewport: NodeRef,
     hovered_trigger: Signal<bool>,
     hovered_content: Signal<bool>,
     hover_generation: Signal<u64>,
     /// Vertical room on the chosen side (Radix's `--radix-popper-available-height`).
     available_height: Signal<Option<f32>>,
-    /// What takes focus when the popover opens, if not the content panel.
-    focus_target: StoredValue<Option<NodeRef>>,
 }
 
 impl Default for PopoverHandle {
@@ -69,12 +66,10 @@ impl PopoverHandle {
             on_open_change: StoredValue::new(None),
             trigger: NodeRef::new(),
             content: NodeRef::new(),
-            viewport: NodeRef::new(),
             hovered_trigger: signal(false),
             hovered_content: signal(false),
             hover_generation: signal(0),
             available_height: signal(None),
-            focus_target: StoredValue::new(None),
         }
     }
 
@@ -86,14 +81,10 @@ impl PopoverHandle {
         if let Some(f) = self.on_open_change.get_value() {
             f.call(&open);
         }
-        if open {
-            let (content, target) = (self.content, self.focus_target);
-            // Take focus once the content exists, so Escape and arrow keys reach it.
-            spawn_local(async move { target.get_value().unwrap_or(content).focus() });
-        } else {
-            // Return focus to the trigger.
-            let trigger = self.trigger;
-            spawn_local(async move { trigger.focus() });
+        if !open {
+            // Return focus to the trigger (the content takes it when it
+            // opens, see `Popover`).
+            self.trigger.focus();
         }
     }
 
@@ -139,23 +130,18 @@ impl PopoverHandle {
         self.trigger
     }
 
-    /// The window's size while the popover is open (tracked), for content
-    /// that places floating parts of its own (submenus).
+    /// The window's size (tracked), for content that places floating parts
+    /// of its own (submenus).
     pub fn viewport_size(&self) -> Option<Size<f32>> {
-        self.viewport.bounds().map(|b| b.size).filter(|s| s.width > 0.0)
+        Some(window_size()).filter(|s| s.width > 0.0)
     }
 
     /// Focus `node` instead of the content panel when the popover opens:
-    /// for content that handles its own keys (menus, lists). Call it from
-    /// the content; it's forgotten when that content goes away.
+    /// for content that handles its own keys (menus, lists). Call it while
+    /// building the content: the panel asks for focus as it's built too, and
+    /// of the requests made in one frame the innermost wins.
     pub fn focus_on_open(&self, node: NodeRef) {
-        let target = self.focus_target;
-        target.set_value(Some(node));
-        on_cleanup(move || {
-            if target.get_value() == Some(node) {
-                target.set_value(None);
-            }
-        });
+        node.focus();
     }
 
     fn schedule_hover(self, delays: (u64, u64)) {
@@ -362,7 +348,6 @@ pub fn Popover(
     let appearance = !unstyled;
     let t = theme();
     let content_size = move || handle.content.bounds().map(|b| b.size).unwrap_or(Size { width: 0.0, height: 0.0 });
-    let viewport = move || handle.viewport.bounds().map(|b| b.size).unwrap_or(Size { width: 0.0, height: 0.0 });
     let hover_delays = match mode {
         PopoverTrigger::Hover { open_delay_ms, close_delay_ms } => Some((open_delay_ms, close_delay_ms)),
         _ => None,
@@ -371,10 +356,15 @@ pub fn Popover(
 
     // Built once per opening; only its position and size follow the signals.
     let layer = move || {
+        // Take focus so Escape (and the content's own keys) reach it. Hover
+        // cards and tooltips leave the focus where it is, like gpuicn.
+        if hover_delays.is_none() {
+            handle.content.focus();
+        }
         let place_panel = move |el: rsx::Div| {
             let theme = t.get();
             let size = content_size();
-            let vp = viewport();
+            let vp = window_size();
             let trigger_bounds = handle.trigger_bounds();
             let (position, corner, max_height) = match anchor_position.and_then(|a| a.get()) {
                 Some(p) => (p, Corner::TopLeft, None),
@@ -389,8 +379,8 @@ pub fn Popover(
             // Scroll only once the content has hit the cap, so small popovers
             // (tooltips with arrows) are never clipped.
             let scroll = appearance && max_height.is_some_and(|max| size.height > 0.0 && size.height + 1.0 >= max);
-            // Hidden for the frame where we don't know our size (or the window's) yet.
-            let measured = size.width > 0.0 && vp.width > 0.0;
+            // Hidden for the frame where we don't know our size yet.
+            let measured = size.width > 0.0;
             let mut el = el.left(px(at.x)).top(px(at.y)).opacity(if measured { 1.0 } else { 0.0 });
             if let Some(max) = max_height.filter(|_| appearance) {
                 el = el.max_h(px(max));
@@ -405,27 +395,24 @@ pub fn Popover(
                     .border_color(theme.border)
                     .bg(theme.popover)
                     .text_color(theme.popover_foreground);
+                if theme.shadows {
+                    el = el.class("shadow-md");
+                }
             }
-            el.spread(attrs.with_value(|a| a.clone()))
+            // The caller's styles (`{...attrs}` below) come after this binding and win.
+            el
         };
 
         <div
             ref={handle.content}
             class="absolute flex flex-col"
             bind={place_panel}
-            // The click-away backdrop is a sibling underneath; GPUI delivers
-            // mouse-downs to every element under the pointer, so keep presses
-            // inside the content from reaching (and closing) it.
-            onMouseDown={move |e: &MouseEvent| e.stop_propagation()}
             onKeyDown={move |e: &KeyboardEvent| {
                 if e.key == "Escape" {
                     e.stop_propagation();
                     handle.close();
                 }
             }}
-            // Moves over the panel don't reach the backdrop's `on_backdrop_move`
-            // either (gpui's `occlude()`).
-            onMouseMove={move |e: &rsx::MouseMoveEvent| e.stop_propagation()}
             onHover={move |h: &bool| {
                 if let Some(delays) = hover_delays {
                     handle.hovered_content.set(*h);
@@ -438,24 +425,20 @@ pub fn Popover(
         </div>
     };
 
-    let backdrop = move || match hover_delays {
-        // Hover popovers only need the window measured.
-        Some(_) => <div class="absolute inset-0" ref={handle.viewport} />,
-        // Click-away backdrop: closes the popover and swallows the click, so
-        // clicking the trigger again doesn't immediately reopen it.
-        None => <div
+    // Click-away backdrop under the content (hover popovers have none): it
+    // closes the popover and takes the click, so clicking the trigger again
+    // doesn't immediately reopen it. Only the topmost element gets the
+    // pointer, so presses and moves over the content never reach it.
+    let backdrop = move || {
+        hover_delays.is_none().then(|| <div
             class="absolute inset-0"
-            ref={handle.viewport}
-            onMouseDown={move |e: &MouseEvent| {
-                e.stop_propagation();
-                handle.close();
-            }}
+            onMouseDown={move |_| handle.close()}
             onMouseMove={move |e: &rsx::MouseMoveEvent| {
                 if let Some(f) = on_backdrop_move {
                     f.call(&e.position)
                 }
             }}
-        />,
+        />)
     };
 
     let fill = wrapper_class.as_deref().is_some_and(|c| c.contains("w-"));
@@ -490,7 +473,7 @@ pub fn Popover(
         </div>
         <Show when={handle.open.get()}>
             <Portal>
-                {backdrop}
+                {backdrop()}
                 {layer()}
             </Portal>
         </Show>

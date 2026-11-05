@@ -84,7 +84,7 @@ pub fn Menubar(
             mode={PopoverTrigger::Manual}
             open={open.get() == Some(ix)}
             align={Align::Start}
-            side_offset={8.0f32}
+            side_offset={8}
             on_open_change={move |is_open: &bool| {
                 if !*is_open && open.get_untracked() == Some(ix) {
                     open.set(None);
@@ -107,9 +107,9 @@ pub fn Menubar(
     let attrs = StoredValue::new(attrs);
     move || {
         let theme = t.get();
-        // rsx#7: no `shadow-xs`.
         <div
             class="flex items-center gap-1 h-9 p-1 border"
+            class:shadow-xs={theme.shadows}
             corner_radius={theme.radius_md()}
             border_color={theme.border}
             bg={theme.background}

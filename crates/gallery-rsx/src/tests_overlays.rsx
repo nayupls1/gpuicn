@@ -234,6 +234,9 @@ fn toasts_show_update_dismiss_and_expire(cx: &mut TestAppContext) {
 fn toast_action_runs_and_dismisses(cx: &mut TestAppContext) {
     use crate::ui::sonner::{toast, toasts, Toast, ToasterPosition, Toaster};
     let undone = cx.update(|_| signal(0));
+    // The card rises into place on rsx's (wall-clock) transitions; without
+    // them it's where the coordinates below expect it right away.
+    crate::ui::utils::set_reduced_motion(true);
     let cx = mount(cx, move || <div class="size-full"><Toaster position={ToasterPosition::TopLeft} /></div>);
     cx.update(|_, _| toast(Toast::new("Event has been created").action("Undo", move || undone.update(|n| *n += 1))));
     wait(cx, 300);
@@ -313,12 +316,9 @@ fn carousel_moves_and_clamps_or_loops(cx: &mut TestAppContext) {
     assert_eq!(looped.get_untracked(), vec![2], "looping wraps around");
 }
 
-// rsx gap: a `<Portal>` inside another `<Portal>` is drawn *below* it
-// (rsx-gpui collects the inner portal first and both layers share priority
-// 1), so a popover, select or tooltip opened from a dialog is hidden under
-// the dialog and can't be clicked.
+// A popover opened from a dialog is drawn above it and gets its clicks
+// (rsx#26), and they don't bubble to the dialog's backdrop.
 #[gpui::test]
-
 fn popover_inside_dialog_is_drawn_above_it(cx: &mut TestAppContext) {
     use crate::ui::dialog::{Dialog, DialogHandle};
     use crate::ui::popover::{Popover, PopoverHandle};

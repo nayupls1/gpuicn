@@ -56,12 +56,12 @@ pub fn Sheet(
             Side::Top => ("w-full", "border-b"),
             Side::Bottom => ("w-full", "border-t"),
         };
-        // rsx#7: no `shadow-lg`.
         <div
             class={format!("relative flex flex-col gap-4 {size} {edge}")}
             bg={t.get().background}
             text_color={t.get().foreground}
             border_color={t.get().border}
+            class:shadow-lg={t.get().shadows}
             {...attrs.with_value(|a| a.clone())}
         >
             {header(title, description, "gap-1.5 p-4")}

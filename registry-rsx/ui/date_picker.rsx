@@ -15,7 +15,6 @@ use super::popover::{outer_layout_class, Popover, PopoverHandle};
 use super::theme::theme;
 use super::utils::Align;
 
-
 #[component]
 pub fn DatePicker(
     #[prop(optional)] mode: CalendarMode,
@@ -47,13 +46,12 @@ pub fn DatePicker(
         let muted = theme.muted_foreground;
         let label = selection_label(&current.get());
         let empty = label.is_none();
-        // Empty: the whole trigger (icon too) is `text-muted-foreground`.
-        let muted_text = Attributes::new().with(move |el: Div| if empty { el.text_color(muted) } else { el });
         <Button
             outline
             icon={IconName::Calendar}
             class={format!("justify-start font-normal w-[{width}px]")}
-            {...muted_text}
+            // Empty: the whole trigger (icon too) is `text-muted-foreground`.
+            bind={move |el: Div| if empty { el.text_color(muted) } else { el }}
             {...attrs.with_value(|a| a.clone())}
         >
             {match label {
@@ -69,12 +67,9 @@ pub fn DatePicker(
         align={Align::Start}
         class="w-auto p-0"
         trigger={move || trigger.into_element()}
-        // rsx#?: a mouse-down in the content also reaches the popover's
-        // click-away backdrop underneath (sibling hitboxes aren't occluded),
-        // which closes it before the click lands; stop it here.
-        content={move |_| <div class="flex" onMouseDown={move |e: &MouseEvent| e.stop_propagation()}>
+        content={move |_| <div class="flex">
             <Calendar
-                {...Attributes::new().with(move |el: Div| el.bg(t.get().popover))}
+                bg={t.get().popover}
                 mode={mode}
                 months={months}
                 selection={current}

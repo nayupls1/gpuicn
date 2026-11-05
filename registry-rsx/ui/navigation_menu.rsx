@@ -103,7 +103,7 @@ pub fn NavigationMenu(
                 <Popover
                     mode={PopoverTrigger::Hover { open_delay_ms: 150, close_delay_ms: 250 }}
                     align={Align::Start}
-                    side_offset={6.0f32}
+                    side_offset={6}
                     on_open_change={move |open: &bool| {
                         if *open {
                             open_ix.set(Some(ix));
@@ -148,8 +148,7 @@ pub fn NavigationMenuLink(
             {...attrs.with_value(|a| a.clone())}
         >
             <div class="font-medium leading-none">{title}</div>
-            {/* rsx#9: no `line-clamp-2` / `text-ellipsis`; long descriptions wrap. */}
-            {description.map(|d| <div class="leading-[19.25px]" text_color={theme.muted_foreground}>{d}</div>)}
+            {description.map(|d| <div class="line-clamp-2 text-ellipsis leading-snug" text_color={theme.muted_foreground}>{d}</div>)}
         </div>
     }
 }

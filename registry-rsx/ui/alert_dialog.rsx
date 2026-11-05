@@ -47,13 +47,13 @@ pub fn AlertDialog(
     let t = theme();
     let attrs = StoredValue::new(attrs);
     let panel = move |handle: DialogHandle| {
-        // rsx#7: no `shadow-lg`.
         <div
             class="flex flex-col gap-4 w-[512px] max-w-full p-6 border"
             corner_radius={t.get().radius_lg()}
             border_color={t.get().border}
             bg={t.get().background}
             text_color={t.get().foreground}
+            class:shadow-lg={t.get().shadows}
             {...attrs.with_value(|a| a.clone())}
         >
             {header(title, description, "")}

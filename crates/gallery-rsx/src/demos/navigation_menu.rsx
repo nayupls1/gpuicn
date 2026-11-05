@@ -2,6 +2,7 @@ use rsx::prelude::*;
 
 use crate::ui::icon::{Icon, IconName};
 use crate::ui::navigation_menu::{NavigationMenu, NavigationMenuItem, NavigationMenuLink};
+use crate::ui::sonner::toast;
 use crate::ui::theme::{mix, theme, ColorExt};
 
 pub fn demo() -> Element {
@@ -10,10 +11,13 @@ pub fn demo() -> Element {
         NavigationMenuItem::new("Getting started").content(move || {
             let theme = t.get();
             // The featured tile (`row-span-3` with a gradient) next to three links.
-            // rsx: no gradient backgrounds; the tile takes the gradient's middle color.
-            let tile = mix(theme.muted.opacity(0.4), mix(theme.muted, theme.foreground, 0.06), 0.5);
             <div class="flex gap-2 w-[480px]">
-                <div class="flex flex-col justify-end flex-none w-[190px] p-4 gap-2" corner_radius={theme.radius_md()} bg={tile}>
+                <div
+                    class="flex flex-col justify-end flex-none w-[190px] p-4 gap-2 bg-gradient-to-b"
+                    corner_radius={theme.radius_md()}
+                    gradient_from={theme.muted.opacity(0.4)}
+                    gradient_to={mix(theme.muted, theme.foreground, 0.06)}
+                >
                     <Icon name={IconName::Terminal} class="size-8" />
                     <div class="mt-4 text-lg leading-[24px] font-medium">gpuicn</div>
                     <div class="text-sm leading-[18px]" text_color={theme.muted_foreground}>
@@ -28,21 +32,15 @@ pub fn demo() -> Element {
             </div>
         }),
         NavigationMenuItem::new("Components").content(|| {
-            // rsx: no grid layout; two flex columns stand in for `grid-cols-2`.
-            <div class="flex gap-1 w-[420px]">
-                <div class="flex flex-col flex-1 min-w-0 gap-1">
-                    <NavigationMenuLink title="Alert Dialog" description="A modal dialog that interrupts the user." />
-                    <NavigationMenuLink title="Progress" description="Displays an indicator showing completion." />
-                </div>
-                <div class="flex flex-col flex-1 min-w-0 gap-1">
-                    <NavigationMenuLink title="Hover Card" description="Preview content available behind a link." />
-                    <NavigationMenuLink title="Tabs" description="Layered sections of content." />
-                </div>
+            <div class="grid grid-cols-2 gap-1 w-[420px]">
+                <NavigationMenuLink title="Alert Dialog" description="A modal dialog that interrupts the user." />
+                <NavigationMenuLink title="Hover Card" description="Preview content available behind a link." />
+                <NavigationMenuLink title="Progress" description="Displays an indicator showing completion." />
+                <NavigationMenuLink title="Tabs" description="Layered sections of content." />
             </div>
         }),
         NavigationMenuItem::new("Docs").on_click(|_| {
-            // TODO(sonner): `toast("Docs clicked")` once `sonner` is ported.
-            eprintln!("Docs clicked");
+            toast("Docs clicked");
         }),
     ];
     <NavigationMenu items={items} />
