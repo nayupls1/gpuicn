@@ -71,7 +71,7 @@ rsx::module!(pub utils = "components/ui/utils");
 /// Install the theme. Call once at startup, inside the root component.
 pub fn init() {
     theme::init();
-    utils::init();
     input::init();
+    utils::init();
 }
 // gpuicn:end

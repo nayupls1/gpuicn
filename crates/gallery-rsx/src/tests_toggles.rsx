@@ -261,5 +261,6 @@ fn avatar_draws_its_image_at_the_avatar_size(cx: &mut TestAppContext) {
     assert_eq!((b.size.width, b.size.height), (32.0, 32.0));
     let b = rounded.bounds().unwrap();
     assert_eq!((b.size.width, b.size.height), (40.0, 40.0), "the caller's size wins");
-    assert!(std::path::Path::new(&crate::demos::avatar_image(0)).exists(), "rsx loads `<img src>` file paths");
+    // The photos are served by the gallery's asset source (main.rs), so packaged builds have them.
+    assert_eq!(crate::demos::avatar_image(0), "avatar-1.png");
 }

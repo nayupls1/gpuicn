@@ -194,7 +194,7 @@ registry_dependencies = ["button", "icon", "input", "theme", "utils"]
 name = "input-otp"
 description = "Accessible one-time password component with copy paste functionality."
 files = ["input_otp.rsx"]
-registry_dependencies = ["icon", "theme", "utils"]
+registry_dependencies = ["icon", "input", "theme", "utils"]
 
 [[component]]
 name = "item"
@@ -314,7 +314,7 @@ registry_dependencies = ["theme", "utils"]
 name = "sonner"
 description = "An opinionated toast component."
 files = ["sonner.rsx"]
-registry_dependencies = ["icon", "portal", "spinner", "theme"]
+registry_dependencies = ["dialog", "icon", "portal", "spinner", "theme"]
 note = "Render `<Toaster />` once in your root component, then call `toast(\"Saved\")` from anywhere."
 
 [[component]]
