@@ -1,0 +1,90 @@
+# Release builds: both galleries (gpui `gallery`, rsx `gallery-rsx`) and both
+# CLIs (`gpuicn`, `gpuicn-rsx`), as AppImages for Linux and a zip for Windows.
+#
+# Every push to master (and manual runs) uploads them as workflow artifacts;
+# pushing a `v*` tag also attaches them to a GitHub release.
+name: release
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+    paths: [".github/workflows/release.yml", "packaging/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # The debug-only "unsupported class" report from rsx is noise in CI logs.
+  RSX_QUIET_CLASSES: "1"
+
+jobs:
+  linux:
+    name: Linux (AppImage)
+    # The oldest supported runner, so the AppImages run on older glibc too.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: GPUI system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev \
+            libx11-xcb-dev libxcb1-dev libfontconfig1-dev libfreetype6-dev libssl-dev libzstd-dev clang \
+            libfuse2 file
+      - name: Build
+        run: cargo build --release --locked -p gallery -p gallery-rsx -p gpuicn -p gpuicn-rsx
+      - name: Package
+        run: |
+          packaging/linux/appimage.sh target/release/gallery gpuicn "gpuicn gallery" dist
+          packaging/linux/appimage.sh target/release/gallery-rsx gpuicn-rsx "gpuicn-rsx gallery" dist
+          tar -C target/release -czf dist/gpuicn-cli-x86_64-linux.tar.gz gpuicn gpuicn-rsx
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*
+          if-no-files-found: error
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --locked -p gallery -p gallery-rsx -p gpuicn -p gpuicn-rsx
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $files = "gallery.exe", "gallery-rsx.exe", "gpuicn.exe", "gpuicn-rsx.exe" | ForEach-Object { "target/release/$_" }
+          Compress-Archive -Path $files -DestinationPath dist/gpuicn-x86_64-windows.zip
+          Get-ChildItem dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

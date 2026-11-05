@@ -2049,6 +2049,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gallery-rsx"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "rsxui",
+ "rsxui-build",
+ "rsxui-core",
+ "rsxui-gpui",
+ "rsxui-html",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2474,6 +2486,16 @@ dependencies = [
 
 [[package]]
 name = "gpuicn"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "toml 0.9.12+spec-1.1.0",
+]
+
+[[package]]
+name = "gpuicn-rsx"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4570,6 +4592,63 @@ name = "roxmltree"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
+
+[[package]]
+name = "rsxui"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7aabb74ff74f88c7437be226291702851fafbb4b2086acbaece1e6c046fa5ca7"
+dependencies = [
+ "rsxui-macros",
+]
+
+[[package]]
+name = "rsxui-build"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e2f21e4acf1fd6804275201a07541953a292cc2d156a0f0ab3244993052a04d"
+dependencies = [
+ "rsxui-core",
+]
+
+[[package]]
+name = "rsxui-core"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22a5ccfe2269967973181ed499a3af35c82bdd0c37c1040f58e143b5f66c7cbd"
+
+[[package]]
+name = "rsxui-gpui"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abddc3d93528b7f6074141bebb2be73e91691cc9eeb82d4c72a3860d0e06cbce"
+dependencies = [
+ "futures",
+ "gpui",
+ "lyon_tessellation",
+ "rsxui",
+]
+
+[[package]]
+name = "rsxui-html"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8f9d750cf495bc7058a97a73bf1e58cdbd09934045a8d1143a9f61c70070cb7"
+dependencies = [
+ "rsxui",
+]
+
+[[package]]
+name = "rsxui-macros"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "540677e30b2223a8a220e2ad3b0b9c6e398f28069d1dfe659177cde0b6034fc9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rsxui-core",
+ "syn 2.0.119",
+]
 
 [[package]]
 name = "rust-embed"
