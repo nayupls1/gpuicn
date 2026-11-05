@@ -30,6 +30,8 @@ pub fn settle(cx: &mut VisualTestContext) {
 #[gpui::test]
 fn renders_every_demo(cx: &mut TestAppContext) {
     let page = cx.update(|_| signal(0usize));
+    // Spinners and pulses animate forever, which keeps the test executor from parking.
+    crate::ui::utils::set_reduced_motion(true);
     let cx = mount(cx, move || crate::app::App::new().page(page));
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
         cx.update(|_, _| Theme::change(mode));

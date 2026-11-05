@@ -209,11 +209,30 @@ thread_local! {
     };
 }
 
+thread_local! {
+    static REDUCED_MOTION: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// `prefers-reduced-motion`: when set, animations created afterwards don't
+/// run (transitions jump to their end, spinners and pulses hold still). Also
+/// useful in tests, where an endless animation keeps the app from ever idling.
+pub fn set_reduced_motion(reduced: bool) {
+    REDUCED_MOTION.with(|r| r.set(reduced));
+}
+
+/// See [`set_reduced_motion`].
+pub fn reduced_motion() -> bool {
+    REDUCED_MOTION.with(|r| r.get())
+}
+
 /// A clock for animations (spinners, skeleton pulses, transitions): returns a
 /// signal holding seconds since start, which ticks every frame while at least
 /// one component that called this is alive. rsx has no animation frames
 /// yet, so it's driven by `sleep`.
 pub fn use_animation_clock() -> ReadSignal<f32> {
+    if reduced_motion() {
+        return CLOCK.with(|(s, _)| s.read_only());
+    }
     let (time, users) = CLOCK.with(|(s, users)| {
         users.set(users.get() + 1);
         (*s, users.get())
@@ -242,6 +261,7 @@ pub fn ease_in_out(t: f32) -> f32 {
 /// ticking. Create it where the animated element is created, so it replays
 /// each time the element appears; shape it with [`ease_in_out`].
 pub fn use_transition(ms: u64) -> ReadSignal<f32> {
+    let ms = if reduced_motion() { 0 } else { ms };
     let progress = signal(if ms == 0 { 1.0f32 } else { 0.0 });
     if ms > 0 {
         let start = std::time::Instant::now();
