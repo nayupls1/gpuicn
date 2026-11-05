@@ -357,6 +357,10 @@ pub fn Popover(
             ref={handle.content}
             class="absolute flex flex-col"
             bind={place_panel}
+            // The click-away backdrop is a sibling underneath; GPUI delivers
+            // mouse-downs to every element under the pointer, so keep presses
+            // inside the content from reaching (and closing) it.
+            onMouseDown={move |e: &MouseEvent| e.stop_propagation()}
             onKeyDown={move |e: &KeyboardEvent| {
                 if e.key == "Escape" {
                     e.stop_propagation();
