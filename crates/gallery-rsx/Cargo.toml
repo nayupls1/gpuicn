@@ -1,0 +1,16 @@
+[package]
+name = "gallery-rsx"
+description = "Showcase of every gpuicn-rsx component, compiled straight from registry-rsx"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+publish = false
+
+[dependencies]
+rsx = { version = "0.0.1", package = "rsxui" }
+rsx-gpui = { version = "0.0.1", package = "rsxui-gpui" }
+rsx-html = { version = "0.0.1", package = "rsxui-html" }
+
+[build-dependencies]
+rsx-build = { version = "0.0.1", package = "rsxui-build" }
+rsx-core = { version = "0.0.1", package = "rsxui-core" }
