@@ -5,10 +5,16 @@
 
 // gpuicn:begin — managed by `gpuicn-rsx add`; edits inside this block are overwritten.
 rsx::module!(pub button = "components/ui/button");
+rsx::module!(pub context_menu = "components/ui/context_menu");
+rsx::module!(pub dropdown_menu = "components/ui/dropdown_menu");
 rsx::module!(pub icon = "components/ui/icon");
 rsx::module!(pub label = "components/ui/label");
+rsx::module!(pub menubar = "components/ui/menubar");
+rsx::module!(pub native_select = "components/ui/native_select");
+rsx::module!(pub navigation_menu = "components/ui/navigation_menu");
 rsx::module!(pub popover = "components/ui/popover");
 rsx::module!(pub portal = "components/ui/portal");
+rsx::module!(pub select = "components/ui/select");
 rsx::module!(pub separator = "components/ui/separator");
 rsx::module!(pub spinner = "components/ui/spinner");
 rsx::module!(pub theme = "components/ui/theme");

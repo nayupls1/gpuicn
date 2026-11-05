@@ -5,8 +5,14 @@
 #![allow(dead_code, unused_imports)]
 
 rsx::module!(pub button = "demos/button");
+rsx::module!(pub context_menu = "demos/context_menu");
+rsx::module!(pub dropdown_menu = "demos/dropdown_menu");
 rsx::module!(pub label = "demos/label");
+rsx::module!(pub menubar = "demos/menubar");
+rsx::module!(pub native_select = "demos/native_select");
+rsx::module!(pub navigation_menu = "demos/navigation_menu");
 rsx::module!(pub popover = "demos/popover");
+rsx::module!(pub select = "demos/select");
 rsx::module!(pub separator = "demos/separator");
 rsx::module!(pub spinner = "demos/spinner");
 rsx::module!(pub tooltip = "demos/tooltip");
@@ -16,8 +22,14 @@ pub type Demo = fn() -> rsx::Element;
 /// Every page, in sidebar order.
 pub const DEMOS: &[(&str, Demo)] = &[
     ("Button", button::demo),
+    ("Context Menu", context_menu::demo),
+    ("Dropdown Menu", dropdown_menu::demo),
     ("Label", label::demo),
+    ("Menubar", menubar::demo),
+    ("Native Select", native_select::demo),
+    ("Navigation Menu", navigation_menu::demo),
     ("Popover", popover::demo),
+    ("Select", select::demo),
     ("Separator", separator::demo),
     ("Spinner", spinner::demo),
     ("Tooltip", tooltip::demo),
