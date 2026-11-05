@@ -7,11 +7,6 @@ use rsx::prelude::*;
 
 use crate::tests::{center, mount, settle};
 
-/// `ref` for a component's root: components don't forward `ref`, but take it through a spread.
-fn node(r: NodeRef) -> Attributes {
-    Attributes::new().with(move |el| el.node_ref(r))
-}
-
 fn point(x: f32, y: f32) -> gpui::Point<gpui::Pixels> {
     gpui::point(gpui::px(x), gpui::px(y))
 }
@@ -104,7 +99,7 @@ fn pagination_moves_between_pages(cx: &mut TestAppContext) {
     let root = cx.update(|_| NodeRef::new());
     let cx = mount(cx, move || {
         <div class="p-8 flex">
-            <Pagination {...node(root)} total={10usize} page={page} onChange={move |p: &usize| page.set(*p)} />
+            <Pagination ref={root} total={10} page={page} onChange={move |p: &usize| page.set(*p)} />
         </div>
     });
     let b = root.bounds().unwrap();
@@ -123,10 +118,10 @@ fn breadcrumb_links_and_items_are_clickable(cx: &mut TestAppContext) {
     let cx = mount(cx, move || {
         <div class="p-8 flex flex-col gap-4 w-[400px]">
             <Breadcrumb>
-                <BreadcrumbItem label="Home" {...node(home)} onClick={move |_| clicks.update(|n| *n += 1)} />
+                <BreadcrumbItem label="Home" ref={home} onClick={move |_| clicks.update(|n| *n += 1)} />
                 <BreadcrumbItem label="Here" current />
             </Breadcrumb>
-            <Item {...node(item)} title="Clickable" onClick={move |_| item_clicks.update(|n| *n += 1)} />
+            <Item ref={item} title="Clickable" onClick={move |_| item_clicks.update(|n| *n += 1)} />
         </div>
     });
     cx.simulate_click(center(home), Modifiers::default());
@@ -143,7 +138,7 @@ fn scroll_area_scrolls_with_the_wheel(cx: &mut TestAppContext) {
     let area = cx.update(|_| NodeRef::new());
     let cx = mount(cx, move || {
         <div class="p-8">
-            <ScrollArea {...node(area)} class="h-[200px] w-[200px]" track_scroll={handle}>
+            <ScrollArea ref={area} class="h-[200px] w-[200px]" track_scroll={handle}>
                 {(0..50).map(|n| <div class="h-[20px]">{format!("row {n}")}</div>)}
             </ScrollArea>
         </div>
@@ -190,7 +185,7 @@ fn resizable_handle_drags(cx: &mut TestAppContext) {
         <div class="p-8">
             <div ref={group} class="w-[400px] h-[200px]">
                 <ResizablePanelGroup with_handle onResize={move |s: &Vec<f32>| sizes.set(s.clone())}>
-                    <ResizablePanel default_size={50.0f32} min_size={20.0f32}><div ref={left} class="size-full">One</div></ResizablePanel>
+                    <ResizablePanel default_size={50} min_size={20}><div ref={left} class="size-full">One</div></ResizablePanel>
                     <ResizablePanel><div class="size-full">Two</div></ResizablePanel>
                 </ResizablePanelGroup>
             </div>

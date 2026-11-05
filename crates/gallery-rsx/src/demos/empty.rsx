@@ -7,7 +7,6 @@ use crate::ui::theme::theme;
 
 pub fn demo() -> Element {
     let t = theme();
-    let muted = Attributes::new().with(move |el| el.text_color(t.get().muted_foreground));
     <Empty
         outline
         class="w-[560px]"
@@ -20,7 +19,7 @@ pub fn demo() -> Element {
                 <Button label="Create Project" />
                 <Button outline label="Import Project" />
             </div>
-            <Button link size={ButtonSize::Sm} icon_end={IconName::ArrowUpRight} label="Learn More" {...muted} />
+            <Button link size={ButtonSize::Sm} icon_end={IconName::ArrowUpRight} label="Learn More" text_color={t.get().muted_foreground} />
         </div>
     </Empty>
 }

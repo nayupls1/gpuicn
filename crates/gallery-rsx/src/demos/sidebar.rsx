@@ -1,5 +1,8 @@
 use rsx::prelude::*;
 
+use crate::demos::avatar_image;
+use crate::ui::avatar::Avatar;
+use crate::ui::breadcrumb::{Breadcrumb, BreadcrumbItem};
 use crate::ui::icon::{Icon, IconName};
 use crate::ui::separator::Separator;
 use crate::ui::sidebar::{Sidebar, SidebarGroup, SidebarInset, SidebarMenuItem, SidebarTrigger};
@@ -15,13 +18,8 @@ fn sidebar_block(tile: Element, title: &'static str, subtitle: &'static str) -> 
             <div class="font-medium">{title}</div>
             <div class="text-xs" text_color={t.get().muted_foreground}>{subtitle}</div>
         </div>
-        <Icon name={IconName::ChevronsUpDown} class="size-4 flex-none" {...muted()} />
+        <Icon name={IconName::ChevronsUpDown} class="size-4 flex-none" text_color={t.get().muted_foreground} />
     </div>
-}
-
-fn muted() -> Attributes {
-    let t = theme();
-    Attributes::new().with(move |el: rsx::Div| el.text_color(t.get().muted_foreground))
 }
 
 /// `bg-muted/50` reads on dark; in light it needs full `bg-muted` to show.
@@ -39,14 +37,7 @@ pub fn demo() -> Element {
     >
         <Icon name={IconName::Terminal} />
     </div>;
-    let user = <div
-        class="flex flex-none size-8 items-center justify-center text-sm"
-        corner_radius={t.get().radius_lg()}
-        bg={t.get().muted}
-    >
-        {/* TODO(avatar): `<Avatar src={avatar_image(1)} fallback="CN" class="size-8" corner_radius={theme.radius_lg()} />` once `avatar` is ported. */}
-        CN
-    </div>;
+    let user = <Avatar src={avatar_image(1)} fallback="CN" class="size-8" corner_radius={t.get_untracked().radius_lg()} />;
     let header = sidebar_block(logo, "Acme Inc.", "Enterprise");
     let footer = sidebar_block(user, "shadcn", "m@example.com");
 
@@ -68,13 +59,10 @@ pub fn demo() -> Element {
             <div class="flex items-center gap-2 h-12 px-4 border-b" border_color={t.get().border}>
                 <SidebarTrigger sidebar="demo-sidebar" />
                 <Separator vertical class="h-4" />
-                {/* TODO(breadcrumb): `<Breadcrumb><BreadcrumbItem>Building Your Application</BreadcrumbItem>
-                    <BreadcrumbItem current>Data Fetching</BreadcrumbItem></Breadcrumb>` once `breadcrumb` is ported. */}
-                <div class="flex items-center gap-2.5 text-sm" text_color={t.get().muted_foreground}>
-                    Building Your Application
-                    <Icon name={IconName::ChevronRight} class="size-3.5" />
-                    <div text_color={t.get().foreground}>Data Fetching</div>
-                </div>
+                <Breadcrumb>
+                    <BreadcrumbItem label="Building Your Application" />
+                    <BreadcrumbItem label="Data Fetching" current />
+                </Breadcrumb>
             </div>
             <div class="flex flex-col gap-4 p-4">
                 {[24, 40].map(|h| <div class={format!("h-{h} w-full rounded-xl")} bg={placeholder(&t.get())} />)}

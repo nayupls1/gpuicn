@@ -133,9 +133,6 @@ impl IconName {
 /// Builds an `<svg>` from lucide inner markup (self-closing tags only).
 fn svg_element(body: &str, rotate_degrees: f32) -> Div {
     let mut g = element("g");
-    if rotate_degrees != 0.0 {
-        g = g.attr("transform", format!("rotate({rotate_degrees} 12 12)"));
-    }
     for (tag, attrs) in parse_tags(body) {
         let mut el = element(tag);
         for (name, value) in attrs {
@@ -143,7 +140,7 @@ fn svg_element(body: &str, rotate_degrees: f32) -> Div {
         }
         g = g.child(el);
     }
-    element("svg")
+    let svg = element("svg")
         .attr("viewBox", "0 0 24 24")
         .attr("fill", "none")
         .attr("stroke", "currentColor")
@@ -151,7 +148,9 @@ fn svg_element(body: &str, rotate_degrees: f32) -> Div {
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round")
         .class("size-4 flex-none")
-        .child(g)
+        .child(g);
+    // `rotate-*` on the `<svg>` itself (rsx transforms svgs on every target).
+    if rotate_degrees != 0.0 { svg.rotate(rotate_degrees) } else { svg }
 }
 
 /// `<path d="..."/><circle cx="12" .../>` → `[("path", [("d", "...")]), ...]`.
@@ -182,8 +181,9 @@ fn parse_tags(body: &str) -> Vec<(String, Vec<(String, String)>)> {
 #[component]
 pub fn Icon(
     name: Accessor<IconName>,
-    /// Degrees, clockwise (e.g. a chevron that turns when its section opens).
-    #[prop(optional)]
+    /// Degrees, clockwise (e.g. a chevron that turns when its section opens):
+    /// `rotate={move || if open.get() { 180.0 } else { 0.0 }}`. For a fixed
+    /// angle, a `rotate-90` class does the same.
     rotate: Option<Accessor<f32>>,
     attrs: Attributes,
 ) -> impl IntoElement {

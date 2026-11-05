@@ -15,7 +15,7 @@
 //! ```
 
 use rsx::prelude::*;
-use rsx::Div;
+use rsx::{Div, Style};
 
 use super::icon::{Icon, IconName};
 use super::separator::Separator;
@@ -71,7 +71,6 @@ pub fn Item(
         variant
     };
     let t = theme();
-    let hovered = signal(false);
     // Inside an `<ItemGroup separated>`: a separator above every item but the first.
     let group = use_context::<GroupContext>();
     let id = group.map(|g| g.items.register());
@@ -93,7 +92,7 @@ pub fn Item(
                 <Icon name={icon} />
             </div>)
         });
-        // Hover is a `bind` below, so it doesn't re-create the item (losing a click in progress).
+        let hover = theme.accent.opacity(0.5);
         let (border, bg) = match variant {
             ItemVariant::Default => (Color::TRANSPARENT, Color::TRANSPARENT),
             ItemVariant::Outline => (theme.border, Color::TRANSPARENT),
@@ -110,9 +109,8 @@ pub fn Item(
             corner_radius={theme.radius_md()}
             border_color={border}
             bg={bg}
+            hover={move |s: Style| if on_click.is_some() { s.bg(hover) } else { s }}
             {...&attrs}
-            bind={move |el: Div| if on_click.is_some() && hovered.get() { el.bg(t.get().accent.opacity(0.5)) } else { el }}
-            onHover={move |h: &bool| hovered.set(*h)}
             onClick={move |e: &ClickEvent| {
                 if let Some(f) = on_click {
                     f.call(e)
@@ -122,8 +120,7 @@ pub fn Item(
             {media}
             {has_content.then(|| <div class="flex flex-col flex-1 min-w-0 gap-1">
                 {title.map(|title| <div class="flex items-center gap-2 font-medium leading-[1.375]">{title}</div>)}
-                {/* rsx#9: no `line-clamp-2` on the description. */}
-                {description.map(|description| <div text_color={theme.muted_foreground}>{description}</div>)}
+                {description.map(|description| <div class="line-clamp-2" text_color={theme.muted_foreground}>{description}</div>)}
                 {children}
             </div>)}
             {action.map(|action| <div class="flex items-center gap-2">{action}</div>)}
@@ -141,13 +138,9 @@ pub fn ItemGroup(
     /// Insert an `ItemSeparator` between items.
     separated: bool,
     /// [`Item`]s.
-    children: Option<ChildrenFn>,
+    children: Option<Children>,
     attrs: Attributes,
 ) -> impl IntoElement {
-    let context = GroupContext { separated, items: Siblings::new() };
-    // rsx gap: a context doesn't reach `Children` (built in the caller's scope), so the
-    // parts come in as `ChildrenFn`, rendered inside the `Provider`.
-    <div class="flex flex-col" {...attrs}>
-        <Provider value={context}>{children}</Provider>
-    </div>
+    provide_context(GroupContext { separated, items: Siblings::new() });
+    <div class="flex flex-col" {...attrs}>{children}</div>
 }

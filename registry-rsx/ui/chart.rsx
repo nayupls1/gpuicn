@@ -12,7 +12,7 @@
 //!
 //! <LineChart labels={..} series={..} dots />
 //! <AreaChart labels={..} series={..} stacked />
-//! <PieChart slices={vec![ChartSlice::new("Chrome", 275.), ChartSlice::new("Safari", 200.)]} donut={0.6f32} />
+//! <PieChart slices={vec![ChartSlice::new("Chrome", 275.), ChartSlice::new("Safari", 200.)]} donut={0.6} />
 //! ```
 
 use std::rc::Rc;
@@ -307,7 +307,6 @@ fn cartesian(
     let hovered = signal(None::<usize>);
     let plot = NodeRef::new();
     let label_every = label_every.max(1);
-    let attrs = StoredValue::new(attrs);
 
     (move || {
         let theme = t.get();
@@ -345,9 +344,9 @@ fn cartesian(
                 let (labels, all, colors) = &*shared;
                 hovered.get().filter(|ix| *ix < points).map(|ix| {
                     let left = relative((ix as f32 + 0.5) / points.max(1) as f32);
-                    // rsx#7: no `shadow-xl`. rsx#8: the value isn't in the mono font.
                     <div
                         class="absolute top-0 ml-2 min-w-32 flex flex-col gap-1.5 px-2.5 py-1.5 border text-xs leading-none"
+                        class:shadow-xl={theme.shadows}
                         left={left}
                         corner_radius={theme.radius_lg()}
                         border_color={theme.border.opacity(0.5)}
@@ -357,7 +356,7 @@ fn cartesian(
                         {...all.iter().enumerate().map(|(s, series)| <div class="flex items-center gap-2">
                             <div class="size-2.5 flex-none rounded-[2px]" bg={colors[s]} />
                             <div class="flex-1 min-w-0" text_color={theme.muted_foreground}>{series.label.clone()}</div>
-                            <div class="font-medium">{format_value(series.data.get(ix).copied().unwrap_or(0.))}</div>
+                            <div class="font-medium" font_family={theme.mono_font_family.clone()}>{format_value(series.data.get(ix).copied().unwrap_or(0.))}</div>
                         </div>)}
                     </div>
                 })
@@ -365,7 +364,7 @@ fn cartesian(
         };
 
         let legend_items: Vec<(SharedString, Color)> = all.iter().zip(colors.iter()).map(|(s, c)| (s.label.clone(), *c)).collect();
-        <div class="flex flex-col gap-2 w-full" {...attrs.with_value(|a| a.clone())}>
+        <div class="flex flex-col gap-2 w-full" {...&attrs}>
             <div
                 ref={plot}
                 class="relative w-full"

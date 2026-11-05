@@ -20,7 +20,8 @@ use rsx::prelude::*;
 pub fn PortalHost() -> impl IntoElement {}
 
 /// A layer covering the whole window, drawn above everything else.
-/// `ref` measures the window (rsx doesn't expose the viewport size yet).
+/// `viewport` is the layer's `NodeRef` (its bounds are the window's; for just
+/// the size, `rsx::window_size()` is simpler).
 #[component]
 pub fn FullWindow(viewport: Option<NodeRef>, children: Children, attrs: Attributes) -> impl IntoElement {
     let viewport = viewport.unwrap_or_default();

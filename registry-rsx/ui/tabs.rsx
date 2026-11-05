@@ -68,7 +68,7 @@ pub fn Tabs(
     full_width: bool,
     on_change: Option<Callback<SharedString>>,
     /// [`Tab`]s.
-    children: Option<ChildrenFn>,
+    children: Option<Children>,
     attrs: Attributes,
 ) -> impl IntoElement {
     let vertical = vertical || orientation == Orientation::Vertical;
@@ -105,11 +105,11 @@ pub fn Tabs(
         let Some(tab) = context.info(id) else { return Element::Empty };
         let selected = move || active.with(|a| a.as_ref() == Some(&tab.value.get_value()));
         let node = tab.trigger;
-        // One element whose styles are bindings: re-creating it on selection or
-        // focus changes would lose GPUI's element state (the click in progress, focus).
+        // One element whose styles are a binding, so selection and theme changes
+        // restyle it in place.
         <div
             ref={node}
-            class="relative flex items-center justify-center gap-1.5 h-full px-2 py-1 border text-sm leading-[1.25rem] font-medium"
+            class="relative flex items-center justify-center gap-1.5 h-full px-2 py-1 border text-sm leading-[1.25rem] font-medium whitespace-nowrap"
             class:flex-1={!vertical}
             bind={move |el: Div| {
                 let theme = t.get();
@@ -122,7 +122,7 @@ pub fn Tabs(
                     (true, false) => theme.background,
                 };
                 let border = if is_selected && theme.is_dark() { theme.input } else { Color::TRANSPARENT };
-                // rsx#7: no `shadow-sm` on the selected tab. rsx#9: no `whitespace-nowrap`.
+                let el = if is_selected && theme.shadows { el.class("shadow-sm") } else { el };
                 let el = el
                     .corner_radius(theme.radius_md())
                     .border_color(border)
@@ -155,8 +155,7 @@ pub fn Tabs(
         </div>
     };
 
-    // rsx gap: a context doesn't reach `Children` (built in the caller's scope), so the
-    // parts come in as `ChildrenFn`, rendered inside the `Provider`.
+    provide_context(context);
     <div class="flex gap-2" class:flex-col={!vertical} class:flex-row={vertical} {...attrs}>
         <div class="flex" class:flex-none={!vertical && !full_width}>
             <div
@@ -179,7 +178,7 @@ pub fn Tabs(
             let tab = context.ordered().into_iter().find(|t| t.value.get_value() == active)?;
             tab.content.map(|content| <div class="flex-1 min-w-0">{content}</div>)
         }}
-        <Provider value={context}>{children}</Provider>
+        {children}
     </div>
 }
 

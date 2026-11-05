@@ -94,10 +94,10 @@ pub fn Accordion(
     default_value: Vec<SharedString>,
     on_change: Option<Callback<Vec<SharedString>>>,
     /// [`AccordionItem`]s.
-    children: Option<ChildrenFn>,
+    children: Option<Children>,
     attrs: Attributes,
 ) -> impl IntoElement {
-    let context = AccordionContext {
+    provide_context(AccordionContext {
         state: signal(default_value),
         value,
         on_change,
@@ -105,12 +105,8 @@ pub fn Accordion(
         collapsible,
         items: Siblings::new(),
         triggers: StoredValue::new(Vec::new()),
-    };
-    // rsx gap: a context doesn't reach `Children` (built in the caller's scope), so the
-    // parts come in as `ChildrenFn`, rendered inside the `Provider`.
-    <div class="flex flex-col w-full" {...attrs}>
-        <Provider value={context}>{children}</Provider>
-    </div>
+    });
+    <div class="flex flex-col w-full" {...attrs}>{children}</div>
 }
 
 #[component]
@@ -154,7 +150,7 @@ pub fn AccordionItem(
             class="relative flex items-start justify-between gap-4 py-4 text-sm leading-[1.25rem] font-medium"
             class:cursor-pointer={move || !disabled()}
             class:underline={!disabled() && hovered.get()}
-            bind={move |el: Div| el.opacity(if disabled() { 0.5 } else { 1.0 })}
+            opacity={move || if disabled() { 0.5 } else { 1.0 }}
             onHover={move |h: &bool| hovered.set(*h)}
             onMouseDown={move |_| pointer_pressed()}
             onClick={move |_| toggle()}
@@ -175,10 +171,7 @@ pub fn AccordionItem(
         >
             <div class="flex-1 min-w-0">{title}</div>
             <div class="flex-none mt-0.5" text_color={t.get().muted_foreground}>
-                <Icon
-                    name={IconName::ChevronDown}
-                    rotate={Some(Accessor::derive(move || if open() { 180.0f32 } else { 0.0 }))}
-                />
+                <Icon name={IconName::ChevronDown} rotate={move || if open() { 180.0f32 } else { 0.0 }} />
             </div>
             {move || is_focus_visible(trigger).then(|| ring(t.get().ring.opacity(0.5), 3.0, t.get().radius - 2.0, 0.0))}
         </div>

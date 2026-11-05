@@ -43,19 +43,17 @@ pub fn Breadcrumb(
     /// Replace the default chevron separator: `separator={|| <span>/</span>}`.
     separator: Option<ChildrenFn>,
     /// `BreadcrumbItem`s and `BreadcrumbEllipsis`es.
-    children: Option<ChildrenFn>,
+    children: Option<Children>,
     attrs: Attributes,
 ) -> impl IntoElement {
     let t = theme();
-    let context = BreadcrumbContext { entries: Siblings::new(), separator };
-    // rsx gap: a context doesn't reach `Children` (built in the caller's scope), so the
-    // parts come in as `ChildrenFn`, rendered inside the `Provider`.
+    provide_context(BreadcrumbContext { entries: Siblings::new(), separator });
     <div
         class="flex flex-wrap items-center gap-2.5 text-sm leading-[1.25rem]"
         text_color={t.get().muted_foreground}
         {...attrs}
     >
-        <Provider value={context}>{children}</Provider>
+        {children}
     </div>
 }
 

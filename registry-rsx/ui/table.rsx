@@ -21,7 +21,7 @@
 //! ```
 
 use rsx::prelude::*;
-use rsx::Div;
+use rsx::{Div, Style};
 
 use super::theme::{theme, ColorExt};
 use super::utils::Siblings;
@@ -51,31 +51,25 @@ pub fn Table(
 
 /// The header rows (`<thead>`).
 #[component]
-pub fn TableHeader(children: Option<ChildrenFn>, attrs: Attributes) -> impl IntoElement {
-    <div class="flex flex-col" {...attrs}>
-        <Provider value={Section::Header}>{children}</Provider>
-    </div>
+pub fn TableHeader(children: Option<Children>, attrs: Attributes) -> impl IntoElement {
+    provide_context(Section::Header);
+    <div class="flex flex-col" {...attrs}>{children}</div>
 }
 
 /// The body rows (`<tbody>`); the last row has no border.
 #[component]
-pub fn TableBody(children: Option<ChildrenFn>, attrs: Attributes) -> impl IntoElement {
-    let section = Section::Body(Siblings::new());
-    // rsx gap: a context doesn't reach `Children` (built in the caller's scope), so the
-    // parts come in as `ChildrenFn`, rendered inside the `Provider`.
-    <div class="flex flex-col" {...attrs}>
-        <Provider value={section}>{children}</Provider>
-    </div>
+pub fn TableBody(children: Option<Children>, attrs: Attributes) -> impl IntoElement {
+    provide_context(Section::Body(Siblings::new()));
+    <div class="flex flex-col" {...attrs}>{children}</div>
 }
 
 /// The footer rows (`<tfoot>`).
 #[component]
-pub fn TableFooter(children: Option<ChildrenFn>, attrs: Attributes) -> impl IntoElement {
+pub fn TableFooter(children: Option<Children>, attrs: Attributes) -> impl IntoElement {
     let t = theme();
-    // Not inside a `move ||` (which would rebuild the rows on theme changes),
-    // so the colors are bindings and win over a caller's static classes (rsx#10).
+    provide_context(Section::Footer);
     <div class="flex flex-col border-t font-medium" border_color={t.get().border} bg={t.get().muted.opacity(0.5)} {...attrs}>
-        <Provider value={Section::Footer}>{children}</Provider>
+        {children}
     </div>
 }
 
@@ -103,20 +97,18 @@ pub fn TableRow(
         (None, Some(Section::Body(rows)), Some(id)) => !rows.is_last(id),
         _ => true,
     };
-    let hovered = signal(false);
     move || {
         let theme = t.get();
         let selected = selected.map(|s| s.get()).unwrap_or(false);
         let bg = if selected { theme.muted } else { Color::TRANSPARENT };
-        // Hover is a `bind` below, so it doesn't re-create the row.
+        let hover = theme.muted.opacity(0.5);
         <div
             class="flex w-full items-center"
             class:border-b={bordered()}
             border_color={theme.border}
             bg={bg}
+            hover={move |s: Style| if hoverable && !selected { s.bg(hover) } else { s }}
             {...&attrs}
-            bind={move |el: Div| if hoverable && hovered.get() && !selected { el.bg(t.get().muted.opacity(0.5)) } else { el }}
-            onHover={move |h: &bool| hovered.set(*h)}
         >
             {children}
         </div>
@@ -125,13 +117,12 @@ pub fn TableRow(
 
 /// The classes shared by heads and cells.
 fn cell_class(width: Option<Length>, right: bool) -> Attributes {
-    // rsx#9: no `whitespace-nowrap`.
     Attributes::new()
-        .class("flex flex-col justify-center min-w-0 overflow-hidden px-2")
+        .class("flex flex-col justify-center min-w-0 overflow-hidden whitespace-nowrap px-2")
         .class(if right { "text-right items-end" } else { "items-start" })
         .with(move |el| match width {
             Some(width) => el.flex_none().w(width),
-            None => el.flex_1(),
+            None => el.flex_1().basis(px(0.0)),
         })
 }
 

@@ -20,9 +20,9 @@ pub fn Card(children: Option<Children>, attrs: Attributes) -> impl IntoElement {
     let t = theme();
     move || {
         let theme = t.get();
-        // rsx#7: no `shadow-sm` when `theme.shadows` is on.
         <div
             class="flex flex-col gap-6 py-6 border"
+            class:shadow-sm={theme.shadows}
             corner_radius={theme.radius_xl()}
             border_color={theme.border}
             bg={theme.card}

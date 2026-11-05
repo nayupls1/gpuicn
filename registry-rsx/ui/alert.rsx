@@ -51,8 +51,7 @@ pub fn Alert(
         >
             {icon.map(|icon| <div class="pt-0.5"><Icon name={icon} /></div>)}
             <div class="flex flex-col flex-1 min-w-0 gap-0.5">
-                {/* rsx#9: no `line-clamp-1` on the title. */}
-                {title.map(|title| <div class="font-medium">{title}</div>)}
+                {title.map(|title| <div class="font-medium line-clamp-1">{title}</div>)}
                 {(description.is_some() || children.is_some()).then(|| <div class="flex flex-col gap-1" text_color={description_fg}>
                     {description}
                     {children}

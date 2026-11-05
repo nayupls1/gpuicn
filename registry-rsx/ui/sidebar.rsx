@@ -34,6 +34,7 @@ use rsx::prelude::*;
 use rsx::{Scope, Style};
 
 use super::icon::{Icon, IconName};
+use super::scroll_area::{ScrollArea, ScrollHandle};
 use super::theme::{mix, theme, ColorExt};
 
 pub const SIDEBAR_WIDTH: f32 = 256.;
@@ -116,10 +117,9 @@ pub fn Sidebar(
     collapsed: Option<Accessor<bool>>,
     header: Option<Children>,
     footer: Option<Children>,
-    /// The scrolling content area, e.g. to measure it (gpuicn's
-    /// `track_scroll`). rsx#?: no programmatic scrolling yet, so it can't
-    /// reveal the active item.
-    track_scroll: Option<NodeRef>,
+    /// The scrolling content area's handle, e.g. to scroll it yourself
+    /// (the active item scrolls into view by itself).
+    track_scroll: Option<ScrollHandle>,
     /// Groups (`SidebarGroup`) and any other content.
     children: Option<Children>,
     attrs: Attributes,
@@ -146,6 +146,7 @@ pub fn Sidebar(
             class:m-2={variant == SidebarVariant::Floating}
             class:h-auto={variant == SidebarVariant::Floating}
             class:border={variant == SidebarVariant::Floating}
+            class:shadow-sm={variant == SidebarVariant::Floating && theme.shadows}
             corner_radius={if variant == SidebarVariant::Floating { theme.radius_lg() } else { px(0.0) }}
             border_color={theme.sidebar_border}
             w={px(width)}
@@ -153,12 +154,11 @@ pub fn Sidebar(
             text_color={theme.sidebar_foreground}
             {...&attrs}
         >
-            {/* rsx#7: the floating variant has no `shadow-sm`. */}
             {header.map(|h| <div class="flex flex-col gap-2 p-2">{h}</div>)}
-            {/* TODO(scroll_area): `<ScrollArea class="flex-1 min-h-0" track_scroll={scroll}>` once `scroll_area` is ported. */}
-            <div ref={scroll} class="flex flex-col flex-1 min-h-0 overflow-y-scroll">
+            {/* A themed scrollbar shows there's more below when the menu overflows. */}
+            <ScrollArea class="flex-1 min-h-0" track_scroll={scroll}>
                 <div class="flex flex-col gap-2" class:items-center={icon}>{children}</div>
-            </div>
+            </ScrollArea>
             {footer.map(|f| <div class="flex flex-col gap-2 p-2">{f}</div>)}
         </div>
     }
@@ -215,6 +215,14 @@ pub fn SidebarMenuItem(
     let open = signal(default_open);
     provide_context(SubMenu { open });
     let has_sub = children.is_some();
+    // The active item scrolls into view in the sidebar (gpuicn's gallery
+    // `reveal_active`), e.g. when it becomes active from elsewhere.
+    let row = NodeRef::new();
+    effect(move || {
+        if active() {
+            row.scroll_into_view();
+        }
+    });
     let ctx = use_context::<SidebarContext>();
     let icon_mode = move || ctx.is_some_and(|c| c.icon_mode.get());
 
@@ -232,6 +240,7 @@ pub fn SidebarMenuItem(
         };
         let is_open = open.get();
         <div
+            ref={row}
             class={format!("flex flex-none items-center gap-2 overflow-hidden text-sm leading-[1.25rem] cursor-pointer {size}")}
             class:font-medium={active}
             corner_radius={theme.radius_md()}
@@ -253,8 +262,7 @@ pub fn SidebarMenuItem(
         >
             {icon.map(|i| <Icon name={i} />)}
             {(!icon_only).then(|| <>
-                {/* rsx#9: no `whitespace-nowrap`. */}
-                <div class="flex-1 min-w-0 overflow-hidden">{label}</div>
+                <div class="flex-1 min-w-0 overflow-hidden whitespace-nowrap">{label}</div>
                 {badge.map(|b| <div class="ml-auto text-xs leading-none font-medium">{b}</div>)}
                 {has_sub.then(|| <Icon name={if is_open { IconName::ChevronDown } else { IconName::ChevronRight }} class="size-4 flex-none ml-auto" />)}
             </>)}
@@ -284,9 +292,9 @@ pub fn SidebarInset(
     let t = theme();
     move || {
         let theme = t.get();
-        // rsx#7: the inset look has no `shadow-sm`.
         <div
             class="relative flex flex-col flex-1 min-w-0"
+            class:shadow-sm={inset && theme.shadows}
             class:m-2={inset}
             class:ml-0={inset}
             corner_radius={if inset { theme.radius_xl() } else { px(0.0) }}

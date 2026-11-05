@@ -201,17 +201,15 @@ impl<F: Fn(Date) -> bool + 'static> From<F> for DateFilter {
 }
 
 /// Rounds only the left and/or right corners (`rounded-l-*` / `rounded-r-*`).
-fn round_sides(mut el: Div, left: Option<Length>, right: Option<Length>) -> Div {
-    let c = &mut el.style().corner_radii;
-    if let Some(l) = left {
-        c.top_left = Some(l);
-        c.bottom_left = Some(l);
+fn round_sides(el: Div, left: Option<Length>, right: Option<Length>) -> Div {
+    let el = match left {
+        Some(l) => el.rounded_l_radius(l),
+        None => el,
+    };
+    match right {
+        Some(r) => el.rounded_r_radius(r),
+        None => el,
     }
-    if let Some(r) = right {
-        c.top_right = Some(r);
-        c.bottom_right = Some(r);
-    }
-    el
 }
 
 #[component]

@@ -2,11 +2,11 @@
 //!
 //! ```ignore
 //! <ResizablePanelGroup with_handle>
-//!     <ResizablePanel default_size={50.0f32}><div>One</div></ResizablePanel>
-//!     <ResizablePanel default_size={50.0f32}>
+//!     <ResizablePanel default_size={50}><div>One</div></ResizablePanel>
+//!     <ResizablePanel default_size={50}>
 //!         <ResizablePanelGroup vertical>
-//!             <ResizablePanel default_size={25.0f32}><div>Two</div></ResizablePanel>
-//!             <ResizablePanel default_size={75.0f32}><div>Three</div></ResizablePanel>
+//!             <ResizablePanel default_size={25}><div>Two</div></ResizablePanel>
+//!             <ResizablePanel default_size={75}><div>Three</div></ResizablePanel>
 //!         </ResizablePanelGroup>
 //!     </ResizablePanel>
 //! </ResizablePanelGroup>
@@ -107,7 +107,7 @@ pub fn ResizablePanelGroup(
     /// Called with the panel sizes (percent) while dragging.
     on_resize: Option<Callback<Vec<f32>>>,
     /// [`ResizablePanel`]s.
-    children: Option<ChildrenFn>,
+    children: Option<Children>,
     attrs: Attributes,
 ) -> impl IntoElement {
     let vertical = vertical || orientation == Orientation::Vertical;
@@ -121,10 +121,9 @@ pub fn ResizablePanelGroup(
         bounds: NodeRef::new(),
         on_resize,
     };
-    // rsx gap: a context doesn't reach `Children` (built in the caller's scope), so the
-    // parts come in as `ChildrenFn`, rendered inside the `Provider`.
+    provide_context(context);
     <div ref={context.bounds} class="relative flex size-full" class:flex-col={vertical} {...attrs}>
-        <Provider value={context}>{children}</Provider>
+        {children}
         {/* While dragging a handle, a transparent full-window layer follows the
             pointer: rsx's `onMouseMove` only fires over the element under it. */}
         {move || context.dragging.get().map(|ix| <Portal>
@@ -184,12 +183,9 @@ pub fn ResizablePanel(
             bg={t.get().border}
             onMouseDown={start_drag}
         >
-            {/* Wider invisible hit area. rsx gap: no `col-resize` / `row-resize` cursors. */}
-            <div
-                class="absolute"
-                bind={move |el: Div| if vertical { el.w_full().h(px(8.0)).top(px(-4.0)) } else { el.h_full().w(px(8.0)).left(px(-4.0)) }}
-                onMouseDown={start_drag}
-            />
+            {/* Wider invisible hit area (its presses bubble to the handle).
+                rsx gap: no `col-resize` / `row-resize` cursors. */}
+            <div class={if vertical { "absolute w-full h-2 -top-1" } else { "absolute h-full w-2 -left-1" }} />
             {context.with_handle.then(|| <div
                 class="flex flex-none items-center justify-center rounded-[2px] border"
                 class:h-3={vertical}
@@ -208,9 +204,8 @@ pub fn ResizablePanel(
         {handle}
         <div
             class="flex flex-col overflow-hidden"
-            class:w-full={vertical}
-            class:h-full={!vertical}
-            bind={move |el: Div| if vertical { el.h(relative(size())) } else { el.w(relative(size())) }}
+            w={move || relative(if vertical { 1.0 } else { size() })}
+            h={move || relative(if vertical { size() } else { 1.0 })}
             {...attrs}
         >
             {children}

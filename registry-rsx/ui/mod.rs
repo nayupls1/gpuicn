@@ -22,6 +22,7 @@ rsx::module!(pub collapsible = "components/ui/collapsible");
 rsx::module!(pub combobox = "components/ui/combobox");
 rsx::module!(pub command = "components/ui/command");
 rsx::module!(pub context_menu = "components/ui/context_menu");
+rsx::module!(pub data_table = "components/ui/data_table");
 rsx::module!(pub date_picker = "components/ui/date_picker");
 rsx::module!(pub dialog = "components/ui/dialog");
 rsx::module!(pub drawer = "components/ui/drawer");

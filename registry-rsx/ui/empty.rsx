@@ -40,12 +40,14 @@ pub fn Empty(
             <Icon name={icon} class="size-6" />
         </div>);
         let media = media.map(|m| m.render()).or(icon_tile);
-        // rsx gap: no dashed borders, so `outline` draws a solid one in a lighter tone.
+        // GPUI dashes 1px borders 2px-on/1px-off, which reads as faint dots
+        // in the `border` color; use a stronger tone (as gpuicn does).
         <div
             class="flex flex-col flex-1 min-w-0 items-center justify-center gap-6 p-12"
+            class:border-dashed={outline}
             corner_radius={theme.radius_lg()}
-            border_width={px(if outline { 1.0 } else { 0.0 })}
-            border_color={theme.muted_foreground.opacity(0.3)}
+            border_width={px(if outline { 1.5 } else { 0.0 })}
+            border_color={theme.muted_foreground.opacity(0.4)}
             {...&attrs}
         >
             <div class="flex flex-col max-w-[384px] items-center gap-2 text-center">
