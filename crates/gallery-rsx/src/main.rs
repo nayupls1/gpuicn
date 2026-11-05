@@ -15,6 +15,7 @@ rsx::module!(tests_forms);
 rsx::module!(tests_layout);
 rsx::module!(tests_menus);
 rsx::module!(tests_overlays);
+rsx::module!(tests_search);
 rsx::module!(tests_toggles);
 
 fn main() {

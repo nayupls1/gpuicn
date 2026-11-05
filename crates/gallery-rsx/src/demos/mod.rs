@@ -19,6 +19,8 @@ rsx::module!(pub carousel = "demos/carousel");
 rsx::module!(pub chart = "demos/chart");
 rsx::module!(pub checkbox = "demos/checkbox");
 rsx::module!(pub collapsible = "demos/collapsible");
+rsx::module!(pub combobox = "demos/combobox");
+rsx::module!(pub command = "demos/command");
 rsx::module!(pub context_menu = "demos/context_menu");
 rsx::module!(pub date_picker = "demos/date_picker");
 rsx::module!(pub dialog = "demos/dialog");
@@ -80,6 +82,8 @@ pub const DEMOS: &[(&str, Demo)] = &[
     ("Chart", chart::demo),
     ("Checkbox", checkbox::demo),
     ("Collapsible", collapsible::demo),
+    ("Combobox", combobox::demo),
+    ("Command", command::demo),
     ("Context Menu", context_menu::demo),
     ("Date Picker", date_picker::demo),
     ("Dialog", dialog::demo),
