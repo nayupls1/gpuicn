@@ -20,9 +20,9 @@ use rsx::prelude::*;
 use rsx::Div;
 
 use super::icon::{Icon, IconName};
-use super::input::InputGroupContext;
+use super::input::{control_surface, InputGroupContext};
 use super::theme::theme;
-use super::utils::{control_surface, focus_ring, invalid_ring, to_px};
+use super::utils::{focus_ring, invalid_ring, to_px};
 
 /// Content placed beside the input (`InputGroupAddon`).
 #[derive(Clone)]
@@ -36,8 +36,7 @@ impl InputGroupAddon {
     /// `InputGroupText`
     pub fn text(text: impl Into<SharedString>) -> Self {
         let text: SharedString = text.into();
-        // rsx#9: no `whitespace-nowrap`; `flex-none` keeps it on one line.
-        Self(<div class="flex-none">{text}</div>)
+        Self(<div class="whitespace-nowrap">{text}</div>)
     }
 
     /// `InputGroupButton`
@@ -78,15 +77,15 @@ pub fn InputGroup(
     #[prop(optional)]
     block_end: Vec<InputGroupAddon>,
     invalid: Option<Accessor<bool>>,
-    /// The `Input` (rendered inside the group so it finds it).
-    children: ChildrenFn,
+    /// The `Input`.
+    children: Children,
     attrs: Attributes,
 ) -> impl IntoElement {
     let t = theme();
     let focused = signal(false);
     let invalid = memo(move || invalid.map(|i| i.get()).unwrap_or(false));
     let addon_row = move |items: Vec<InputGroupAddon>, class: &'static str| {
-        <div class="flex items-center gap-2 px-3 text-sm leading-[1.25rem]" text_color={t.get().muted_foreground} {...Attributes::new().class(class)}>
+        <div class={format!("flex items-center gap-2 px-3 text-sm leading-[1.25rem] {class}")} text_color={t.get().muted_foreground}>
             {items}
         </div>
     };
@@ -102,13 +101,15 @@ pub fn InputGroup(
         control_surface(&theme, el.corner_radius(theme.radius_md()).border_color(border))
     };
     let (has_start, has_end) = (!start.is_empty(), !end.is_empty());
+    // The `Input` inside drops its own border and ring, and reports its focus.
+    provide_context(InputGroupContext { focused });
 
     <div class="relative flex flex-col w-full min-w-0 border" bind={surface} {...&attrs}>
         {(!block_start.is_empty()).then(|| addon_row(block_start, "pt-3"))}
         <div class="flex items-center min-h-9">
             {has_start.then(|| addon_row(start, "pr-0"))}
             <div class="flex-1 min-w-0 px-3 py-1">
-                <Provider value={InputGroupContext { focused }}>{children}</Provider>
+                {children}
             </div>
             {has_end.then(|| addon_row(end, "pl-0 pr-2"))}
         </div>

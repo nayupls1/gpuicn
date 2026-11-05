@@ -110,7 +110,13 @@ fn textarea_takes_newlines(cx: &mut TestAppContext) {
     cx.simulate_input("b");
     settle(cx);
     assert_eq!(text.get_untracked(), "a\nb");
-    // rsx-gpui doesn't wrap long lines in a `<textarea>` yet, so no wrapping check.
+    // Long lines wrap: the textarea grows by rows rather than overflowing sideways.
+    let two_rows = area.bounds().unwrap().size.height;
+    cx.update(|_, _| text.set("a long line of text that is much wider than the textarea, so it wraps onto more rows".into()));
+    settle(cx);
+    let b = area.bounds().unwrap();
+    assert!(b.size.width <= 320.0, "{b:?}");
+    assert!(b.size.height > two_rows, "wrapped: {} vs {two_rows}", b.size.height);
 }
 
 #[gpui::test]
@@ -143,7 +149,7 @@ fn input_otp_fills_slots_and_completes(cx: &mut TestAppContext) {
     let cx = mount(cx, move || {
         <div class="p-8"><div class="w-[320px]" ref={otp}>
             <InputOtp
-                length={6usize}
+                length={6}
                 groups={[3, 3]}
                 onChange={move |c: &String| code.set(c.clone())}
                 onComplete={move |c: &String| completed.set(Some(c.clone()))}

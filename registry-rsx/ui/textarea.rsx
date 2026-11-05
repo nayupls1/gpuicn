@@ -1,8 +1,5 @@
 //! Displays a form textarea or a component that looks like a textarea.
-//! Grows with its content (`field-sizing-content`).
-//!
-//! rsx-gpui gap: its `<textarea>` doesn't wrap long lines yet (one row per
-//! line break, the rest is clipped); gpuicn's wraps.
+//! Grows with its content (`field-sizing-content`), wrapping long lines.
 //!
 //! ```ignore
 //! <Textarea placeholder="Type your message here." />

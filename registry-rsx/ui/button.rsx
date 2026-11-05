@@ -116,16 +116,14 @@ pub fn Button(
         variant
     };
     let t = theme();
-    let join = StoredValue::new(use_context::<ButtonJoin>().map(|j| (j.0)()).unwrap_or_default());
+    let join = use_context::<ButtonJoin>().map(|j| (j.0)());
     let node = NodeRef::new();
     let hovered = signal(false);
     let flag = |a: Option<Accessor<bool>>| move || a.map(|a| a.get()).unwrap_or(false);
     let (disabled, loading, selected) = (flag(disabled), flag(loading), flag(selected));
     let interactive = move || !disabled() && !loading();
 
-    let attrs = StoredValue::new(attrs);
-    // The root element is built once (rebuilding it would drop its focus);
-    // everything that changes is applied by bindings.
+    // Everything that changes is a binding, so the button keeps its focus.
     let style = move |el: rsx::Div| {
         let theme = t.get();
         let (bg, hover_bg, fg, border) = variant_colors(variant, &theme);
@@ -151,25 +149,19 @@ pub fn Button(
             ButtonSize::IconLg => (10.0, 0.0),
         };
         let height = rsx::rems(h * 0.25);
-        let mut el = el
+        let el = el
             .h(height)
             .w(if size.is_icon() { height } else { rsx::auto() })
             .px(px(pad))
-            .corner_radius(px(theme.radius - 2.0))
+            .corner_radius(theme.radius_md())
             .bg(if hover { hover_bg } else { bg })
             .text_color(if hover { accent_fg } else { fg })
             .border_width(px(if border.is_some() { 1.0 } else { 0.0 }))
-            .border_color(border.unwrap_or(Color::TRANSPARENT));
-        if size == ButtonSize::Sm {
-            el = el.class("gap-1.5");
-        }
-        el = el.class(if interactive { "cursor-pointer" } else { "cursor-default" });
-        if hover && variant == ButtonVariant::Link {
-            el = el.class("underline");
-        }
-        // A group's joins, then the caller's overrides, win over the defaults
-        // above (applied here rather than statically because of rsx#10).
-        el.spread(join.with_value(|j| j.clone())).spread(attrs.with_value(|a| a.clone()))
+            .border_color(border.unwrap_or(Color::TRANSPARENT))
+            .class(if interactive { "cursor-pointer" } else { "cursor-default" });
+        // `shadow-xs` on outline buttons, light mode only (gpuicn's `theme.shadows`).
+        let el = if variant == ButtonVariant::Outline && theme.shadows && !theme.is_dark() { el.shadow_xs() } else { el };
+        if hover && variant == ButtonVariant::Link { el.class("underline") } else { el }
     };
     let ring = move || {
         let theme = t.get();
@@ -178,11 +170,15 @@ pub fn Button(
             .then(|| ring(theme.ring.opacity(0.5), 3.0, theme.radius - 2.0, if border.is_some() { 1.0 } else { 0.0 }))
     };
 
+    // A group's joins, then the caller's attributes, go over the defaults.
     let button = move || <button
         ref={node}
-        class="relative flex flex-shrink-0 items-center justify-center gap-2 text-sm leading-[1.25rem] font-medium"
+        class="relative flex shrink-0 items-center justify-center gap-2 whitespace-nowrap text-sm leading-[1.25rem] font-medium"
+        class:gap-1.5={size == ButtonSize::Sm}
         type="button"
+        disabled={move || !interactive()}
         bind={style}
+        {...join}
         onMouseDown={move |_| pointer_pressed()}
         onKeyDown={on_tab_key}
         onHover={move |h: &bool| hovered.set(*h)}
@@ -194,7 +190,7 @@ pub fn Button(
                 f.call(e)
             }
         }}
-        {...attrs.with_value(|a| a.clone())}
+        {...attrs}
     >
         {move || if loading() { <Spinner /> } else { icon.map(|i| <Icon name={i} />).into_element() }}
         {label.map(|l| l.get())}

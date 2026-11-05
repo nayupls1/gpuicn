@@ -29,12 +29,25 @@
 use rsx::prelude::*;
 use rsx::{Cursor, Div};
 
-use super::theme::{theme, ColorExt};
-use super::utils::{control_surface, focus_ring, invalid_ring, on_tab_key, pointer_pressed, to_px};
+use super::theme::{theme, ColorExt, Theme};
+use super::utils::{focus_ring, invalid_ring, on_tab_key, pointer_pressed, to_px};
 
 /// Called by `ui::init`. Nothing to install: rsx text fields bring their own
 /// editing keys (gpuicn binds them here).
 pub fn init() {}
+
+/// The surface of a form control: `bg-transparent dark:bg-input/30 shadow-xs`
+/// (gpuicn's `control_surface`; the shadow only in light mode, and only with
+/// `theme.shadows`).
+pub fn control_surface(theme: &Theme, el: Div) -> Div {
+    if theme.is_dark() {
+        el.bg(theme.input.opacity(0.3))
+    } else if theme.shadows {
+        el.bg(theme.background).shadow_xs()
+    } else {
+        el.bg(theme.background)
+    }
+}
 
 /// Provided by `InputGroup` to the `Input` inside it: the input then drops
 /// its own border and ring and reports its focus, so the group draws them.
@@ -110,31 +123,32 @@ pub fn Input(
         }
     };
 
-    // rsx-gpui focuses every focusable ancestor (anything with a `ref` or a
-    // key handler) on click, the outermost last, so a click would move the
-    // focus out of the field (e.g. to a popover's panel). Keep clicks here.
-    let stop_click = move |e: &ClickEvent| e.stop_propagation();
-
-    // rsx#13: rsx's text fields add their own border, padding, radius and
-    // `min-w-[160px]`; reset them so the field is just the text. The
-    // placeholder is drawn here (rsx's is a fixed grey that hides on focus);
-    // the caret and selection keep rsx's blue.
-    let field = move || {
-        let tag = if multiline { "textarea" } else { "input" };
-        rsx::element(tag)
-            .class("flex-1 w-full min-w-0 min-h-[1.25rem] p-0 border-0 rounded-none")
-            .bg(Color::TRANSPARENT)
-            // For the HTML target (GPUI ignores unknown CSS): no resize handle or browser outline.
-            .css("resize: none; outline: none")
-            .node_ref(node)
-            .attr("value", move || Some(text.get()))
-            .attr("type", move || if multiline { None } else { Some(if masked.get() { "password" } else { "text" }) })
-            .attr("autofocus", autofocus)
-            .on_input(on_input)
-            .on_key_down(on_key)
-            .on_mouse_down(move |_| pointer_pressed())
-            .on_click(stop_click)
-    };
+    // The text field: rsx's own `<input>` / `<textarea>` (which wraps), with
+    // its default border, padding and radius reset so it's just the text, in
+    // gpuicn's colors: a `muted-foreground` placeholder, a `primary/25`
+    // selection and a `foreground` caret. A disabled field is inert.
+    let field = rsx::element(if multiline { "textarea" } else { "input" })
+        .class("flex-1 w-full min-w-0 min-h-[1.25rem] p-0 border-0 rounded-none")
+        .bg(Color::TRANSPARENT)
+        // For the HTML target (GPUI ignores unknown CSS): the page's font, no
+        // resize handle or browser outline.
+        .css("font: inherit; resize: none; outline: none")
+        .node_ref(node)
+        .attr("value", text)
+        .attr("placeholder", move || placeholder.map(|p| p.get()))
+        .attr("type", move || if multiline { None } else { Some(if masked.get() { "password" } else { "text" }) })
+        .attr("disabled", disabled)
+        .attr("autofocus", autofocus)
+        .bind(move |el| {
+            let theme = t.get();
+            el.placeholder_color(theme.muted_foreground)
+                .selection_background(theme.primary.opacity(0.25))
+                .caret_color(theme.foreground)
+                .cursor(if disabled.get() { Cursor::NotAllowed } else { Cursor::Text })
+        })
+        .on_input(on_input)
+        .on_key_down(on_key)
+        .on_mouse_down(move |_| pointer_pressed());
 
     // Border, surface and disabled state, reactive (a binding, so the text
     // field inside is never rebuilt and keeps its focus and caret).
@@ -152,7 +166,8 @@ pub fn Input(
         } else {
             el
         };
-        if disabled.get() { el.opacity(0.5).cursor(Cursor::NotAllowed) } else { el.cursor(Cursor::Text) }
+        // No shadow when faded: it would tint a disabled field grey.
+        if disabled.get() { el.shadow_none().opacity(0.5).cursor(Cursor::NotAllowed) } else { el.cursor(Cursor::Text) }
     };
 
     <div
@@ -168,32 +183,13 @@ pub fn Input(
         class:py-2={appearance && multiline}
         text_color={t.get().foreground}
         bind={surface}
-        onMouseDown={move |e: &MouseEvent| {
-            // Also keeps the press from a click-away backdrop under the
-            // input (an open popover's), which would close it.
-            e.stop_propagation();
-            if !disabled.get_untracked() {
-                node.focus()
-            }
-        }}
-        onClick={stop_click}
-        {...&attrs}
+        // A press on the padding, prefix or suffix focuses the field too.
+        onMouseDown={move |_| if !disabled.get_untracked() { node.focus() }}
+        {...attrs}
     >
         {prefix}
-        <div class="relative flex flex-1 min-w-0 min-h-[1.25rem] overflow-hidden" class:items-start={multiline} class:items-center={!multiline}>
-            {move || (text.with(|s| s.is_empty()) && placeholder.is_some()).then(|| <div
-                class="absolute inset-0 flex overflow-hidden"
-                class:items-start={multiline}
-                class:items-center={!multiline}
-                text_color={t.get().muted_foreground}
-            >{placeholder}</div>)}
-            {move || if disabled.get() {
-                // rsx-gpui ignores `disabled` on text fields: show the text instead.
-                let shown = move || if masked.get() { "•".repeat(text.with(|s| s.chars().count())) } else { text.get() };
-                <div class="flex-1 min-w-0 overflow-hidden">{shown}</div>
-            } else {
-                field().into_element()
-            }}
+        <div class="flex flex-1 min-w-0 overflow-hidden" class:items-start={multiline} class:items-center={!multiline}>
+            {field}
         </div>
         {suffix}
         {move || {

@@ -60,7 +60,6 @@ pub fn Badge(
     move || {
         let theme = t.get();
         let (bg, fg, border) = badge_colors(variant, &theme);
-        // rsx#9: `whitespace-nowrap` isn't supported; `flex-none` keeps the badge from squeezing.
         <div
             class="flex flex-none items-center justify-center gap-1 px-2 py-0.5 border text-xs leading-[1rem] font-medium whitespace-nowrap"
             corner_radius={theme.radius_md()}
@@ -71,7 +70,7 @@ pub fn Badge(
         >
             {icon.map(|i| <Icon name={i} class="size-3" />)}
             {label.map(|l| l.get())}
-            {children.map(|c| c.render())}
+            {children}
         </div>
     }
 }

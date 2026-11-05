@@ -123,6 +123,8 @@ pub fn RadioGroup(
                     let ring = (is_focus_visible(node) && !disabled.get()).then(|| focus_ring(&theme, 8.0));
                     <div
                         class="relative flex flex-none size-4 items-center justify-center rounded-full border"
+                        // gpuicn's `control_surface`: `shadow-xs` in light mode.
+                        class:shadow-xs={theme.shadows && !theme.is_dark()}
                         border_color={control_border(&theme)}
                         bg={surface}
                     >

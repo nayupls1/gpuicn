@@ -22,20 +22,16 @@ pub fn Avatar(
     // GPUI clips overflow to a rectangle, so the image and fallback carry the
     // avatar's corner radius themselves (`rounded-full` unless overridden).
     let radius = div().spread(&attrs).computed_style().corner_radii.top_left.unwrap_or(px(9999.0));
-    move || {
-        let theme = t.get();
-        // rsx has no image load/error events, so the fallback is drawn under
-        // the image: it shows while the image loads, and stays if it fails.
-        // rsx#N: no `object-fit`, so the image is stretched to the box.
-        <div class="relative flex flex-none size-8 overflow-hidden rounded-full" {...&attrs}>
-            <div
-                class="absolute inset-0 flex items-center justify-center text-sm leading-[1.25rem] font-medium"
-                corner_radius={radius}
-                bg={theme.muted}
-            >
-                {fallback.get()}
-            </div>
-            {src.map(|s| <img src={s.get()} alt="" class="absolute inset-0 size-full" corner_radius={radius} />)}
+    // rsx has no image load/error events, so the fallback is drawn under the
+    // image: it shows while the image loads, and stays if it fails.
+    <div class="relative flex flex-none size-8 overflow-hidden rounded-full" {...attrs}>
+        <div
+            class="absolute inset-0 flex items-center justify-center text-sm leading-[1.25rem] font-medium"
+            corner_radius={radius}
+            bg={t.get().muted}
+        >
+            {fallback}
         </div>
-    }
+        {src.map(|s| <img src={move || s.get()} alt="" class="absolute inset-0 size-full object-cover" corner_radius={radius} />)}
+    </div>
 }

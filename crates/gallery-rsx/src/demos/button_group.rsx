@@ -3,6 +3,7 @@ use rsx::prelude::*;
 use crate::ui::button::{Button, ButtonSize};
 use crate::ui::button_group::{ButtonGroup, ButtonGroupSeparator, ButtonGroupText};
 use crate::ui::icon::IconName;
+use crate::ui::input::Input;
 
 pub fn demo() -> Element {
     <div class="flex flex-col gap-4">
@@ -14,8 +15,7 @@ pub fn demo() -> Element {
         </ButtonGroup>
         <ButtonGroup>
             <ButtonGroupText text="https://" />
-            {/* TODO(input): `<Input placeholder="example.com" class="rounded-none w-[200px]" />` once `input` is ported. */}
-            <input placeholder="example.com" class="rounded-none w-[200px]" />
+            <Input placeholder="example.com" class="rounded-none w-[200px]" />
             <Button outline label="Go" />
         </ButtonGroup>
         <ButtonGroup>

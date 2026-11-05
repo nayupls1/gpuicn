@@ -1,5 +1,6 @@
 use rsx::prelude::*;
 
+use crate::ui::badge::Badge;
 use crate::ui::button::{Button, ButtonSize};
 use crate::ui::spinner::Spinner;
 
@@ -8,6 +9,6 @@ pub fn demo() -> Element {
         <Spinner />
         <Spinner class="size-8" />
         <Button secondary size={ButtonSize::Sm} loading={true} label="Loading..." />
-        {/* TODO(badge): `<Badge><Spinner class="size-3" />Syncing</Badge>` once `badge` is ported. */}
+        <Badge><Spinner class="size-3" />Syncing</Badge>
     </div>
 }
