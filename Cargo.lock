@@ -4595,9 +4595,9 @@ checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "rsxui"
-version = "0.0.1"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfddb15426241420e3e3ff458567355f5d846dc5bd871215dead3cdaa7dbc802"
+checksum = "5a66dd3bc7d77ea35a854c70c094446f0f99e30d08b5414d1fb4967bdc4e684f"
 dependencies = [
  "rsxui-macros",
 ]
@@ -4619,9 +4619,9 @@ checksum = "5495026148515c8c4852dff11f22a85fe77df81f144f881470cd2daa99b49a55"
 
 [[package]]
 name = "rsxui-gpui"
-version = "0.0.1"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7110dc138559c7094ab034c0aa96a04dbdd8943bfcaadf304dbb4336f15734e4"
+checksum = "e4c423ca1e79d7cf6a612c35bdfddd13e8524e83a3e2dbd49a462b02706916d0"
 dependencies = [
  "futures",
  "gpui",
@@ -4631,18 +4631,18 @@ dependencies = [
 
 [[package]]
 name = "rsxui-html"
-version = "0.0.1"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2b7b49fe64f5ab259cb24d55909196a866532750ae44d5fc3d0e410698af9ec"
+checksum = "9d5af9e2c992af98585e3383119bc16278cb67f7007b403da759d3df84e8537d"
 dependencies = [
  "rsxui",
 ]
 
 [[package]]
 name = "rsxui-macros"
-version = "0.0.1"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96326f25ddd5d743e40bcc83a6983103d36be0153c4aa4a49c09596712b93e43"
+checksum = "d93787e7912a5f1dc0dc03a6b9c7ac9fc40a2c33f37c52403d65d46265773a3d"
 dependencies = [
  "proc-macro2",
  "quote",

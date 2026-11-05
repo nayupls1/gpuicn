@@ -24,37 +24,10 @@ use rsx::Div;
 use super::button::Button;
 use super::command::{Command, CommandGroup, CommandItem};
 use super::icon::{Icon, IconName};
-use super::popover::{Popover, PopoverHandle};
+use super::popover::{outer_layout_class, Popover, PopoverHandle};
 use super::theme::theme;
 use super::utils::Align;
 
-/// The caller's layout classes that belong on the popover's wrapper rather
-/// than on the trigger button (gpuicn's `popover::outer_layout`): width,
-/// flex grow, so `class="w-full"` stretches the combobox.
-fn outer_layout_class(attrs: &Attributes) -> String {
-    let style = rsx::div().spread(attrs).computed_style();
-    let len = |prefix: &str, l: Length| match l {
-        Length::Px(v) => format!("{prefix}-[{v}px]"),
-        Length::Rems(v) => format!("{prefix}-[{v}rem]"),
-        Length::Fraction(f) if f == 1.0 => format!("{prefix}-full"),
-        Length::Fraction(f) => format!("{prefix}-[{}%]", f * 100.0),
-        Length::Auto => format!("{prefix}-auto"),
-    };
-    let mut classes = Vec::new();
-    if let Some(w) = style.size.width {
-        classes.push(len("w", w));
-    }
-    if let Some(w) = style.min_size.width {
-        classes.push(len("min-w", w));
-    }
-    if let Some(w) = style.max_size.width {
-        classes.push(len("max-w", w));
-    }
-    if style.flex_grow.is_some_and(|g| g > 0.0) {
-        classes.push("flex-1".into());
-    }
-    classes.join(" ")
-}
 
 #[component]
 pub fn Combobox(

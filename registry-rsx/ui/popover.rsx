@@ -19,7 +19,7 @@
 use std::time::Duration;
 
 use rsx::prelude::*;
-use rsx::{Bounds, Point, Size};
+use rsx::{Bounds, Length, Point, Size};
 
 use super::theme::theme;
 use super::utils::{pointer_pressed, Align, Side};
@@ -286,6 +286,40 @@ fn place(position: Point, corner: Corner, content: Size<f32>, viewport: Size<f32
         y = y.min(viewport.height - 8.0 - content.height).max(8.0);
     }
     Point { x, y }
+}
+
+/// The caller's layout classes that belong on a popover's wrapper rather
+/// than on its trigger (gpuicn's `popover::outer_layout`): width, min/max
+/// width and flex grow, so `class="w-full"` on a picker stretches it.
+/// Pass the result as `wrapper_class`.
+pub fn outer_layout_class(attrs: &Attributes) -> String {
+    let style = rsx::div().spread(attrs).computed_style();
+    let len = |prefix: &str, l: Length| match l {
+        Length::Px(v) => format!("{prefix}-[{v}px]"),
+        Length::Rems(v) => format!("{prefix}-[{v}rem]"),
+        Length::Fraction(f) if f == 1.0 => format!("{prefix}-full"),
+        Length::Fraction(f) => format!("{prefix}-[{}%]", f * 100.0),
+        Length::Auto => format!("{prefix}-auto"),
+        Length::Vw(f) => format!("{prefix}-[{}vw]", f * 100.0),
+        Length::Vh(f) => format!("{prefix}-[{}vh]", f * 100.0),
+        Length::MinContent => format!("{prefix}-min"),
+        Length::MaxContent => format!("{prefix}-max"),
+        Length::FitContent => format!("{prefix}-fit"),
+    };
+    let mut classes = Vec::new();
+    if let Some(w) = style.size.width {
+        classes.push(len("w", w));
+    }
+    if let Some(w) = style.min_size.width {
+        classes.push(len("min-w", w));
+    }
+    if let Some(w) = style.max_size.width {
+        classes.push(len("max-w", w));
+    }
+    if style.flex_grow.is_some_and(|g| g > 0.0) {
+        classes.push("flex-1".into());
+    }
+    classes.join(" ")
 }
 
 #[component]

@@ -132,7 +132,7 @@ pub fn App(
         </Sidebar>
         <SidebarInset>
             {header}
-            <div class="flex flex-col flex-1 min-h-0 overflow-y-scroll">{content}</div>
+            <ScrollArea class="flex-1 min-h-0">{content}</ScrollArea>
         </SidebarInset>
         <Toaster />
         <PortalHost />
